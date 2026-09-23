@@ -628,7 +628,7 @@ const HomePage = () => {
             {[...partners, ...partners].map((p, i) => (
               <div key={i} className="inline-flex items-center justify-center bg-white border border-gray-200 rounded-2xl shadow-sm min-w-[180px] h-32 px-4 hover:shadow-md hover:border-green-300 transition-all">
                 <img
-                  src={"https://www.sologixenergy.in/assets/img/partner/" + p + ".jpg"}
+                  src={/* served from frontend/public/partners/ (the old sologixenergy.in site no longer exists) */ "/partners/" + p + ".jpg"}
                   alt={p}
                   className="max-h-28 max-w-[160px] object-contain" loading="lazy"
                   onError={e => {
