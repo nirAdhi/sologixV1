@@ -23,7 +23,7 @@ if (!process.env.JWT_SECRET || process.env.JWT_SECRET.length < 32) {
 if (!process.env.DB_PASSWORD || process.env.DB_PASSWORD === '') {
   console.warn('⚠️  WARNING: DB_PASSWORD is empty. Set a strong database password!');
 }
-if (!process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD === 'Adminpass2') {
+if (!process.env.ADMIN_PASSWORD || process.env.ADMIN_PASSWORD.length < 12) {
   console.warn('⚠️  WARNING: Default ADMIN_PASSWORD detected. Change it before going to production!');
 }
 
@@ -84,7 +84,7 @@ app.use(cors({
       if (productionOrigins.includes(origin)) {
         return callback(null, true);
       }
-      return callback(new Error('CORS: Origin not allowed'), false);
+      return callback(null, false);
     }
 
     // Development: allow localhost
@@ -92,7 +92,7 @@ app.use(cors({
     if (devOrigins.includes(origin)) {
       return callback(null, true);
     }
-    return callback(new Error('CORS: Origin not allowed'), false);
+    return callback(null, false);
   },
   credentials: true
 }));
@@ -115,7 +115,7 @@ const authLimiter = rateLimit({
 });
 
 // Apply rate limiting
-app.use('/api/', generalLimiter);
+app.use('/api/', (req, res, next) => req.path === '/whatsapp/webhook' ? next() : generalLimiter(req, res, next));
 app.use('/api/admin/login', authLimiter);
 app.use('/api/customer/login', authLimiter);
 app.use('/api/customer/register', authLimiter);
@@ -126,7 +126,13 @@ app.use((req, res, next) => {
   if (req.originalUrl === '/api/payments/razorpay-webhook') {
     next();
   } else {
-    express.json({ limit: '500kb' })(req, res, next);
+    // Keep the raw bytes so webhook signatures (WhatsApp) can be verified exactly
+    // as Meta computed them. 500kb elsewhere (live setting); 10mb only on upload endpoints.
+    const isUpload = req.originalUrl.startsWith('/api/upload/');
+    express.json({
+      limit: isUpload ? '10mb' : '500kb',
+      verify: (r, _res, buf) => { r.rawBody = buf; }
+    })(req, res, next);
   }
 });
 app.use((req, res, next) => {
@@ -171,6 +177,12 @@ app.use('/api/site-settings', require('./routes/siteSettings'));
 app.use('/api/projects', require('./routes/projects'));
 app.use('/api/catalog', require('./routes/catalog'));
 app.use('/api/product-orders', require('./routes/productOrders'));
+
+// Unknown API routes -> JSON 404. Must be registered BEFORE the SPA catch-all
+// below, otherwise GET /api/<typo> returns index.html with status 200.
+app.use('/api', (req, res) => {
+  res.status(404).json({ success: false, message: 'API endpoint not found' });
+});
 
 // Serve frontend SPA if built (must be AFTER API routes)
 const frontendBuildPath = path.resolve(__dirname, '..', 'frontend', 'build');
@@ -228,10 +240,7 @@ app.use((err, req, res, next) => {
   });
 });
 
-// 404 handler for unknown API routes
-app.use('/api/*', (req, res) => {
-  res.status(404).json({ success: false, message: 'API endpoint not found' });
-});
+
 
 const PORT = process.env.PORT || 5000;
 

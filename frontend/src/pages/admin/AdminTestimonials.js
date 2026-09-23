@@ -36,12 +36,32 @@ export default function AdminTestimonials() {
   const openAdd = () => { setEditing(null); setForm(empty); setShowForm(true); };
   const openEdit = (t) => { setEditing(t.id); setForm({ ...t, is_active: t.is_active === 1 || t.is_active === true }); setShowForm(true); };
 
+  // Photos are shrunk in the browser before saving. A raw phone photo is several MB
+  // as base64, which exceeded both the server's request limit and the database
+  // column, so saving failed. A 256px JPEG avatar is typically 15-40 KB.
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 2 * 1024 * 1024) { toast.error('Image must be under 2MB'); return; }
+    if (!file.type.startsWith('image/')) { toast.error('Please choose an image file'); return; }
+    if (file.size > 15 * 1024 * 1024) { toast.error('Image must be under 15MB'); return; }
     const reader = new FileReader();
-    reader.onload = (ev) => setForm(f => ({ ...f, photo_url: ev.target.result }));
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 256;
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        setForm(f => ({ ...f, photo_url: canvas.toDataURL('image/jpeg', 0.85) }));
+      };
+      img.onerror = () => toast.error('Could not read that image');
+      img.src = ev.target.result;
+    };
     reader.readAsDataURL(file);
   };
 

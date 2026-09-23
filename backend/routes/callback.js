@@ -4,6 +4,8 @@ const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const db = require('../config/database');
 const auth = require('../middleware/auth');
+const { requirePermission } = require('../middleware/auth');
+const canManage = requirePermission('manage_customers');
 
 // Submit callback request
 router.post('/', formLimiter, [
@@ -50,7 +52,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // Update callback request status (admin only)
-router.put('/:id/status', auth, async (req, res) => {
+router.put('/:id/status', auth, canManage, async (req, res) => {
   try {
     const { id } = req.params;
     const { status } = req.body;

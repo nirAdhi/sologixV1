@@ -5,26 +5,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const db = require('../config/database');
-const auth = require('../middleware/auth');
+const { auth, requireSuperAdmin, requirePermission, JWT_SECRET } = require('../middleware/auth');
 const { sendStatusUpdate, sendCustomEmail, sendBookingConfirmation } = require('../config/email');
-
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_fallback_secret_do_not_use_in_production';
-if (!process.env.JWT_SECRET) {
-  console.warn('WARNING: Using fallback JWT_SECRET. Set JWT_SECRET in production!');
-}
-
-let useStaticAdmin = false;
-
-// Static fallback credentials — MUST be set via environment variables
-const STATIC_ADMIN = {
-  id: 1,
-  email: process.env.ADMIN_EMAIL || null,
-  name: 'Super Admin',
-  role: 'super_admin',
-  permissions: '*'
-};
-
-const STATIC_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || null;
 
 router.post('/login', [
   body('email').isEmail().withMessage('Valid email is required'),
@@ -38,62 +20,39 @@ router.post('/login', [
 
     const { email, password } = req.body;
 
-    if (useStaticAdmin) {
-      if (email === STATIC_ADMIN.email && password === STATIC_ADMIN_PASSWORD) {
-        if (process.env.NODE_ENV !== 'production') console.log('Admin login successful (static)');
-        const token = jwt.sign(
-          { id: STATIC_ADMIN.id, email: STATIC_ADMIN.email, role: STATIC_ADMIN.role },
-          JWT_SECRET,
-          { expiresIn: process.env.JWT_EXPIRE || '1h' }
-        );
-        return res.json({
-          success: true,
-          data: { token, admin: { id: STATIC_ADMIN.id, email: STATIC_ADMIN.email, name: STATIC_ADMIN.name, role: STATIC_ADMIN.role } }
-        });
-      }
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-
     const [admins] = await db.query(
       'SELECT * FROM admins WHERE email = ?',
       [email]
     );
 
     if (admins.length === 0) {
-      if (process.env.NODE_ENV !== 'production') console.log('Admin not found - static fallback');
-      useStaticAdmin = true;
-      if (email === STATIC_ADMIN.email && password === STATIC_ADMIN_PASSWORD) {
-        console.log('Admin login successful (static fallback):', email);
-        const token = jwt.sign(
-          { id: STATIC_ADMIN.id, email: STATIC_ADMIN.email, role: STATIC_ADMIN.role },
-          JWT_SECRET,
-          { expiresIn: process.env.JWT_EXPIRE || '1h' }
-        );
-        return res.json({
-          success: true,
-          data: { token, admin: { id: STATIC_ADMIN.id, email: STATIC_ADMIN.email, name: STATIC_ADMIN.name, role: STATIC_ADMIN.role } }
-        });
-      }
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
-
-    const admin = admins[0];
-    
-    const isMatch = await bcrypt.compare(password, admin.password);
-
-    if (!isMatch) {
-      if (process.env.NODE_ENV !== 'production') console.log('Login failed: invalid credentials');
       return res.status(401).json({ 
         success: false, 
         message: 'Invalid credentials' 
       });
     }
 
-    if (process.env.NODE_ENV !== 'production') console.log('Admin login successful');
+    const admin = admins[0];
 
+    // SECURITY: deactivated admins must not be able to log in.
+    if (!admin.is_active) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+    
+    const isMatch = await bcrypt.compare(password, admin.password);
+
+    if (!isMatch) {
+      return res.status(401).json({ 
+        success: false, 
+        message: 'Invalid credentials' 
+      });
+    }
+
+    // `type: 'admin'` is what middleware/auth.js now requires; customer tokens
+    // carry `type: 'customer'` and are rejected on admin routes.
     const token = jwt.sign(
-      { id: admin.id, email: admin.email, role: admin.role },
-      process.env.JWT_SECRET,
+      { id: admin.id, email: admin.email, role: admin.role, type: 'admin' },
+      JWT_SECRET,
       { expiresIn: process.env.JWT_EXPIRE || '1h' }
     );
 
@@ -111,35 +70,9 @@ router.post('/login', [
     });
   } catch (error) {
     console.error('Login error:', error);
-    // DB unreachable - fall back to static admin
-    if (error.code === 'ECONNREFUSED' || error.code === 'PROTOCOL_CONNECTION_LOST' || error.code === 'ETIMEDOUT') {
-      useStaticAdmin = true;
-      const { email, password } = req.body;
-      if (email === STATIC_ADMIN.email && password === STATIC_ADMIN_PASSWORD) {
-        console.log('Admin login successful (DB-down static fallback):', email);
-        const token = jwt.sign(
-          { id: STATIC_ADMIN.id, email: STATIC_ADMIN.email, role: STATIC_ADMIN.role },
-          JWT_SECRET,
-          { expiresIn: process.env.JWT_EXPIRE || '1h' }
-        );
-        return res.json({
-          success: true,
-          data: { token, admin: { id: STATIC_ADMIN.id, email: STATIC_ADMIN.email, name: STATIC_ADMIN.name, role: STATIC_ADMIN.role } }
-        });
-      }
-      return res.status(401).json({ success: false, message: 'Invalid credentials' });
-    }
     res.status(500).json({ success: false, message: 'Login failed' });
   }
 });
-
-// Middleware to check if user is super_admin
-const requireSuperAdmin = (req, res, next) => {
-  if (req.admin.role !== 'super_admin') {
-    return res.status(403).json({ success: false, message: 'Access denied. Super admin only.' });
-  }
-  next();
-};
 
 // List all sub-admins (staff)
 router.get('/subadmins', auth, requireSuperAdmin, async (req, res) => {
@@ -205,6 +138,12 @@ router.post('/subadmins', auth, requireSuperAdmin, [
 router.put('/subadmins/:id', auth, requireSuperAdmin, async (req, res) => {
   try {
     const { name, email, is_active, role, permissions } = req.body;
+    if (role !== undefined && !['admin', 'staff'].includes(role)) {
+      return res.status(400).json({ success: false, message: 'Role must be admin or staff' });
+    }
+    if (email !== undefined && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) {
+      return res.status(400).json({ success: false, message: 'Valid email is required' });
+    }
 
     const [subadmin] = await db.query('SELECT id FROM admins WHERE id = ? AND role != "super_admin"', [req.params.id]);
     if (subadmin.length === 0) {
@@ -250,17 +189,12 @@ router.get('/me', auth, async (req, res) => {
     );
 
     if (admins.length === 0) {
-      // Return static admin info if not in DB
-      return res.json({ success: true, data: { id: req.admin.id, email: req.admin.email, name: 'Super Admin', role: req.admin.role, created_at: new Date() } });
+      return res.status(404).json({ success: false, message: 'Admin not found' });
     }
 
     res.json({ success: true, data: admins[0] });
   } catch (error) {
     console.error('Error fetching admin:', error);
-    // DB down - return info from JWT token
-    if (error.code === 'ECONNREFUSED' || error.code === 'PROTOCOL_CONNECTION_LOST' || error.code === 'ETIMEDOUT') {
-      return res.json({ success: true, data: { id: req.admin.id, email: req.admin.email, name: 'Super Admin', role: req.admin.role, created_at: new Date() } });
-    }
     res.status(500).json({ success: false, message: 'Failed to fetch admin data' });
   }
 });
@@ -356,7 +290,7 @@ router.get('/bookings', auth, async (req, res) => {
   }
 });
 
-router.put('/bookings/:id/status', auth, async (req, res) => {
+router.put('/bookings/:id/status', auth, requirePermission('manage_bookings'), async (req, res) => {
   try {
     const { status, admin_notes } = req.body;
     const validStatuses = ['pending', 'confirmed', 'cancelled', 'completed'];
@@ -397,7 +331,7 @@ router.put('/bookings/:id/status', auth, async (req, res) => {
   }
 });
 
-router.put('/bookings/:id/confirm-payment', auth, async (req, res) => {
+router.put('/bookings/:id/confirm-payment', auth, requireSuperAdmin, async (req, res) => {
   try {
     const [booking] = await db.query(`
       SELECT b.*, c.email as customer_email, c.name as customer_name, c.phone as customer_phone,
@@ -464,7 +398,7 @@ router.put('/bookings/:id/confirm-payment', auth, async (req, res) => {
   }
 });
 
-router.put('/bookings/:id/reschedule', auth, [
+router.put('/bookings/:id/reschedule', auth, requirePermission('manage_bookings'), [
   body('appointment_date').notEmpty().withMessage('Appointment date is required'),
   body('appointment_time').notEmpty().withMessage('Appointment time is required')
 ], async (req, res) => {
@@ -505,9 +439,13 @@ router.put('/bookings/:id/reschedule', auth, [
   }
 });
 
-router.post('/bookings/:id/email', auth, async (req, res) => {
+router.post('/bookings/:id/email', auth, requirePermission('manage_bookings'), async (req, res) => {
   try {
     const { subject, message } = req.body;
+    if (typeof subject !== 'string' || typeof message !== 'string' ||
+        !subject.trim() || !message.trim() || subject.length > 200 || message.length > 5000) {
+      return res.status(400).json({ success: false, message: 'Subject (<=200 chars) and message (<=5000 chars) are required' });
+    }
 
     const [booking] = await db.query(`
       SELECT b.*, c.email as customer_email, c.name as customer_name
@@ -582,9 +520,6 @@ router.get('/dashboard/stats', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching stats:', error);
-    if (error.code === 'ECONNREFUSED' || error.code === 'PROTOCOL_CONNECTION_LOST' || error.code === 'ETIMEDOUT') {
-      return res.json({ success: true, data: { totalBookings: 0, pendingBookings: 0, confirmedBookings: 0, completedBookings: 0, totalRevenue: 0, todayBookings: 0, upcomingBookings: [] } });
-    }
     res.status(500).json({ success: false, message: 'Failed to fetch dashboard stats' });
   }
 });
@@ -599,7 +534,7 @@ router.get('/services', auth, async (req, res) => {
   }
 });
 
-router.post('/services', auth, [
+router.post('/services', auth, requirePermission('manage_services'), [
   body('name').notEmpty().withMessage('Service name is required'),
   body('price').isFloat({ min: 0 }).withMessage('Valid price is required')
 ], async (req, res) => {
@@ -627,9 +562,18 @@ router.post('/services', auth, [
   }
 });
 
-router.put('/services/:id', auth, async (req, res) => {
+router.put('/services/:id', auth, requirePermission('manage_services'), async (req, res) => {
   try {
     const { name, description, price, duration_hours, features, image_url, is_active } = req.body;
+    if (!name || typeof name !== 'string' || name.length > 200) {
+      return res.status(400).json({ success: false, message: 'Service name is required' });
+    }
+    if (price === undefined || Number.isNaN(Number(price)) || Number(price) < 0) {
+      return res.status(400).json({ success: false, message: 'Price must be a non-negative number' });
+    }
+    if (image_url && !/^(https:\/\/|data:image\/|\/uploads\/)/.test(String(image_url))) {
+      return res.status(400).json({ success: false, message: 'image_url must be an https URL, data URI, or /uploads/ path' });
+    }
 
     await db.query(`
       UPDATE services 
@@ -644,7 +588,7 @@ router.put('/services/:id', auth, async (req, res) => {
   }
 });
 
-router.delete('/services/:id', auth, async (req, res) => {
+router.delete('/services/:id', auth, requireSuperAdmin, async (req, res) => {
   try {
     await db.query('DELETE FROM services WHERE id = ?', [req.params.id]);
     res.json({ success: true, message: 'Service deleted' });
@@ -655,7 +599,7 @@ router.delete('/services/:id', auth, async (req, res) => {
 });
 
 // Update booking delivery and installation status
-router.put('/bookings/:id/progress', auth, async (req, res) => {
+router.put('/bookings/:id/progress', auth, requirePermission('manage_bookings'), async (req, res) => {
   try {
     const { 
       delivery_status, 
@@ -710,10 +654,12 @@ router.put('/bookings/:id/progress', auth, async (req, res) => {
 });
 
 // Get all customers
-router.get('/customers', auth, async (req, res) => {
+router.get('/customers', auth, requirePermission('manage_customers'), async (req, res) => {
   try {
     const [customers] = await db.query(`
-      SELECT c.*, 
+      SELECT c.id, c.name, c.email, c.phone, c.alternate_phone, c.address, c.city, c.state, c.pincode,
+             c.service_interest, c.how_heard, c.created_at,
+             (c.password IS NOT NULL) as has_account,
              COUNT(b.id) as booking_count,
              MAX(b.created_at) as last_booking_date
       FROM customers c
@@ -867,7 +813,7 @@ router.get('/transactions/:bookingId/log', auth, async (req, res) => {
 });
 
 // Get customer bookings (admin)
-router.get('/customers/:id/bookings', auth, async (req, res) => {
+router.get('/customers/:id/bookings', auth, requirePermission('manage_customers'), async (req, res) => {
   try {
     const [bookings] = await db.query(`
       SELECT b.*, s.name as service_name
@@ -886,37 +832,34 @@ router.get('/customers/:id/bookings', auth, async (req, res) => {
 
 
 // ── HubSpot Integration Endpoints ──
-router.get('/hubspot/test', auth, async (req, res) => {
+// SECURITY: HubSpot integration is super-admin only. The private-app token is a
+// secret and must NOT be stored in site_settings (that table is served publicly
+// by GET /api/site-settings). Set HUBSPOT_TOKEN / HUBSPOT_PORTAL_ID in
+// .env.docker so it survives restarts; /hubspot/save only applies it to the
+// running process until the next restart.
+router.get('/hubspot/test', auth, requireSuperAdmin, async (req, res) => {
   try {
     const result = await testConnection();
     res.json({ success: true, data: result });
   } catch(e) {
-    res.status(400).json({ success: false, message: e.message });
+    res.status(400).json({ success: false, message: 'HubSpot connection failed' });
   }
 });
 
-router.post('/hubspot/save', auth, async (req, res) => {
+router.post('/hubspot/save', auth, requireSuperAdmin, async (req, res) => {
   const { token, portal_id } = req.body;
-  if (!token) return res.status(400).json({ success: false, message: 'Token required' });
-  try {
-    await require('../config/database').query(
-      "INSERT INTO site_settings (setting_key, setting_value) VALUES ('hubspot_token', ?) ON DUPLICATE KEY UPDATE setting_value=?",
-      [token, token]
-    );
-    await require('../config/database').query(
-      "INSERT INTO site_settings (setting_key, setting_value) VALUES ('hubspot_portal_id', ?) ON DUPLICATE KEY UPDATE setting_value=?",
-      [portal_id||'', portal_id||'']
-    );
-    // Update process env at runtime
-    process.env.HUBSPOT_TOKEN = token;
-    process.env.HUBSPOT_PORTAL_ID = portal_id || '';
-    res.json({ success: true, message: 'HubSpot credentials saved' });
-  } catch(e) {
-    res.status(500).json({ success: false, message: e.message });
+  if (typeof token !== 'string' || !/^[A-Za-z0-9-]{20,200}$/.test(token)) {
+    return res.status(400).json({ success: false, message: 'A valid HubSpot private app token is required' });
   }
+  process.env.HUBSPOT_TOKEN = token;
+  process.env.HUBSPOT_PORTAL_ID = String(portal_id || '').replace(/[^0-9]/g, '');
+  res.json({
+    success: true,
+    message: 'HubSpot connected for this session. To keep it after a restart, add HUBSPOT_TOKEN (and HUBSPOT_PORTAL_ID) to .env.docker on the server.'
+  });
 });
 
-router.post('/hubspot/sync-test', auth, async (req, res) => {
+router.post('/hubspot/sync-test', auth, requireSuperAdmin, async (req, res) => {
   try {
     const result = await syncLead({
       name: 'Test Lead', phone: '9000000000', email: 'test@sologixenergy.in',

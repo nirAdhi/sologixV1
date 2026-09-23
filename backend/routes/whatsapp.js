@@ -3,6 +3,8 @@ const router = express.Router();
 const db = require('../config/database');
 const crypto = require('crypto');
 const auth = require('../middleware/auth');
+const { requirePermission } = require('../middleware/auth');
+const canManage = requirePermission('manage_whatsapp');
 
 const WHATSAPP_TOKEN = process.env.WHATSAPP_TOKEN;
 const WHATSAPP_PHONE_ID = process.env.WHATSAPP_PHONE_ID;
@@ -15,18 +17,21 @@ if (!VERIFY_TOKEN) {
 // Verify webhook origin - only accept from Meta/Facebook
 const META_VERIFY_ORIGINS = ['graph.facebook.com', 'graph.whatsapp.com'];
 
+// SECURITY (was Critical): the old check (a) returned TRUE whenever the header was
+// simply omitted, (b) used the Graph API access token as the HMAC key — Meta signs
+// with the APP SECRET — and (c) hashed JSON.stringify(req.body) instead of the raw
+// bytes. Anyone could POST forged "inbound messages", making the business number
+// send messages to arbitrary phones and overwrite customer records.
+const WHATSAPP_APP_SECRET = process.env.WHATSAPP_APP_SECRET;
+if (!WHATSAPP_APP_SECRET) {
+  console.warn('WHATSAPP_APP_SECRET is not set — WhatsApp webhook POSTs will be rejected. Get it from Meta App Dashboard > App settings > Basic.');
+}
 function isValidWhatsAppRequest(req) {
-  // WhatsApp sends from specific Meta servers
-  // In production, verify the request signature
   const signature = req.headers['x-hub-signature-256'];
-  if (signature && WHATSAPP_TOKEN) {
-    const expectedSignature = 'sha256=' + crypto
-      .createHmac('sha256', WHATSAPP_TOKEN)
-      .update(JSON.stringify(req.body))
-      .digest('hex');
-    return signature === expectedSignature;
-  }
-  return true; // Allow if no signature (for testing)
+  if (!signature || !WHATSAPP_APP_SECRET || !req.rawBody) return false;
+  const expected = 'sha256=' + crypto.createHmac('sha256', WHATSAPP_APP_SECRET).update(req.rawBody).digest('hex');
+  if (signature.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expected));
 }
 
 const CONVERSATION_STEPS = {
@@ -122,7 +127,9 @@ router.get('/webhook', (req, res) => {
   const token = req.query['hub.verify_token'];
   const challenge = req.query['hub.challenge'];
 
-  if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+  const tokenOk = typeof token === 'string' && typeof VERIFY_TOKEN === 'string' && VERIFY_TOKEN.length > 0 &&
+    token.length === VERIFY_TOKEN.length && crypto.timingSafeEqual(Buffer.from(token), Buffer.from(VERIFY_TOKEN));
+  if (mode === 'subscribe' && tokenOk) {
     console.log('Webhook verified');
     res.status(200).send(challenge);
   } else {
@@ -403,7 +410,7 @@ router.get('/messages/:phone', auth, async (req, res) => {
 });
 
 // API to manually start a conversation (admin only)
-router.post('/start-conversation', auth, async (req, res) => {
+router.post('/start-conversation', auth, canManage, async (req, res) => {
   try {
     const { phone } = req.body;
     
@@ -414,7 +421,7 @@ router.post('/start-conversation', auth, async (req, res) => {
     await db.query(
       `INSERT INTO whatsapp_conversations (phone, current_step, temp_data) VALUES (?, ?, ?)
        ON DUPLICATE KEY UPDATE current_step = 'START', temp_data = '{}'`,
-      [phone, '{}']
+      [phone, 'START', '{}']   // BUGFIX: 3 placeholders but only 2 values -> this endpoint always returned 500
     );
 
     const welcomeMsg = `Welcome to Sologix Energy! ☀️\n\nLet's book your solar consultation.\n\nWhat is your name?`;
@@ -439,7 +446,7 @@ router.get('/quick-replies', auth, async (req, res) => {
   }
 });
 
-router.post('/quick-replies', auth, async (req, res) => {
+router.post('/quick-replies', auth, canManage, async (req, res) => {
   try {
     const { keyword, response, action } = req.body;
     await db.query(
@@ -452,7 +459,7 @@ router.post('/quick-replies', auth, async (req, res) => {
   }
 });
 
-router.delete('/quick-replies/:id', auth, async (req, res) => {
+router.delete('/quick-replies/:id', auth, canManage, async (req, res) => {
   try {
     await db.query(`DELETE FROM whatsapp_quick_replies WHERE id = ?`, [req.params.id]);
     res.json({ success: true, message: 'Quick reply deleted' });

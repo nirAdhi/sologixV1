@@ -1,6 +1,16 @@
 const nodemailer = require('nodemailer');
 
 // Helper to escape HTML entities and prevent XSS in email templates
+// SECURITY: nodemailer accepts comma-separated recipient lists; a stored value like
+// "victim@x.com, other@y.com" would copy the email to a second address.
+function singleRecipient(addr) {
+  const a = String(addr || '').trim();
+  if (!/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(a)) {
+    throw new Error('Invalid recipient address');
+  }
+  return a;
+}
+
 function escapeHtml(str) {
   if (!str) return '';
   return String(str)
@@ -11,12 +21,14 @@ function escapeHtml(str) {
     .replace(/'/g, '&#39;');
 }
 
-const isEmailConfigured = process.env.SMTP_USER && process.env.SMTP_PASS && process.env.SMTP_USER !== 'your_email@gmail.com';
+const isEmailConfigured = !!(process.env.SMTP_USER && process.env.SMTP_PASS &&
+  !/^your[_-]/i.test(process.env.SMTP_USER) && !/^your[_-]/i.test(process.env.SMTP_PASS));
 
 const transporter = isEmailConfigured ? nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: process.env.SMTP_PORT || 587,
-  secure: false,
+  secure: String(process.env.SMTP_PORT) === '465', // implicit TLS on 465
+  requireTLS: String(process.env.SMTP_PORT) !== '465', // STARTTLS must succeed on 587 (no plaintext downgrade)
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS
@@ -38,7 +50,7 @@ const sendBookingConfirmation = async (booking) => {
 
   const mailOptions = {
     from: `"Sologix Energy" <${process.env.SMTP_USER}>`,
-    to: booking.customer_email,
+    to: singleRecipient(booking.customer_email),
     subject: `Booking Confirmed - ${booking.booking_id} | Sologix Energy`,
     html: `
       <!DOCTYPE html>
@@ -88,23 +100,23 @@ const sendBookingConfirmation = async (booking) => {
             <div class="details">
               <div class="detail-row">
                 <span class="detail-label">Booking ID:</span>
-                <span class="booking-id">${booking.booking_id}</span>
+                <span class="booking-id">${escapeHtml(booking.booking_id)}</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">Service:</span>
-                <span>${booking.service_name}</span>
+                <span>${escapeHtml(booking.service_name)}</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">Date:</span>
-                <span>${formattedDate}</span>
+                <span>${escapeHtml(formattedDate)}</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">Time:</span>
-                <span>${booking.appointment_time}</span>
+                <span>${escapeHtml(booking.appointment_time)}</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">Duration:</span>
-                <span>${booking.duration_hours || 4} hours</span>
+                <span>${escapeHtml(booking.duration_hours || 4)} hours</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">Status:</span>
@@ -165,7 +177,7 @@ const sendStatusUpdate = async (booking) => {
 
   const mailOptions = {
     from: `"Sologix Energy" <${process.env.SMTP_USER}>`,
-    to: booking.customer_email,
+    to: singleRecipient(booking.customer_email),
     subject: `Appointment Update - ${booking.booking_id} | Sologix Energy`,
     html: `
       <!DOCTYPE html>
@@ -189,24 +201,24 @@ const sendStatusUpdate = async (booking) => {
           </div>
           <div class="content">
             <p>Dear ${escapeHtml(booking.customer_name)},</p>
-            <p>Your appointment <strong>${booking.booking_id}</strong> ${statusMessages[booking.status] || 'has been updated'}.</p>
+            <p>Your appointment <strong>${escapeHtml(booking.booking_id)}</strong> ${statusMessages[booking.status] || 'has been updated'}.</p>
             
             <div class="details">
               <div class="detail-row">
                 <span class="detail-label">Service:</span>
-                <span>${booking.service_name}</span>
+                <span>${escapeHtml(booking.service_name)}</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">Date:</span>
-                <span>${formattedDate}</span>
+                <span>${escapeHtml(formattedDate)}</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">Time:</span>
-                <span>${booking.appointment_time}</span>
+                <span>${escapeHtml(booking.appointment_time)}</span>
               </div>
               <div class="detail-row">
                 <span class="detail-label">Status:</span>
-                <span style="text-transform: capitalize; font-weight: bold; color: #059669;">${booking.status}</span>
+                <span style="text-transform: capitalize; font-weight: bold; color: #059669;">${escapeHtml(booking.status)}</span>
               </div>
             </div>
             
@@ -236,7 +248,7 @@ const sendCustomEmail = async (to, subject, message, customerName = 'Customer') 
 
   const mailOptions = {
     from: `"Sologix Energy" <${process.env.SMTP_USER}>`,
-    to,
+    to: singleRecipient(to),
     subject: `${subject} | Sologix Energy`,
     html: `
       <!DOCTYPE html>

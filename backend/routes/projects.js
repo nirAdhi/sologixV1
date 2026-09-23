@@ -1,9 +1,9 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
-const auth = require('../middleware/auth');
+const { auth, requirePermission } = require('../middleware/auth');
 
-let useStatic = false;
+// Shown only if the DB is unreachable for that request (no sticky global flag).
 const staticProjects = [
   { id:1, title:'Ranchi Gymkhana Club', location:'Ranchi, Jharkhand', capacity:'40 kW', type:'Commercial', description:'On-grid solar installation for Ranchi\'s premier gymkhana club.', image_url:'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=600&h=400&fit=crop', savings:'Rs 3,36,000/yr', is_featured:1, sort_order:1 },
   { id:2, title:'DBMS English School', location:'Jamshedpur, Jharkhand', capacity:'100 kW', type:'Institutional', description:'Large-scale solar installation for a leading English medium school.', image_url:'https://images.unsplash.com/photo-1559302504-64aae6ca6b6d?w=600&h=400&fit=crop', savings:'Rs 8,40,000/yr', is_featured:1, sort_order:2 },
@@ -13,23 +13,27 @@ const staticProjects = [
   { id:6, title:'Solar Mini Grid', location:'Chatra, Jharkhand', capacity:'25 kW', type:'Industrial', description:'Off-grid solar mini grid providing power to rural community.', image_url:'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=600&h=400&fit=crop', savings:'Rs 2,10,000/yr', is_featured:0, sort_order:6 },
 ];
 
+const canManage = [auth, requirePermission('manage_services')]; // matches the admin menu permission
+const validImage = (v) => v === undefined || v === '' || (typeof v === 'string' && v.length <= 1500000 &&
+  (/^https:\/\/[^\s"'<>]+$/i.test(v) || /^\/uploads\/[\w.-]+$/.test(v) || /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(v)));
+
 router.get('/', async (req, res) => {
   try {
-    if (useStatic) return res.json({ success: true, data: staticProjects });
     const featured = req.query.featured === 'true';
     const q = featured ? 'SELECT * FROM projects WHERE is_featured=1 ORDER BY sort_order ASC LIMIT 6' : 'SELECT * FROM projects ORDER BY sort_order ASC, created_at DESC';
     const [rows] = await db.query(q);
     res.json({ success: true, data: rows });
   } catch (e) {
-    if (e.code === 'ECONNREFUSED' || e.code === 'ER_NO_SUCH_TABLE') { useStatic = true; return res.json({ success: true, data: staticProjects }); }
-    res.status(500).json({ success: false, message: 'Failed' });
+    console.error('Load projects failed:', e.code || e.message);
+    res.json({ success: true, data: staticProjects, fallback: true });
   }
 });
 
-router.post('/', auth, async (req, res) => {
+router.post('/', ...canManage, async (req, res) => {
   try {
     const { title, location, capacity, type, description, image_url, savings, is_featured, sort_order } = req.body;
     if (!title) return res.status(400).json({ success: false, message: 'Title required' });
+    if (!validImage(image_url)) return res.status(400).json({ success: false, message: 'image_url must be an https URL, /uploads/ path or image' });
     const [r] = await db.query('INSERT INTO projects (title, location, capacity, type, description, image_url, savings, is_featured, sort_order) VALUES (?,?,?,?,?,?,?,?,?)',
       [title, location||'', capacity||'', type||'Residential', description||'', image_url||'', savings||'', is_featured?1:0, sort_order||0]);
     const [[p]] = await db.query('SELECT * FROM projects WHERE id=?', [r.insertId]);
@@ -37,12 +41,13 @@ router.post('/', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: 'Failed' }); }
 });
 
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', ...canManage, async (req, res) => {
   try {
+    if (!validImage(req.body.image_url)) return res.status(400).json({ success: false, message: 'image_url must be an https URL, /uploads/ path or image' });
     const fields = ['title','location','capacity','type','description','image_url','savings','is_featured','sort_order'];
     const updates = []; const params = [];
     fields.forEach(f => { if (req.body[f] !== undefined) { updates.push(f+'=?'); params.push(req.body[f]); }});
-    if (!updates.length) return res.status(400).json({ success: false });
+    if (!updates.length) return res.status(400).json({ success: false, message: 'Nothing to update' });
     params.push(req.params.id);
     await db.query('UPDATE projects SET '+updates.join(',')+' WHERE id=?', params);
     const [[p]] = await db.query('SELECT * FROM projects WHERE id=?', [req.params.id]);
@@ -50,7 +55,7 @@ router.put('/:id', auth, async (req, res) => {
   } catch (e) { res.status(500).json({ success: false, message: 'Failed' }); }
 });
 
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', ...canManage, async (req, res) => {
   try { await db.query('DELETE FROM projects WHERE id=?', [req.params.id]); res.json({ success: true }); }
   catch (e) { res.status(500).json({ success: false, message: 'Failed' }); }
 });

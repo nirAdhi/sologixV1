@@ -5,6 +5,8 @@ const fs = require('fs');
 const axios = require('axios');
 const db = require('../config/database');
 const auth = require('../middleware/auth');
+const { requirePermission } = require('../middleware/auth');
+const canManage = requirePermission('manage_services');
 
 // Configure Cloudinary
 const cloudinary = require('cloudinary').v2;
@@ -107,7 +109,7 @@ function validateFileExtension(filename) {
 }
 
 // Upload image to Cloudinary from Google Drive URL (admin only)
-router.post('/cloudinary/upload-from-drive', auth, async (req, res) => {
+router.post('/cloudinary/upload-from-drive', auth, canManage, async (req, res) => {
   try {
     const { googleDriveUrl, serviceId, serviceName } = req.body;
     
@@ -159,12 +161,12 @@ router.post('/cloudinary/upload-from-drive', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Cloudinary upload error:', error);
-    res.status(500).json({ success: false, message: 'Upload failed: ' + error.message });
+    res.status(500).json({ success: false, message: 'Upload failed' });
   }
 });
 
 // Upload image to Cloudinary from base64 (admin only)
-router.post('/cloudinary/upload-base64', auth, async (req, res) => {
+router.post('/cloudinary/upload-base64', auth, canManage, async (req, res) => {
   try {
     const { image, serviceId, serviceName } = req.body;
     
@@ -176,6 +178,10 @@ router.post('/cloudinary/upload-base64', auth, async (req, res) => {
     const publicId = `sologix/services/${serviceName || 'service'}-${serviceId || 'temp'}-${Date.now()}`;
 
     // Upload to Cloudinary
+    // SECURITY: same local-file-path issue as upload-url; require a real image data URI.
+    if (typeof image !== 'string' || !/^data:image\/(png|jpe?g|gif|webp);base64,[A-Za-z0-9+/=]+$/.test(image)) {
+      return res.status(400).json({ success: false, message: 'image must be a base64 PNG/JPEG/GIF/WebP data URI' });
+    }
     const result = await cloudinary.uploader.upload(image, {
       public_id: publicId,
       folder: 'sologix/services',
@@ -202,12 +208,12 @@ router.post('/cloudinary/upload-base64', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Cloudinary upload error:', error);
-    res.status(500).json({ success: false, message: 'Upload failed: ' + error.message });
+    res.status(500).json({ success: false, message: 'Upload failed' });
   }
 });
 
 // Upload image to Cloudinary from URL (admin only)
-router.post('/cloudinary/upload-url', auth, async (req, res) => {
+router.post('/cloudinary/upload-url', auth, canManage, async (req, res) => {
   try {
     const { imageUrl, serviceId, serviceName } = req.body;
     
@@ -219,6 +225,13 @@ router.post('/cloudinary/upload-url', auth, async (req, res) => {
     const publicId = `sologix/services/${serviceName || 'service'}-${serviceId || 'temp'}-${Date.now()}`;
 
     // Upload to Cloudinary
+    // SECURITY: the Cloudinary SDK treats a non-URL string as a LOCAL FILE PATH and
+    // uploads it — e.g. "/app/backend/.env". Only https URLs are accepted.
+    let parsedUrl;
+    try { parsedUrl = new URL(imageUrl); } catch (_) { parsedUrl = null; }
+    if (!parsedUrl || parsedUrl.protocol !== 'https:') {
+      return res.status(400).json({ success: false, message: 'imageUrl must be an https:// URL' });
+    }
     const result = await cloudinary.uploader.upload(imageUrl, {
       public_id: publicId,
       folder: 'sologix/services',
@@ -245,12 +258,12 @@ router.post('/cloudinary/upload-url', auth, async (req, res) => {
     });
   } catch (error) {
     console.error('Cloudinary upload error:', error);
-    res.status(500).json({ success: false, message: 'Upload failed: ' + error.message });
+    res.status(500).json({ success: false, message: 'Upload failed' });
   }
 });
 
 // Delete image from Cloudinary (admin only)
-router.delete('/cloudinary/delete', auth, async (req, res) => {
+router.delete('/cloudinary/delete', auth, canManage, async (req, res) => {
   try {
     const { publicId } = req.body;
     
@@ -270,7 +283,7 @@ router.delete('/cloudinary/delete', auth, async (req, res) => {
 });
 
 // Save image from base64 to file (legacy - admin only)
-router.post('/save-image-url', auth, async (req, res) => {
+router.post('/save-image-url', auth, canManage, async (req, res) => {
   try {
     const { imageUrl, serviceId } = req.body;
     
@@ -278,7 +291,20 @@ router.post('/save-image-url', auth, async (req, res) => {
       return res.status(400).json({ success: false, message: 'No image provided' });
     }
 
-    let filename = `service-${serviceId}-${Date.now()}.jpg`;
+    // SECURITY: serviceId was interpolated into a filesystem path unvalidated.
+    const serviceIdNum = Number.parseInt(serviceId, 10);
+    if (!Number.isInteger(serviceIdNum) || serviceIdNum <= 0) {
+      return res.status(400).json({ success: false, message: 'Invalid serviceId' });
+    }
+    const dataUriMatch = /^data:image\/(png|jpe?g|gif|webp);base64,([A-Za-z0-9+/=]+)$/.exec(imageUrl || '');
+    if (!dataUriMatch) {
+      return res.status(400).json({ success: false, message: 'imageUrl must be a base64 PNG/JPEG/GIF/WebP data URI' });
+    }
+    if (dataUriMatch[2].length > 4 * 1024 * 1024) { // ~3MB decoded
+      return res.status(413).json({ success: false, message: 'Image too large (max ~3MB)' });
+    }
+    const ext = dataUriMatch[1] === 'jpeg' ? 'jpg' : dataUriMatch[1];
+    let filename = `service-${serviceIdNum}-${Date.now()}.${ext}`;
     let filepath = path.join(uploadDir, filename);
     
     // If it's base64 data, save to file
@@ -305,13 +331,21 @@ router.post('/save-image-url', auth, async (req, res) => {
 });
 
 // Delete service image (legacy - admin only)
-router.delete('/delete-service-image', auth, async (req, res) => {
+router.delete('/delete-service-image', auth, canManage, async (req, res) => {
   try {
     const { imageUrl, serviceId } = req.body;
 
     // If it's a local file, delete it
     if (imageUrl && imageUrl.startsWith('/uploads/')) {
-      const filepath = path.join(__dirname, '..', imageUrl);
+      // SECURITY (was High): "/uploads/../server.js" passed the startsWith check and
+      // path.join normalised the "..", allowing deletion of ANY file on the server.
+      // Only a bare filename inside the uploads directory is accepted now.
+      const uploadsRoot = path.resolve(__dirname, '..', 'uploads');
+      const filename = path.basename(imageUrl.slice('/uploads/'.length));
+      const filepath = path.resolve(uploadsRoot, filename);
+      if (!filename || !filepath.startsWith(uploadsRoot + path.sep)) {
+        return res.status(400).json({ success: false, message: 'Invalid image path' });
+      }
       if (fs.existsSync(filepath)) {
         fs.unlinkSync(filepath);
         console.log('Deleted file:', filepath);
@@ -348,7 +382,7 @@ router.get('/image-mappings', auth, async (req, res) => {
 });
 
 // Create new image mapping
-router.post('/image-mappings', auth, async (req, res) => {
+router.post('/image-mappings', auth, canManage, async (req, res) => {
   try {
     const { service_id, google_drive_url } = req.body;
     
@@ -385,7 +419,7 @@ router.post('/image-mappings', auth, async (req, res) => {
 });
 
 // Update image mapping
-router.put('/image-mappings/:id', auth, async (req, res) => {
+router.put('/image-mappings/:id', auth, canManage, async (req, res) => {
   try {
     const { id } = req.params;
     const { service_id, google_drive_url } = req.body;
@@ -425,7 +459,7 @@ router.put('/image-mappings/:id', auth, async (req, res) => {
 });
 
 // Delete image mapping
-router.delete('/image-mappings/:id', auth, async (req, res) => {
+router.delete('/image-mappings/:id', auth, canManage, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -453,7 +487,7 @@ router.delete('/image-mappings/:id', auth, async (req, res) => {
 });
 
 // Sync all mappings (or specific mapping)
-router.post('/sync-from-drive', auth, async (req, res) => {
+router.post('/sync-from-drive', auth, canManage, async (req, res) => {
   try {
     const { mapping_id } = req.query; // Optional: sync single mapping
     
@@ -558,9 +592,12 @@ router.post('/sync-from-drive', auth, async (req, res) => {
 });
 
 // List images from Cloudinary
-router.get('/cloudinary/list', async (req, res) => {
+router.get('/cloudinary/list', auth, async (req, res) => {
   try {
-    const { folder, next_cursor, max_results = 20 } = req.query;
+    const { next_cursor } = req.query;
+    // Force the app's own folder and clamp page size (Cloudinary Admin API is rate limited).
+    const folder = 'sologix/';
+    const max_results = Math.min(Math.max(parseInt(req.query.max_results, 10) || 20, 1), 50);
     
     // Debug: Log Cloudinary configuration status (redacted for security)
     const cloudName = cloudinary.config().cloud_name;
@@ -636,7 +673,7 @@ router.get('/cloudinary/list', async (req, res) => {
 });
 
 // Check Cloudinary configuration
-router.get('/cloudinary/config-check', (req, res) => {
+router.get('/cloudinary/config-check', auth, (req, res) => {
   const config = cloudinary.config();
   res.json({
     success: true,

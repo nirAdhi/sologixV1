@@ -581,7 +581,22 @@ const HomePage = () => {
                   </div>
                   <div className="p-5 flex flex-col flex-1">
                     <div className="flex items-center gap-3 mb-4 -mt-10 relative z-10">
-                      <div className="w-14 h-14 bg-gradient-to-br from-[#006948] to-green-400 rounded-full flex items-center justify-center text-white font-bold text-xl flex-shrink-0 shadow-lg" style={{border:'3px solid white'}}>
+                      {/* BUGFIX: photo_url was never rendered, so no testimonial photo ever showed. */}
+                      {t.photo_url ? (
+                        <img
+                          src={t.photo_url}
+                          alt={t.name}
+                          loading="lazy"
+                          className="w-14 h-14 rounded-full object-cover flex-shrink-0 shadow-lg bg-white"
+                          style={{border:'3px solid white'}}
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                            const fb = e.currentTarget.nextElementSibling;
+                            if (fb) fb.style.display = 'flex';
+                          }}
+                        />
+                      ) : null}
+                      <div className="w-14 h-14 bg-gradient-to-br from-[#006948] to-green-400 rounded-full items-center justify-center text-white font-bold text-xl flex-shrink-0 shadow-lg" style={{border:'3px solid white', display: t.photo_url ? 'none' : 'flex'}}>
                         {t.name?.charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0 pt-8">
@@ -619,7 +634,10 @@ const HomePage = () => {
                   onError={e => {
                     e.target.style.display = 'none';
                     if (e.target.parentElement) {
-                      e.target.parentElement.innerHTML = '<span style="font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em">' + p + '</span>';
+                      const span = document.createElement('span');
+                      span.textContent = p;
+                      span.style.cssText = 'font-size:11px;font-weight:600;color:#6b7280;text-transform:uppercase;letter-spacing:0.05em';
+                      e.target.parentElement.replaceChildren(span);
                     }
                   }}
                 />

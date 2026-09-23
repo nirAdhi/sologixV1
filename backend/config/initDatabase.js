@@ -181,7 +181,7 @@ async function initDatabase() {
 
     // Update existing admin to super_admin
     try {
-      await connection.query(`UPDATE admins SET role = 'super_admin' WHERE email = 'admin@sologixenergy.in'`);
+
       console.log('Main admin updated to super_admin');
     } catch (err) {
       console.log('Admin role update error:', err.message);
@@ -314,9 +314,14 @@ async function initDatabase() {
 
     const [admins] = await connection.query('SELECT COUNT(*) as count FROM admins');
     if (admins[0].count === 0) {
+      // SECURITY: previously fell back to a password hard-coded in this file.
+      const pw = process.env.ADMIN_PASSWORD || '';
+      if (pw.length < 12 || /^admin/i.test(pw)) {
+        throw new Error('Refusing to create the first admin: set ADMIN_PASSWORD to a strong value (12+ chars, not starting with "admin").');
+      }
       try {
         const bcrypt = require('bcryptjs');
-const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'Adminpass2', 12);
+        const hashedPassword = await bcrypt.hash(pw, 12);
         const allPermissions = JSON.stringify({
           manage_services: true,
           manage_bookings: true,
@@ -339,47 +344,10 @@ const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'Adminpas
       }
     }
     
-    // Ensure at least one super admin exists
-    try {
-      const bcrypt = require('bcryptjs');
-      const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'admin123', 12);
-      const allPermissions = JSON.stringify({
-        manage_services: true,
-        manage_bookings: true,
-        manage_subadmins: true,
-        manage_customers: true,
-        view_reports: true,
-        manage_settings: true
-      });
-      
-      const adminEmail = process.env.ADMIN_EMAIL || 'admin@sologixenergy.in';
-      const [existing] = await connection.query('SELECT id FROM admins WHERE email = ?', [adminEmail]);
-      
-      if (existing.length > 0) {
-        // If we are in production and have a specific password provided in ENV, update it
-        if (process.env.ADMIN_PASSWORD) {
-          await connection.query(
-            'UPDATE admins SET password = ?, role = ?, permissions = ?, is_active = true WHERE email = ?',
-            [hashedPassword, 'super_admin', allPermissions, adminEmail]
-          );
-          console.log('Admin password and role updated from environment variables');
-        } else {
-          // Just ensure role and permissions are correct, don't touch password
-          await connection.query(
-            'UPDATE admins SET role = ?, permissions = ?, is_active = true WHERE email = ?',
-            ['super_admin', allPermissions, adminEmail]
-          );
-          console.log('Admin role and permissions ensured');
-        }
-      } else {
-        await connection.query(`
-          INSERT INTO admins (email, password, name, role, permissions, is_active) VALUES (?, ?, 'Super Admin', 'super_admin', ?, true)
-        `, [adminEmail, hashedPassword, allPermissions]);
-        console.log('Super admin created');
-      }
-    } catch (err) {
-      console.warn('Could not setup admin:', err.message);
-    }
+    // SECURITY: a block here used to run on EVERY server start and reset the super
+    // admin's password to ADMIN_PASSWORD (falling back to "admin123"), force the
+    // role and re-enable the account, undoing any change made in the admin UI.
+    // ADMIN_PASSWORD now only seeds the first admin (above).
 
 
     // Testimonials table
@@ -478,6 +446,11 @@ const hashedPassword = await bcrypt.hash(process.env.ADMIN_PASSWORD || 'Adminpas
       try { await db.query('ALTER TABLE ' + table + ' ADD COLUMN ' + col + ' ' + def); }
       catch(e) { /* column already exists — ignore */ }
     };
+    // Testimonials: the admin form has an installation photo field and the home
+    // page renders it, but the column never existed, so it was silently dropped.
+    // photo_url was TEXT (64KB), too small for base64 photos; widen both.
+    await safeAddColumn('testimonials', 'installation_photo', 'MEDIUMTEXT DEFAULT NULL');
+    try { await db.query('ALTER TABLE testimonials MODIFY COLUMN photo_url MEDIUMTEXT'); } catch (e) { /* ignore */ }
     await safeAddColumn('product_orders', 'razorpay_order_id', 'VARCHAR(100) DEFAULT NULL');
     await safeAddColumn('product_orders', 'payment_id', 'VARCHAR(100) DEFAULT NULL');
     await safeAddColumn('product_orders', 'amount', 'DECIMAL(12,2) DEFAULT NULL');

@@ -4,18 +4,24 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { body, validationResult } = require('express-validator');
 const db = require('../config/database');
+const crypto = require('crypto');
+const rateLimit = require('express-rate-limit');
+const { sendCustomEmail } = require('../config/email');
+const { JWT_SECRET } = require('../middleware/auth'); // validated there: no insecure fallback
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_fallback_secret_do_not_use_in_production';
-if (!process.env.JWT_SECRET) {
-  console.warn('WARNING: Using fallback JWT_SECRET. Set JWT_SECRET in production!');
-}
+// Password-reset endpoints were only covered by the loose global limiter.
+const passwordLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, max: 10,
+  message: { success: false, message: 'Too many attempts, please try again later.' },
+  standardHeaders: true, legacyHeaders: false
+});
 
 // Customer registration
 router.post('/register', [
   body('name').notEmpty().withMessage('Name is required'),
   body('email').isEmail().withMessage('Valid email is required'),
   body('phone').notEmpty().withMessage('Phone is required'),
-  body('password').isLength({ min: 8 }).withMessage('Password must be at least 6 characters')
+  body('password').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
 ], async (req, res) => {
   try {
     const errors = validationResult(req);
@@ -274,7 +280,7 @@ router.put('/profile', async (req, res) => {
 });
 
 // Change password
-router.put('/change-password', async (req, res) => {
+router.put('/change-password', passwordLimiter, async (req, res) => {
   try {
     const token = req.header('Authorization')?.replace('Bearer ', '');
     if (!token) {
@@ -323,16 +329,16 @@ router.put('/change-password', async (req, res) => {
 
 // Generate random OTP
 function generateOTP() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  // SECURITY: Math.random() is predictable; use the CSPRNG.
+  return crypto.randomInt(100000, 1000000).toString();
 }
 
 // Store OTPs temporarily (in production, use Redis or database)
-const otpStore = {}; // { email: { otp, expires, attempts } }
-const OTP_MAX_ATTEMPTS = 5;
-const OTP_EXPIRY_MS = 10 * 60 * 1000; // 10 minutes
+const otpStore = {};
+setInterval(() => { const now = Date.now(); for (const k of Object.keys(otpStore)) if (otpStore[k].expires < now) delete otpStore[k]; }, 5 * 60 * 1000).unref();
 
 // Forgot Password - Send OTP
-router.post('/forgot-password', [
+router.post('/forgot-password', passwordLimiter, [
   body('email').isEmail().withMessage('Valid email is required')
 ], async (req, res) => {
   try {
@@ -343,20 +349,34 @@ router.post('/forgot-password', [
 
     const { email } = req.body;
 
-    // Check if customer exists
-    const [customers] = await db.query('SELECT id FROM customers WHERE email = ?', [email]);
-    if (customers.length === 0) {
-      return res.status(404).json({ success: false, message: 'No account found with this email. Please book a service first.' });
+    // Check if customer exists — but respond identically either way so the
+    // endpoint cannot be used to enumerate which emails have accounts.
+    const [customers] = await db.query('SELECT id, name FROM customers WHERE email = ?', [email]);
+    if (customers.length > 0) {
+      // Per-email cooldown: one OTP per 60s.
+      const prev = otpStore[email];
+      if (prev && Date.now() - prev.issuedAt < 60 * 1000) {
+        return res.json({ success: true, message: 'If an account exists with this email, an OTP has been sent.' });
+      }
+      const otp = generateOTP();
+      otpStore[email] = { otp, expires: Date.now() + 10 * 60 * 1000, attempts: 0, issuedAt: Date.now() };
+
+      // SECURITY: the OTP used to be written to server logs and never emailed —
+      // anyone with log access could reset any customer's password, and real
+      // customers could not. Send it, and never log it.
+      try {
+        await sendCustomEmail(
+          email,
+          'Your Sologix Energy password reset code',
+          `Your one-time code is ${otp}. It expires in 10 minutes. If you did not request this, you can ignore this email.`,
+          customers[0].name || 'Customer'
+        );
+      } catch (mailErr) {
+        console.error('Failed to send OTP email:', mailErr.message);
+        delete otpStore[email];
+        return res.status(503).json({ success: false, message: 'Could not send the reset code right now. Please try again later.' });
+      }
     }
-
-    // Generate OTP
-    const otp = generateOTP();
-    otpStore[email] = { otp, expires: Date.now() + 10 * 60 * 1000 }; // 10 minutes
-
-    // Log OTP server-side only — NEVER send to client
-    
-    // TODO: Send OTP via email when SMTP is configured
-    // For now it's only visible in server logs
 
     res.json({ 
       success: true, 
@@ -369,7 +389,7 @@ router.post('/forgot-password', [
 });
 
 // Reset Password with OTP
-router.post('/reset-password-with-otp', [
+router.post('/reset-password-with-otp', passwordLimiter, [
   body('email').isEmail().withMessage('Valid email is required'),
   body('otp').notEmpty().withMessage('OTP is required'),
   body('newPassword').isLength({ min: 8 }).withMessage('Password must be at least 8 characters')
@@ -391,9 +411,15 @@ router.post('/reset-password-with-otp', [
       delete otpStore[email];
       return res.status(400).json({ success: false, message: 'OTP has expired. Please request a new one.' });
     }
-    if (storedOTP.otp !== otp) {
+    // Max 5 guesses per issued OTP, then it is invalidated (6 digits are brute-forceable otherwise).
+    storedOTP.attempts = (storedOTP.attempts || 0) + 1;
+    const otpOk = typeof otp === 'string' && otp.length === storedOTP.otp.length &&
+      crypto.timingSafeEqual(Buffer.from(otp), Buffer.from(storedOTP.otp));
+    if (!otpOk) {
+      if (storedOTP.attempts >= 5) delete otpStore[email];
       return res.status(400).json({ success: false, message: 'Invalid OTP' });
     }
+    delete otpStore[email]; // single use
 
     // Update password
     const hashedPassword = await bcrypt.hash(newPassword, 12);

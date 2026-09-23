@@ -17,6 +17,9 @@ COPY frontend/ ./
 # Set the production API URL — Nginx will proxy /api to backend
 ENV REACT_APP_API_URL=/api
 
+# Don't publish source maps: they expose the full original frontend source
+ENV GENERATE_SOURCEMAP=false
+
 # Build React app
 RUN npm run build
 
@@ -72,7 +75,7 @@ EXPOSE 5000
 
 # Health check
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-  CMD wget -qO- http://localhost:5000/api/services || exit 1
+  CMD wget -qO- http://127.0.0.1:5000/api/health || exit 1
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]

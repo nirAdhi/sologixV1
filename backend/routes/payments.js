@@ -10,9 +10,21 @@ const RAZORPAY_KEY_ID = process.env.RAZORPAY_KEY_ID || '';
 const RAZORPAY_KEY_SECRET = process.env.RAZORPAY_KEY_SECRET || '';
 const RAZORPAY_WEBHOOK_SECRET = process.env.RAZORPAY_WEBHOOK_SECRET || '';
 
+// SECURITY: a placeholder secret (the values shipped in .env.example are public)
+// would let anyone forge a "valid" payment signature. Treat placeholders as unset.
+const looksPlaceholder = (v) => !v || /^(your_|changeme|xxx|placeholder|rzp_test_xxx)/i.test(v) || v.length < 16;
+const RAZORPAY_READY = !looksPlaceholder(RAZORPAY_KEY_SECRET) && !!RAZORPAY_KEY_ID;
+if (!RAZORPAY_READY) {
+  console.warn('Razorpay is NOT configured (missing/placeholder RAZORPAY_KEY_SECRET). Razorpay verification endpoints are disabled.');
+}
+if (looksPlaceholder(RAZORPAY_WEBHOOK_SECRET)) {
+  console.warn('RAZORPAY_WEBHOOK_SECRET is missing/placeholder. Webhook will reject all events.');
+}
+const UTR_RE = /^[A-Za-z0-9\-]{6,64}$/;
+
 // Validate Razorpay webhook signature
 const validateWebhookSignature = (bodyBuffer, signature, secret) => {
-  if (!signature || !secret) return false;
+  if (!signature || looksPlaceholder(secret)) return false;
   try {
     const bodyString = typeof bodyBuffer === 'string' ? bodyBuffer : bodyBuffer.toString('utf8');
     const expectedSignature = crypto
@@ -181,11 +193,20 @@ router.post('/verify-razorpay-payment', async (req, res) => {
 
     const booking = bookings[0];
 
+    if (!RAZORPAY_READY) {
+      return res.status(503).json({ success: false, message: 'Online payments are temporarily unavailable' });
+    }
+
     if (booking.razorpay_order_id !== razorpay_order_id) {
       return res.status(400).json({
         success: false,
         message: 'Order ID mismatch'
       });
+    }
+
+    // Idempotency: never re-process (or downgrade) a booking that is already paid.
+    if (booking.payment_status === 'completed') {
+      return res.json({ success: true, message: 'Payment already recorded', data: { booking_id, payment_status: 'completed' } });
     }
 
     const signaturePayload = `${razorpay_order_id}|${razorpay_payment_id}`;
@@ -194,7 +215,11 @@ router.post('/verify-razorpay-payment', async (req, res) => {
       .update(signaturePayload)
       .digest('hex');
 
-    if (razorpay_signature !== expectedSignature) {
+    // Constant-time comparison (the webhook path already did this; this path did not).
+    const sigOk = typeof razorpay_signature === 'string' &&
+      razorpay_signature.length === expectedSignature.length &&
+      crypto.timingSafeEqual(Buffer.from(razorpay_signature), Buffer.from(expectedSignature));
+    if (!sigOk) {
       // Log failed verification
       await logTransaction({
         booking_id: booking_id,
@@ -213,17 +238,27 @@ router.post('/verify-razorpay-payment', async (req, res) => {
       });
     }
 
-    // Fetch payment details from Razorpay to get payment method
+    // A valid signature proves Razorpay saw this order/payment pair — it does NOT
+    // prove the money was captured or that the amount was right. Verify both with
+    // the Razorpay API and refuse if we cannot.
     let paymentMethod = 'unknown';
     try {
-      if (RAZORPAY_KEY_ID && RAZORPAY_KEY_SECRET) {
-        const Razorpay = require('razorpay');
-        const razorpay = new Razorpay({ key_id: RAZORPAY_KEY_ID, key_secret: RAZORPAY_KEY_SECRET });
-        const paymentDetails = await razorpay.payments.fetch(razorpay_payment_id);
-        paymentMethod = paymentDetails.method || 'unknown'; // upi, card, netbanking, wallet
+      const Razorpay = require('razorpay');
+      const razorpay = new Razorpay({ key_id: RAZORPAY_KEY_ID, key_secret: RAZORPAY_KEY_SECRET });
+      const paymentDetails = await razorpay.payments.fetch(razorpay_payment_id);
+      const expectedPaise = Math.round(Number(booking.total_amount) * 100);
+      if (!['captured', 'authorized'].includes(paymentDetails.status) ||
+          paymentDetails.order_id !== razorpay_order_id ||
+          Number(paymentDetails.amount) !== expectedPaise) {
+        await logTransaction({ booking_id, transaction_type: 'razorpay_payment', razorpay_order_id, razorpay_payment_id,
+          amount: booking.total_amount, status: 'failed',
+          failure_reason: `Payment check failed: status=${paymentDetails.status} amount=${paymentDetails.amount} expected=${expectedPaise}` });
+        return res.status(400).json({ success: false, message: 'Payment could not be verified with Razorpay' });
       }
+      paymentMethod = paymentDetails.method || 'unknown'; // upi, card, netbanking, wallet
     } catch (fetchErr) {
-      console.warn('Could not fetch payment method from Razorpay:', fetchErr.message);
+      console.error('Could not verify payment with Razorpay:', fetchErr.message);
+      return res.status(502).json({ success: false, message: 'Could not verify payment with Razorpay. If you were charged, contact support with your payment ID.' });
     }
 
     await db.query(`
@@ -288,8 +323,24 @@ router.post('/razorpay-webhook', express.raw({ type: 'application/json' }), asyn
         const paymentMethod = payment.method || 'unknown';
         
         if (orderId) {
+          // Cross-check the captured amount against what the booking actually costs
+          // before marking it paid (a signed event for a ₹1 capture must not confirm
+          // a ₹2000 booking).
+          const [target] = await db.query(
+            'SELECT booking_id, total_amount, payment_status FROM bookings WHERE razorpay_order_id = ? LIMIT 1', [orderId]
+          );
+          if (!target.length) { console.warn('Webhook for unknown order', orderId); break; }
+          if (target[0].payment_status === 'completed') { break; } // already processed (Razorpay retries)
+          const expectedPaise = Math.round(Number(target[0].total_amount) * 100);
+          if (Number(payment.amount) !== expectedPaise) {
+            console.error(`Webhook amount mismatch for ${target[0].booking_id}: got ${payment.amount}, expected ${expectedPaise}`);
+            await logTransaction({ booking_id: target[0].booking_id, transaction_type: 'razorpay_webhook', razorpay_order_id: orderId,
+              razorpay_payment_id: payment.id, amount: payment.amount / 100, status: 'failed', failure_reason: 'Amount mismatch' });
+            break;
+          }
+
           await db.query(`
-            UPDATE bookings 
+            UPDATE bookings
             SET payment_status = 'completed',
                 razorpay_payment_id = ?,
                 payment_method = ?,
@@ -297,7 +348,7 @@ router.post('/razorpay-webhook', express.raw({ type: 'application/json' }), asyn
                 payment_completed_at = CURRENT_TIMESTAMP,
                 status = 'confirmed',
                 updated_at = CURRENT_TIMESTAMP
-            WHERE razorpay_order_id = ?
+            WHERE razorpay_order_id = ? AND payment_status <> 'completed'
           `, [payment.id, paymentMethod, orderId]);
 
           // Get booking_id for logging
@@ -461,7 +512,22 @@ router.post('/verify-upi', async (req, res) => {
       });
     }
 
-    const paymentRef = transaction_id || transaction_reference;
+    const paymentRef = String(transaction_id || transaction_reference).trim();
+    if (!UTR_RE.test(paymentRef)) {
+      return res.status(400).json({ success: false, message: 'Invalid transaction reference format' });
+    }
+
+    // SECURITY (was High): anyone knowing a booking_id could overwrite the payment
+    // state of ANY booking — including downgrading an already-paid Razorpay booking
+    // back to pending and replacing the real payment id. Only allow the transition
+    // from an unpaid state, and never touch a completed booking.
+    const currentBooking = bookings[0];
+    if (currentBooking.payment_status === 'completed') {
+      return res.status(409).json({ success: false, message: 'This booking is already paid' });
+    }
+    if (!['pending', 'failed', 'pending_verification', null, undefined].includes(currentBooking.payment_status)) {
+      return res.status(409).json({ success: false, message: 'Booking is not awaiting payment' });
+    }
 
     await db.query(`
       UPDATE bookings 
@@ -469,9 +535,8 @@ router.post('/verify-upi', async (req, res) => {
           payment_id = ?,
           payment_method = 'manual_upi',
           payment_gateway = 'manual_upi',
-          status = 'pending',
           updated_at = CURRENT_TIMESTAMP
-      WHERE booking_id = ?
+      WHERE booking_id = ? AND payment_status <> 'completed'
     `, [paymentRef, booking_id]);
 
     // Log manual UPI transaction
@@ -580,7 +645,22 @@ router.post('/verify', async (req, res) => {
       });
     }
 
-    const paymentRef = transaction_id || transaction_reference;
+    const paymentRef = String(transaction_id || transaction_reference).trim();
+    if (!UTR_RE.test(paymentRef)) {
+      return res.status(400).json({ success: false, message: 'Invalid transaction reference format' });
+    }
+
+    // SECURITY (was High): anyone knowing a booking_id could overwrite the payment
+    // state of ANY booking — including downgrading an already-paid Razorpay booking
+    // back to pending and replacing the real payment id. Only allow the transition
+    // from an unpaid state, and never touch a completed booking.
+    const currentBooking = bookings[0];
+    if (currentBooking.payment_status === 'completed') {
+      return res.status(409).json({ success: false, message: 'This booking is already paid' });
+    }
+    if (!['pending', 'failed', 'pending_verification', null, undefined].includes(currentBooking.payment_status)) {
+      return res.status(409).json({ success: false, message: 'Booking is not awaiting payment' });
+    }
 
     await db.query(`
       UPDATE bookings 
@@ -588,9 +668,8 @@ router.post('/verify', async (req, res) => {
           payment_id = ?,
           payment_method = 'manual_upi',
           payment_gateway = 'manual_upi',
-          status = 'pending',
           updated_at = CURRENT_TIMESTAMP
-      WHERE booking_id = ?
+      WHERE booking_id = ? AND payment_status <> 'completed'
     `, [paymentRef, booking_id]);
 
     const booking = bookingData[0];
@@ -623,51 +702,80 @@ router.post('/verify', async (req, res) => {
 // PRODUCT ORDER PAYMENT (e-commerce Buy Now)
 // ─────────────────────────────────────────────
 
-// Create Razorpay order for a product purchase
-router.post('/product-order', async (req, res) => {
+// Create Razorpay order for a product purchase.
+// SECURITY (was Critical): the amount used to come from the browser
+// (`amount_paise`, hard-coded to 100 = Rs 1 by the product pages), and the order
+// row used enum values the table rejects, so nothing was saved while the
+// customer was told "Order confirmed". The amount is now computed on the server
+// from product_catalog; items without a listed price cannot be paid online.
+const formLimiterPay = require('express-rate-limit')({
+  windowMs: 10 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false,
+  message: { success: false, message: 'Too many attempts, please try again later.' }
+});
+const catalogPrice = (row) => {
+  const p = Number(row.price);
+  if (p > 0) return p;
+  const pr = Number(String(row.price_range || '').replace(/[^0-9.]/g, ''));
+  return pr > 0 && /^[\s₹Rs.,0-9]+$/i.test(String(row.price_range || '')) ? pr : null;
+};
+
+router.post('/product-order', formLimiterPay, async (req, res) => {
   try {
-    const { name, phone, email, address, items, amount_paise, notes } = req.body;
-    if (!name || !phone || !items?.length || !amount_paise) {
-      return res.status(400).json({ success: false, message: 'Name, phone, items and amount required' });
+    const { name, phone, email, address, items, notes } = req.body;
+    if (!name || !phone || !Array.isArray(items) || !items.length || items.length > 50) {
+      return res.status(400).json({ success: false, message: 'Name, phone and items required' });
+    }
+    if (!RAZORPAY_READY) {
+      return res.status(503).json({ success: false, message: 'Online payment is not available right now. Please choose Pay on Delivery or call us.' });
     }
 
-    if (!RAZORPAY_KEY_ID || !RAZORPAY_KEY_SECRET) {
-      return res.status(503).json({ success: false, message: 'Payment gateway not configured' });
+    // Rebuild the basket from the catalog: only id + qty are taken from the client.
+    const wanted = items.map(i => ({ id: parseInt(i.id, 10), qty: parseInt(i.qty, 10) }));
+    if (wanted.some(i => !Number.isInteger(i.id) || i.id < 1 || !Number.isInteger(i.qty) || i.qty < 1 || i.qty > 10000)) {
+      return res.status(400).json({ success: false, message: 'Invalid items' });
     }
+    const [rows] = await db.query(
+      'SELECT id, brand, model, unit, price, price_range FROM product_catalog WHERE id IN (?)',
+      [[...new Set(wanted.map(i => i.id))]]
+    );
+    const byId = new Map(rows.map(r => [r.id, r]));
+    const basket = [];
+    let totalRupees = 0;
+    for (const w of wanted) {
+      const row = byId.get(w.id);
+      if (!row) return res.status(400).json({ success: false, message: 'One of the products is no longer available' });
+      const unitPrice = catalogPrice(row);
+      if (!unitPrice) {
+        return res.status(400).json({ success: false, message: `${row.brand} ${row.model} has no listed price. Please choose Pay on Delivery or request a quote.` });
+      }
+      basket.push({ id: row.id, brand: row.brand, model: row.model, unit: row.unit, qty: w.qty, unit_price: unitPrice });
+      totalRupees += unitPrice * w.qty;
+    }
+    const amountPaise = Math.round(totalRupees * 100);
+    if (amountPaise < 100) return res.status(400).json({ success: false, message: 'Invalid order amount' });
 
     const Razorpay = require('razorpay');
     const razorpay = new Razorpay({ key_id: RAZORPAY_KEY_ID, key_secret: RAZORPAY_KEY_SECRET });
-
     const receipt = 'prod_' + Date.now().toString().slice(-10);
     const order = await razorpay.orders.create({
-      amount: amount_paise,
-      currency: 'INR',
-      receipt,
-      notes: { customer: name, phone, items: JSON.stringify(items).slice(0, 512) }
+      amount: amountPaise, currency: 'INR', receipt,
+      notes: { customer: String(name).slice(0, 100), phone: String(phone).slice(0, 20) }
     });
 
-    // Save order as pending in product_orders
-    const itemsJson = JSON.stringify(items);
-    const amountInRupees = amount_paise / 100;
-    try {
-      await db.query(
-        'INSERT INTO product_orders (name,email,phone,address,items,notes,customer_type,status,razorpay_order_id) VALUES (?,?,?,?,?,?,?,?,?)',
-        [name, email||'', phone, address||'', itemsJson, notes||'', 'direct_order', 'payment_pending', order.id]
-      );
-    } catch(dbErr) { console.warn('DB save failed (may not have razorpay_order_id col):', dbErr.message); }
+    // Save as a pending order using values the table accepts. It becomes
+    // 'confirmed' only after the payment is verified below.
+    await db.query(
+      'INSERT INTO product_orders (name,email,phone,address,items,notes,customer_type,status,razorpay_order_id,amount) VALUES (?,?,?,?,?,?,?,?,?,?)',
+      [String(name).slice(0, 255), email || '', String(phone).slice(0, 20), address || '', JSON.stringify(basket),
+       ('Online payment. ' + (notes || '')).slice(0, 2000), 'customer', 'pending', order.id, totalRupees]
+    );
 
     res.json({
       success: true,
-      data: {
-        order_id: order.id,
-        amount: order.amount,
-        currency: 'INR',
-        key_id: RAZORPAY_KEY_ID,
-        customer: { name, email: email||'', phone }
-      }
+      data: { order_id: order.id, amount: order.amount, currency: 'INR', key_id: RAZORPAY_KEY_ID, customer: { name, email: email || '', phone } }
     });
   } catch (err) {
-    console.error('Product order creation error:', err);
+    console.error('Product order creation error:', err.message);
     res.status(500).json({ success: false, message: 'Failed to create payment order' });
   }
 });
@@ -679,28 +787,36 @@ router.post('/product-order/verify', async (req, res) => {
     if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
       return res.status(400).json({ success: false, message: 'All payment fields required' });
     }
+    if (!RAZORPAY_READY) {
+      return res.status(503).json({ success: false, message: 'Online payments are temporarily unavailable' });
+    }
+    const expected = crypto.createHmac('sha256', RAZORPAY_KEY_SECRET)
+      .update(razorpay_order_id + '|' + razorpay_payment_id).digest('hex');
+    const sigOk = typeof razorpay_signature === 'string' && razorpay_signature.length === expected.length &&
+      crypto.timingSafeEqual(Buffer.from(razorpay_signature), Buffer.from(expected));
+    if (!sigOk) return res.status(400).json({ success: false, message: 'Invalid payment signature' });
 
-    const expected = crypto
-      .createHmac('sha256', RAZORPAY_KEY_SECRET)
-      .update(razorpay_order_id + '|' + razorpay_payment_id)
-      .digest('hex');
+    const [orders] = await db.query('SELECT id, amount, status FROM product_orders WHERE razorpay_order_id = ? LIMIT 1', [razorpay_order_id]);
+    if (!orders.length) return res.status(404).json({ success: false, message: 'Order not found. Please contact us with your payment ID.' });
+    if (orders[0].status === 'confirmed') return res.json({ success: true, message: 'Payment already recorded', payment_id: razorpay_payment_id });
 
-    if (expected !== razorpay_signature) {
-      return res.status(400).json({ success: false, message: 'Invalid payment signature' });
+    // Confirm with Razorpay that the money was actually captured for the right amount.
+    const Razorpay = require('razorpay');
+    const razorpay = new Razorpay({ key_id: RAZORPAY_KEY_ID, key_secret: RAZORPAY_KEY_SECRET });
+    const payment = await razorpay.payments.fetch(razorpay_payment_id);
+    const expectedPaise = Math.round(Number(orders[0].amount) * 100);
+    if (!['captured', 'authorized'].includes(payment.status) || payment.order_id !== razorpay_order_id || Number(payment.amount) !== expectedPaise) {
+      return res.status(400).json({ success: false, message: 'Payment could not be verified. Please contact us with your payment ID.' });
     }
 
-    // Update order status to confirmed
-    try {
-      await db.query(
-        'UPDATE product_orders SET status=?, payment_id=? WHERE razorpay_order_id=?',
-        ['confirmed', razorpay_payment_id, razorpay_order_id]
-      );
-    } catch(dbErr) { console.warn('DB update failed:', dbErr.message); }
-
-    res.json({ success: true, message: 'Payment verified. Order confirmed!', payment_id: razorpay_payment_id });
+    const [r] = await db.query(
+      "UPDATE product_orders SET status='confirmed', payment_id=? WHERE razorpay_order_id=? AND status <> 'confirmed'",
+      [razorpay_payment_id, razorpay_order_id]
+    );
+    res.json({ success: true, message: 'Payment verified. Order confirmed!', payment_id: razorpay_payment_id, updated: r.affectedRows });
   } catch (err) {
-    console.error('Product payment verify error:', err);
-    res.status(500).json({ success: false, message: 'Payment verification failed' });
+    console.error('Product payment verify error:', err.message);
+    res.status(500).json({ success: false, message: 'Payment verification failed. If you were charged, contact us with your payment ID.' });
   }
 });
 

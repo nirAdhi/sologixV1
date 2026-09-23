@@ -1,7 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../config/database');
-const auth = require('../middleware/auth');
+const { auth, requirePermission } = require('../middleware/auth');
+const canManage = [auth, requirePermission('manage_services')]; // matches the admin menu permission
 
 // Static product catalog (seeded on first run, editable by admin)
 const SEED = [
@@ -33,9 +34,11 @@ const SEED = [
   { category:'BOS & Accessories', brand:'Sologix', model:'MC4 Connector Pair', specs:'IP68, 30A rated, UV stabilised', price_range:'Contact for pricing', image_url:'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop', badge:'', in_stock:1, sort_order:44 },
 ];
 
-let useStatic = false;
 let seeded = false;
+const fallback = () => SEED.map((p, i) => ({ ...p, id: i + 1 }));
 
+// Seed once. A failure no longer switches the whole catalog to static data until
+// restart (which also hid every admin edit); the next request simply retries.
 const seed = async () => {
   if (seeded) return;
   try {
@@ -47,56 +50,74 @@ const seed = async () => {
       }
     }
     seeded = true;
-  } catch(e) { useStatic = true; }
+  } catch(e) { console.error('Catalog seed failed:', e.code || e.message); }
 };
 
 router.get('/', async (req, res) => {
-  if (useStatic) return res.json({ success:true, data: SEED.map((p,i)=>({...p,id:i+1})) });
   await seed();
   try {
-    const cat = req.query.category;
+    const cat = typeof req.query.category === 'string' ? req.query.category.slice(0, 100) : '';
     const q = cat ? 'SELECT * FROM product_catalog WHERE category=? ORDER BY sort_order ASC' : 'SELECT * FROM product_catalog ORDER BY sort_order ASC';
     const [rows] = await db.query(q, cat ? [cat] : []);
     res.json({ success:true, data: rows });
   } catch(e) {
-    if (e.code==='ECONNREFUSED'||e.code==='ER_NO_SUCH_TABLE') { useStatic=true; return res.json({success:true,data:SEED.map((p,i)=>({...p,id:i+1}))}); }
-    res.status(500).json({success:false,message:'Failed'});
+    console.error('Load catalog failed:', e.code || e.message);
+    res.json({ success:true, data: fallback(), fallback: true });
   }
 });
 
 router.get('/categories', async (req, res) => {
   const cats = [...new Set(SEED.map(p=>p.category))];
-  if (useStatic) return res.json({success:true,data:cats});
   try {
-    const [rows] = await db.query('SELECT DISTINCT category FROM product_catalog ORDER BY sort_order ASC');
+    // BUGFIX: "SELECT DISTINCT category ... ORDER BY sort_order" is rejected by
+    // MySQL 8 (ORDER BY column not in SELECT list), so admin-added categories
+    // never appeared; this always fell back to the seed list.
+    const [rows] = await db.query('SELECT category FROM product_catalog GROUP BY category ORDER BY MIN(sort_order) ASC');
     res.json({success:true,data:rows.map(r=>r.category)});
   } catch(e) { res.json({success:true,data:cats}); }
 });
 
+const validImage = (v) => v === undefined || v === '' || (typeof v === 'string' && v.length <= 1500000 &&
+  (/^https:\/\/[^\s"'<>]+$/i.test(v) || /^\/uploads\/[\w.-]+$/.test(v) || /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(v)));
+const badMoney = (v) => v !== undefined && v !== null && v !== '' && !(Number(v) >= 0);
+function checkProduct(b, partial) {
+  if (!partial && (!b.category || !b.brand)) return 'Category and brand are required';
+  if (!validImage(b.image_url)) return 'image_url must be an https URL, /uploads/ path or image';
+  if (badMoney(b.price) || badMoney(b.discount_price)) return 'Prices must be non-negative numbers';
+  if (b.price && b.discount_price && Number(b.discount_price) > Number(b.price)) return 'Discount price cannot exceed price';
+  return null;
+}
+
 // POST create (admin)
-router.post('/', auth, async (req, res) => {
+router.post('/', ...canManage, async (req, res) => {
   try {
+    const err = checkProduct(req.body, false);
+    if (err) return res.status(400).json({ success:false, message: err });
     const {category,brand,model,specs,price_range,image_url,badge,in_stock,sort_order,price,unit,discount_price,show_price} = req.body;
     const [r] = await db.query('INSERT INTO product_catalog (category,brand,model,specs,price_range,image_url,badge,in_stock,sort_order,price,unit,discount_price,show_price) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
-      [category,brand,model||'',specs||'',price_range||'Contact for pricing',image_url||'',badge||'',in_stock?1:0,sort_order||0,price||null,unit||'per NOS',discount_price||null,show_price?1:0]);
+      [category,brand,model||'',specs||'',price_range||'Contact for pricing',image_url||'',badge||'',in_stock?1:0,sort_order||0,(price===''||price===undefined)?null:Number(price),unit||'per NOS',(discount_price===''||discount_price===undefined)?null:Number(discount_price),show_price?1:0]);
     const [[p]] = await db.query('SELECT * FROM product_catalog WHERE id=?',[r.insertId]);
     res.status(201).json({success:true,data:p});
   } catch(e){res.status(500).json({success:false,message:'Failed'});}
 });
 
-router.put('/:id', auth, async (req, res) => {
+router.put('/:id', ...canManage, async (req, res) => {
   try {
+    const err = checkProduct(req.body, true);
+    if (err) return res.status(400).json({ success:false, message: err });
     const fields=['category','brand','model','specs','price_range','image_url','badge','in_stock','sort_order','price','unit','discount_price','show_price'];
     const updates=[],params=[];
     fields.forEach(f=>{if(req.body[f]!==undefined){updates.push(f+'=?');params.push(req.body[f]);}});
+    if (!updates.length) return res.status(400).json({ success:false, message:'Nothing to update' });
     params.push(req.params.id);
-    await db.query('UPDATE product_catalog SET '+updates.join(',')+ ' WHERE id=?',params);
+    const [r] = await db.query('UPDATE product_catalog SET '+updates.join(',')+ ' WHERE id=?',params);
+    if (!r.affectedRows) return res.status(404).json({ success:false, message:'Not found' });
     const [[p]] = await db.query('SELECT * FROM product_catalog WHERE id=?',[req.params.id]);
     res.json({success:true,data:p});
   } catch(e){res.status(500).json({success:false,message:'Failed'});}
 });
 
-router.delete('/:id', auth, async (req, res) => {
+router.delete('/:id', ...canManage, async (req, res) => {
   try{await db.query('DELETE FROM product_catalog WHERE id=?',[req.params.id]);res.json({success:true});}
   catch(e){res.status(500).json({success:false,message:'Failed'});}
 });
