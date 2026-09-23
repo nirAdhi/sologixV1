@@ -1,0 +1,71 @@
+# ============================================
+# Sologix Solar — Docker Compose Production
+# Sits behind Nginx Proxy Manager (nproxy-app-1), which owns 80/443 + SSL.
+#   NPM (host :80/:443) -> sologix-backend (:5000) -> mysql (:3306)
+# ============================================
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: sologix-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-sologix_root_2026}
+      MYSQL_DATABASE: ${DB_NAME:-solar_booking}
+      MYSQL_USER: ${DB_USER:-sologix}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-sologix_db_secure_2026}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "127.0.0.1:3306:3306"
+    networks:
+      - sologix-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-sologix_root_2026}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --max-connections=200
+      --innodb-buffer-pool-size=256M
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sologix-backend
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_NAME: ${DB_NAME:-solar_booking}
+      DB_USER: ${DB_USER:-sologix}
+      DB_PASSWORD: ${DB_PASSWORD:-sologix_db_secure_2026}
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - sologix-network
+      - nproxy
+    volumes:
+      - uploads_data:/app/backend/uploads
+
+volumes:
+  mysql_data:
+    driver: local
+  uploads_data:
+    driver: local
+
+networks:
+  sologix-network:
+    driver: bridge
+  nproxy:
+    external: true
+    name: nproxy_default

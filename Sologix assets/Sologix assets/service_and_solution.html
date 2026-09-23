@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sologix Energy - Our Services</title>
+<!-- Google Fonts -->
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;family=Work+Sans:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<!-- Material Symbols -->
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Tailwind CSS -->
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<!-- Tailwind Configuration -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "surface": "#f9f9ff",
+                    "surface-dim": "#d3daef",
+                    "inverse-on-surface": "#edf0ff",
+                    "border-subtle": "#E5E7EB",
+                    "primary-fixed": "#85f8c4",
+                    "inverse-surface": "#293040",
+                    "primary": "#006948",
+                    "on-primary-fixed-variant": "#005137",
+                    "outline-variant": "#bccac0",
+                    "error-container": "#ffdad6",
+                    "primary-container": "#00855d",
+                    "on-tertiary-container": "#fffbff",
+                    "tertiary-container": "#cc4900",
+                    "surface-container-low": "#f1f3ff",
+                    "surface-container-highest": "#dce2f7",
+                    "inverse-primary": "#68dba9",
+                    "surface-container-high": "#e1e8fd",
+                    "on-surface": "#141b2b",
+                    "on-secondary": "#ffffff",
+                    "primary-fixed-dim": "#68dba9",
+                    "outline": "#6d7a72",
+                    "surface-container": "#e9edff",
+                    "on-primary-fixed": "#002114",
+                    "on-background": "#141b2b",
+                    "on-secondary-fixed": "#001551",
+                    "on-error": "#ffffff",
+                    "emerald-light": "#34D399",
+                    "background": "#f9f9ff",
+                    "tertiary": "#a33900",
+                    "surface-gray": "#F9FAFB",
+                    "on-secondary-fixed-variant": "#0039b5",
+                    "surface-container-lowest": "#ffffff",
+                    "on-tertiary-fixed": "#370e00",
+                    "secondary-container": "#4069f2",
+                    "tertiary-fixed": "#ffdbce",
+                    "tertiary-fixed-dim": "#ffb599",
+                    "on-primary": "#ffffff",
+                    "on-secondary-container": "#fffbff",
+                    "sky-tint": "#EFF6FF",
+                    "surface-variant": "#dce2f7",
+                    "secondary-fixed": "#dce1ff",
+                    "error": "#ba1a1a",
+                    "on-tertiary": "#ffffff",
+                    "secondary-fixed-dim": "#b7c4ff",
+                    "on-surface-variant": "#3d4a42",
+                    "on-primary-container": "#f5fff7",
+                    "secondary": "#1d4ed8",
+                    "on-tertiary-fixed-variant": "#7f2b00",
+                    "on-error-container": "#93000a",
+                    "surface-tint": "#006c4a",
+                    "surface-bright": "#f9f9ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "margin-mobile": "20px",
+                    "stack-lg": "24px",
+                    "margin-desktop": "64px",
+                    "container-max": "1280px",
+                    "stack-sm": "8px",
+                    "stack-md": "16px",
+                    "gutter": "24px",
+                    "section-gap": "96px"
+            },
+            "fontFamily": {
+                    "body-lg": ["Work Sans"],
+                    "headline-lg": ["Manrope"],
+                    "headline-xl": ["Manrope"],
+                    "body-md": ["Work Sans"],
+                    "headline-md": ["Manrope"],
+                    "headline-sm": ["Manrope"],
+                    "label-md": ["Work Sans"],
+                    "headline-xl-mobile": ["Manrope"]
+            },
+            "fontSize": {
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-lg": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-md": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "headline-xl-mobile": ["32px", {"lineHeight": "40px", "fontWeight": "700"}]
+            }
+          }
+        }
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md antialiased selection:bg-primary-container selection:text-on-primary-container">
+<!-- TopAppBar -->
+<header class="bg-surface/90 backdrop-blur-md dark:bg-surface-container-high/90 docked full-width top-0 sticky z-[100] border-b border-border-subtle dark:border-outline-variant shadow-sm transition-all duration-300" id="topAppBar">
+<div class="flex justify-between items-center max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-4">
+<!-- Brand -->
+<a class="flex items-center gap-2 scale-95 active:scale-90 transition-transform" href="#">
+<img alt="Sologix Energy Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida-public/AB6AXuASATwqZtdC_l8IGrHXsLPDcwq7Ns4SwuGdVCtEvG4G9J8KvnQ4C7w0NW7uGw2dBDTd1jO0jNPI8pMnJI7SuhSrRYnP1_k8b_nETYXnnNOaxWZlz_NZcssafCBBwWYHlu40A2RddsqQgqxUUP28vyRiUsz72BPVOnFXbS6tPxZvRnlnIO67xbBeP_iVeM6pb3gIWJv92lukOtEXnfQ_piyDP5D7Co3VRtDHz3Gt-GkHf2TtM3dJn_h7qNf_XbEzEnzlj4Bfiv05VeY"/>
+<span class="font-headline-md text-headline-md font-bold text-primary dark:text-primary-fixed-dim hidden sm:block">Sologix Energy</span>
+</a>
+<!-- Navigation Links (Desktop) -->
+<nav class="hidden md:flex items-center gap-6">
+<a class="font-label-md text-label-md text-primary dark:text-primary-fixed-dim border-b-2 border-primary dark:border-primary-fixed-dim pb-1 hover:bg-surface-container-low dark:hover:bg-surface-container transition-colors duration-200" href="#">Our Services</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim hover:bg-surface-container-low dark:hover:bg-surface-container transition-colors duration-200 pb-1 border-b-2 border-transparent" href="#">Products</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim hover:bg-surface-container-low dark:hover:bg-surface-container transition-colors duration-200 pb-1 border-b-2 border-transparent" href="#">Subsidies</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim hover:bg-surface-container-low dark:hover:bg-surface-container transition-colors duration-200 pb-1 border-b-2 border-transparent" href="#">Become Partner</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim hover:bg-surface-container-low dark:hover:bg-surface-container transition-colors duration-200 pb-1 border-b-2 border-transparent" href="#">Calculator</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim hover:bg-surface-container-low dark:hover:bg-surface-container transition-colors duration-200 pb-1 border-b-2 border-transparent" href="#">Projects</a>
+</nav>
+<!-- Trailing Action -->
+<div class="flex items-center gap-4">
+<button class="bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md py-2 px-6 rounded-full shadow-sm hover:shadow-md transition-all duration-200 scale-95 active:scale-90">
+                    Get Quote
+                </button>
+<button class="md:hidden text-on-surface-variant flex items-center justify-center">
+<span class="material-symbols-outlined text-3xl" data-icon="menu">menu</span>
+</button>
+</div>
+</div>
+</header>
+<!-- Main Content -->
+<main>
+<!-- Hero Section -->
+<section class="relative w-full min-h-[60vh] flex items-center justify-center overflow-hidden bg-surface-container-lowest">
+<!-- Background Image with Overlay -->
+<div class="absolute inset-0 z-0">
+<img alt="Expansive view of a modern solar farm with gleaming photovoltaic panels arranged in precise rows against a clear, bright blue sky. The sunlight glints off the high-tech surfaces, conveying clean, renewable energy and sustainable corporate infrastructure. The image embodies a forward-thinking, reliable, and earth-centric corporate aesthetic, aligning with the emerald and bright UI theme." class="w-full h-full object-cover object-center" data-alt="Expansive view of a modern solar farm with gleaming photovoltaic panels arranged in precise rows against a clear, bright blue sky. The sunlight glints off the high-tech surfaces, conveying clean, renewable energy and sustainable corporate infrastructure. The image embodies a forward-thinking, reliable, and earth-centric corporate aesthetic, aligning with the emerald and bright UI theme." src="https://lh3.googleusercontent.com/aida-public/AB6AXuDE5qN-kU717z022SlQSkxKkAqeVrGvYRzKTHBZYVcaGW8OSJA9pHxGnp4H07a0MAVyLoYnOkE0RScsIEkoizXDyfnIH2Qo7tQN-593ITqsEOamj-PswIv-imc4EcYmspu7I5VlsA66QM2n0ZkOn1K3YPlS_4bbYXAeTfcdPLYcJ6oAv9YQ5Av5F0E4Db6-CBMTRkNJlo7ZSWcexcOeD6XaV2F-QH_S2rpb75TL7Zrsh8q8YtPUTgSuajKekpey0GaZyTSs7hLI-4A"/>
+<div class="absolute inset-0 bg-gradient-to-r from-inverse-surface/90 via-inverse-surface/60 to-transparent mix-blend-multiply"></div>
+</div>
+<div class="relative z-10 w-full max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-section-gap flex flex-col items-start justify-center text-on-secondary">
+<span class="font-label-md text-label-md text-emerald-light uppercase tracking-widest mb-stack-sm block">Comprehensive Energy Solutions</span>
+<h1 class="font-headline-xl-mobile md:font-headline-xl text-headline-xl-mobile md:text-headline-xl mb-stack-md max-w-2xl leading-tight">Powering Tomorrow, <br/>Naturally.</h1>
+<p class="font-body-lg text-body-lg text-secondary-fixed-dim max-w-xl mb-stack-lg">Discover tailored solar infrastructure for homes, businesses, and industrial campuses. We engineer high-efficiency systems designed for long-term reliability.</p>
+<button class="bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md py-3 px-8 rounded-full shadow-sm hover:shadow-md transition-all duration-200 inline-flex items-center gap-2 group">
+                    Explore Solutions
+                    <span class="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform" data-icon="arrow_forward">arrow_forward</span>
+</button>
+</div>
+</section>
+<!-- Core Solutions / Services -->
+<section class="py-section-gap bg-surface" id="solutions">
+<div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop">
+<div class="text-center mb-16">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-stack-sm">Our Core Solutions</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant max-w-2xl mx-auto">From residential rooftops to utility-scale plants, our engineering excellence delivers optimized energy generation.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-gutter">
+<!-- Residential Solar -->
+<div class="group relative overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-shadow duration-300 border border-border-subtle flex flex-col h-full">
+<div class="relative h-64 overflow-hidden">
+<img alt="A beautiful, modern suburban home featuring sleek, flush-mounted residential solar panels on its pristine roof under bright daylight. The scene suggests a clean, sustainable lifestyle and home energy savings. The lighting is natural and clear, fitting a modern, eco-friendly corporate aesthetic." class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="A beautiful, modern suburban home featuring sleek, flush-mounted residential solar panels on its pristine roof under bright daylight. The scene suggests a clean, sustainable lifestyle and home energy savings. The lighting is natural and clear, fitting a modern, eco-friendly corporate aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBnbLn53i0nQaO2f71P1jkf_7r9CaQCjse5cobBQwM5p0qApSV0rurKrW5nzzKqruwH8z7FhorH92BLeXg-dWnrKNCtKNLy4kWmLxzy1BWCZGNtpXmmvKsqz3jH0drKqvl6GbgCRhn5c9pd26ftRatdfi2OntRMTOoQqxNzh_jN0KiOc8E-yQBcJuJ2y7NlQUX8u4HObr087whtzDWsyf-aRkFkc0AfMO3Fuwgxpo6P7T0zVhVxzpVckDDpt0H-9RHIzQQCUR6KRhE"/>
+<div class="absolute top-4 left-4 bg-surface/90 backdrop-blur text-primary font-label-md text-label-md px-3 py-1 rounded-full shadow-sm">Residential</div>
+</div>
+<div class="p-8 flex flex-col flex-grow">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-stack-sm">Rooftop Systems for Homes</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-stack-lg flex-grow">Transform your roof into a power asset. Our premium residential installations are designed for maximum curb appeal and optimal energy yield, drastically reducing monthly utility bills.</p>
+<a class="font-label-md text-label-md text-secondary hover:text-primary flex items-center gap-1 transition-colors w-fit" href="#">
+                                View Residential Details <span class="material-symbols-outlined text-sm" data-icon="chevron_right">chevron_right</span>
+</a>
+</div>
+</div>
+<!-- Commercial Solar -->
+<div class="group relative overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-shadow duration-300 border border-border-subtle flex flex-col h-full">
+<div class="relative h-64 overflow-hidden">
+<img alt="A wide perspective of a modern commercial building or shopping mall featuring extensive rooftop solar panel arrays. The architecture is clean and professional, bathed in bright sunlight, emphasizing corporate sustainability and operational efficiency in a modern light-mode design context." class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="A wide perspective of a modern commercial building or shopping mall featuring extensive rooftop solar panel arrays. The architecture is clean and professional, bathed in bright sunlight, emphasizing corporate sustainability and operational efficiency in a modern light-mode design context." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD5I17fSK3uK8NbS0gY9PnAZlwhAl4bFtxRAX420Wl_30Y_O4-ouIesLsCfEYNo0ltHdOwnvJtD-yC_L0TI2bMyNjDkT28RIXB9W7VBckUu0_1RK6PsebIZorP-isnTVX7A4A4yh2alfmDp4WFOfDmWiH4M2cpJCvlhH362jVKdpoQfcv5MKvwVtLPUcCut4a5BS9dDDBEF3t_LJLFKLaYSv0p7swIDK0LNxFCLHDI5734PW6jlP87EaQkX0q4RERhC_ZlLRD6B6cE"/>
+<div class="absolute top-4 left-4 bg-surface/90 backdrop-blur text-secondary font-label-md text-label-md px-3 py-1 rounded-full shadow-sm">Commercial</div>
+</div>
+<div class="p-8 flex flex-col flex-grow">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-stack-sm">Solutions for Offices &amp; Malls</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-stack-lg flex-grow">Empower your business with reliable clean energy. We provide scalable arrays for commercial real estate, showrooms, and retail centers to hedge against rising energy costs.</p>
+<a class="font-label-md text-label-md text-secondary hover:text-primary flex items-center gap-1 transition-colors w-fit" href="#">
+                                View Commercial Details <span class="material-symbols-outlined text-sm" data-icon="chevron_right">chevron_right</span>
+</a>
+</div>
+</div>
+<!-- Industrial Solar -->
+<div class="group relative overflow-hidden rounded-xl bg-surface-container-lowest shadow-sm hover:shadow-md transition-shadow duration-300 border border-border-subtle flex flex-col h-full">
+<div class="relative h-64 overflow-hidden">
+<img alt="An expansive industrial factory complex with a massive, grid-aligned solar panel installation covering its enormous flat roof. The scale conveys heavy-duty engineering and robust infrastructure. The bright, high-contrast lighting underscores a reliable, forward-thinking industrial brand aesthetic." class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" data-alt="An expansive industrial factory complex with a massive, grid-aligned solar panel installation covering its enormous flat roof. The scale conveys heavy-duty engineering and robust infrastructure. The bright, high-contrast lighting underscores a reliable, forward-thinking industrial brand aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBQg4O7_RQo028sXWGkhchE3-tkygqV7rW1BTGcwyftSv-NmJTvAUg9o3xW62cvqLUSearvhHPLQmbipNPL4E0mjqCM6_kaMNrhS4yxirT_FggvQC8ddKBZw0YtBx0DKv7J6lNemIJCjj6uWhS9AmqXoGTKTd9oTvxckpjCzm3qQFzfvRkrnGSXGBIiwnjwL0kX7jyx4C2Kg2I_Dr4fVZi2-U0oBdAmchEMEwtiCf5XXurXjWwNMV_Y0d0Um5npIwP3aDXzA9F_jzw"/>
+<div class="absolute top-4 left-4 bg-surface/90 backdrop-blur text-tertiary-container font-label-md text-label-md px-3 py-1 rounded-full shadow-sm">Industrial</div>
+</div>
+<div class="p-8 flex flex-col flex-grow">
+<h3 class="font-headline-md text-headline-md text-on-surface mb-stack-sm">Large-Scale Factory Installations</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-stack-lg flex-grow">Robust, high-capacity solar infrastructure engineered for heavy industrial power demands. Maximize your factory's unused roof space and achieve ambitious ESG goals.</p>
+<a class="font-label-md text-label-md text-secondary hover:text-primary flex items-center gap-1 transition-colors w-fit" href="#">
+                                View Industrial Details <span class="material-symbols-outlined text-sm" data-icon="chevron_right">chevron_right</span>
+</a>
+</div>
+</div>
+<!-- Turnkey EPC -->
+<div class="group relative overflow-hidden rounded-xl bg-sky-tint shadow-sm hover:shadow-[0px_4px_20px_rgba(17,24,39,0.05)] transition-all duration-300 border border-transparent hover:border-emerald-light flex flex-col h-full">
+<div class="p-8 flex flex-col flex-grow relative z-10">
+<div class="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-stack-md shadow-sm">
+<span class="material-symbols-outlined text-primary" data-icon="engineering">engineering</span>
+</div>
+<h3 class="font-headline-md text-headline-md text-on-surface mb-stack-sm">Turnkey EPC Solutions</h3>
+<p class="font-body-md text-body-md text-on-surface-variant mb-stack-lg flex-grow">Engineering, Procurement, and Construction from end-to-end. We manage the entire lifecycle of your solar project, from initial site survey and financial modeling to grid integration and maintenance.</p>
+<ul class="space-y-3 mb-stack-lg">
+<li class="flex items-start gap-2 font-body-md text-body-md text-on-surface">
+<span class="material-symbols-outlined text-emerald-light" data-icon="check_circle">check_circle</span>
+                                    Comprehensive Site Analysis
+                                </li>
+<li class="flex items-start gap-2 font-body-md text-body-md text-on-surface">
+<span class="material-symbols-outlined text-emerald-light" data-icon="check_circle">check_circle</span>
+                                    Custom System Design &amp; Engineering
+                                </li>
+<li class="flex items-start gap-2 font-body-md text-body-md text-on-surface">
+<span class="material-symbols-outlined text-emerald-light" data-icon="check_circle">check_circle</span>
+                                    Regulatory Compliance &amp; Permitting
+                                </li>
+</ul>
+<a class="font-label-md text-label-md text-secondary hover:text-primary flex items-center gap-1 transition-colors w-fit mt-auto" href="#">
+                                Learn about EPC <span class="material-symbols-outlined text-sm" data-icon="chevron_right">chevron_right</span>
+</a>
+</div>
+<!-- Decorative Pattern -->
+<div class="absolute bottom-0 right-0 opacity-10 pointer-events-none">
+<svg fill="none" height="200" viewbox="0 0 100 100" width="200" xmlns="http://www.w3.org/2000/svg">
+<path class="text-primary" d="M0 100L100 0H100V100H0Z" fill="currentColor"></path>
+</svg>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Why Choose Us -->
+<section class="py-section-gap bg-surface-container-low border-t border-b border-border-subtle">
+<div class="max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop">
+<div class="flex flex-col md:flex-row gap-12 items-center">
+<div class="w-full md:w-1/3">
+<h2 class="font-headline-lg text-headline-lg text-on-surface mb-stack-sm">Why Choose Sologix Energy?</h2>
+<p class="font-body-lg text-body-lg text-on-surface-variant mb-stack-lg">We combine top-tier technology with precision engineering to ensure your investment yields maximum returns for decades.</p>
+<div class="inline-flex items-center gap-4 bg-emerald-light/20 px-4 py-2 rounded-full border border-emerald-light/50">
+<span class="material-symbols-outlined text-primary" data-icon="verified">verified</span>
+<span class="font-label-md text-label-md text-primary-container">Certified Premium Partner</span>
+</div>
+</div>
+<div class="w-full md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-8">
+<!-- Benefit 1 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-border-subtle flex items-start gap-4">
+<div class="flex-shrink-0 w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="bolt">bolt</span>
+</div>
+<div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface mb-1">High Efficiency</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">We source only Tier-1 panels ensuring superior conversion rates and energy yields.</p>
+</div>
+</div>
+<!-- Benefit 2 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-border-subtle flex items-start gap-4">
+<div class="flex-shrink-0 w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary" data-icon="architecture">architecture</span>
+</div>
+<div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface mb-1">Expert Installation</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">Our certified engineering teams guarantee precision mounting and safe electrical integration.</p>
+</div>
+</div>
+<!-- Benefit 3 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-border-subtle flex items-start gap-4">
+<div class="flex-shrink-0 w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-tertiary-container" data-icon="savings">savings</span>
+</div>
+<div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface mb-1">Long-term Savings</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">Designed for longevity, our systems drastically reduce overhead and provide excellent ROI.</p>
+</div>
+</div>
+<!-- Benefit 4 -->
+<div class="bg-surface-container-lowest p-6 rounded-xl shadow-sm border border-border-subtle flex items-start gap-4">
+<div class="flex-shrink-0 w-10 h-10 rounded-full bg-surface-container flex items-center justify-center">
+<span class="material-symbols-outlined text-primary" data-icon="support_agent">support_agent</span>
+</div>
+<div>
+<h4 class="font-headline-sm text-headline-sm text-on-surface mb-1">24/7 Monitoring &amp; Support</h4>
+<p class="font-body-md text-body-md text-on-surface-variant">Proactive performance tracking and dedicated maintenance to ensure uninterrupted power.</p>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- CTA Section -->
+<section class="py-section-gap bg-inverse-surface relative overflow-hidden">
+<div class="absolute inset-0 opacity-10 pointer-events-none" style="background-image: radial-gradient(circle at 50% 50%, var(--tw-colors-emerald-light) 1px, transparent 1px); background-size: 24px 24px;"></div>
+<div class="max-w-3xl mx-auto px-margin-mobile md:px-margin-desktop text-center relative z-10">
+<h2 class="font-headline-lg text-headline-lg text-inverse-on-surface mb-stack-sm">Ready to Transition to Solar?</h2>
+<p class="font-body-lg text-body-lg text-secondary-fixed-dim mb-stack-lg">Schedule a free site assessment and discover the optimal energy solution for your specific needs.</p>
+<div class="flex flex-col sm:flex-row justify-center items-center gap-4">
+<button class="w-full sm:w-auto bg-primary hover:bg-primary-container text-on-primary font-label-md text-label-md py-3 px-8 rounded-full shadow-sm hover:shadow-md transition-all duration-200">
+                        Request a Consultation
+                    </button>
+<button class="w-full sm:w-auto bg-transparent border-2 border-secondary text-secondary-fixed hover:bg-secondary/10 font-label-md text-label-md py-3 px-8 rounded-full transition-all duration-200">
+                        Use Solar Calculator
+                    </button>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-dim dark:bg-inverse-surface full-width border-t border-border-subtle dark:border-outline-variant">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter max-w-container-max mx-auto px-margin-desktop py-section-gap">
+<!-- Brand Column -->
+<div class="col-span-1 md:col-span-1 flex flex-col items-start">
+<a class="font-headline-sm text-headline-sm font-bold text-primary dark:text-primary-fixed-dim mb-stack-md opacity-80 hover:opacity-100 transition-opacity" href="#">Sologix Energy</a>
+<p class="font-body-md text-body-md text-on-surface-variant dark:text-outline-variant max-w-xs">© 2024 Sologix Energy Private Limited. Powering Tomorrow, Naturally.</p>
+</div>
+<!-- Links Column 1 -->
+<div class="flex flex-col gap-3">
+<span class="font-label-md text-label-md font-bold text-on-surface dark:text-inverse-on-surface mb-2">Solutions</span>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim underline transition-all opacity-80 hover:opacity-100" href="#">Residential Solar</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim underline transition-all opacity-80 hover:opacity-100" href="#">Commercial Solar</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim underline transition-all opacity-80 hover:opacity-100" href="#">Industrial Solar</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim underline transition-all opacity-80 hover:opacity-100" href="#">Partner Portal</a>
+</div>
+<!-- Links Column 2 -->
+<div class="flex flex-col gap-3">
+<span class="font-label-md text-label-md font-bold text-on-surface dark:text-inverse-on-surface mb-2">Resources</span>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim underline transition-all opacity-80 hover:opacity-100" href="#">Solar Calculator</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim underline transition-all opacity-80 hover:opacity-100" href="#">Project Gallery</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim underline transition-all opacity-80 hover:opacity-100" href="#">About Us</a>
+</div>
+<!-- Links Column 3 -->
+<div class="flex flex-col gap-3">
+<span class="font-label-md text-label-md font-bold text-on-surface dark:text-inverse-on-surface mb-2">Legal &amp; Support</span>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim underline transition-all opacity-80 hover:opacity-100" href="#">Contact Support</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim underline transition-all opacity-80 hover:opacity-100" href="#">Privacy Policy</a>
+<a class="font-label-md text-label-md text-on-surface-variant dark:text-outline-variant hover:text-primary dark:hover:text-primary-fixed-dim underline transition-all opacity-80 hover:opacity-100" href="#">Terms of Service</a>
+</div>
+</div>
+</footer>
+<!-- Lightweight JS for header scroll effect -->
+<script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const header = document.getElementById('topAppBar');
+            window.addEventListener('scroll', () => {
+                if (window.scrollY > 20) {
+                    header.classList.add('shadow-md');
+                    header.classList.remove('shadow-sm');
+                } else {
+                    header.classList.add('shadow-sm');
+                    header.classList.remove('shadow-md');
+                }
+            });
+        });
+    </script>
+</body></html>

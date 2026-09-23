@@ -1,0 +1,32 @@
+node_modules/
+.env
+.env.local
+.env.production
+.env.docker
+.DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+# build/
+dist/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Docker
+certbot/
+mysql_data/
+
+# runtime artefacts / secrets
+**/.env
+.env.docker
+.env.docker.bak*
+backend/uploads/
+frontend/build/
+frontend.zip
+*.tgz
+*.bak
+*.bak.*

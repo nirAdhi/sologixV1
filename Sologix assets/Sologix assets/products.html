@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+
+<html class="scroll-smooth" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Products | Sologix Energy - Premium Renewable Solutions</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700&amp;family=Work+Sans:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "outline": "#6d7a72",
+                    "on-background": "#141b2b",
+                    "surface": "#f9f9ff",
+                    "on-tertiary-fixed-variant": "#7f2b00",
+                    "inverse-surface": "#293040",
+                    "on-secondary-fixed-variant": "#0039b5",
+                    "surface-container-high": "#e1e8fd",
+                    "on-error-container": "#93000a",
+                    "on-surface": "#141b2b",
+                    "surface-variant": "#dce2f7",
+                    "primary": "#006948",
+                    "surface-tint": "#006c4a",
+                    "primary-fixed": "#85f8c4",
+                    "error": "#ba1a1a",
+                    "on-secondary-fixed": "#001551",
+                    "on-tertiary": "#ffffff",
+                    "on-primary-container": "#f5fff7",
+                    "inverse-primary": "#68dba9",
+                    "tertiary": "#a33900",
+                    "secondary-fixed": "#dce1ff",
+                    "on-primary": "#ffffff",
+                    "tertiary-fixed-dim": "#ffb599",
+                    "primary-container": "#00855d",
+                    "on-primary-fixed-variant": "#005137",
+                    "secondary-container": "#4069f2",
+                    "on-tertiary-container": "#fffbff",
+                    "error-container": "#ffdad6",
+                    "on-error": "#ffffff",
+                    "surface-container-highest": "#dce2f7",
+                    "sky-tint": "#EFF6FF",
+                    "tertiary-fixed": "#ffdbce",
+                    "background": "#f9f9ff",
+                    "secondary-fixed-dim": "#b7c4ff",
+                    "outline-variant": "#bccac0",
+                    "inverse-on-surface": "#edf0ff",
+                    "on-secondary-container": "#fffbff",
+                    "on-primary-fixed": "#002114",
+                    "on-surface-variant": "#3d4a42",
+                    "surface-gray": "#F9FAFB",
+                    "primary-fixed-dim": "#68dba9",
+                    "surface-container-low": "#f1f3ff",
+                    "secondary": "#1d4ed8",
+                    "border-subtle": "#E5E7EB",
+                    "surface-container": "#e9edff",
+                    "emerald-light": "#34D399",
+                    "surface-container-lowest": "#ffffff",
+                    "surface-dim": "#d3daef",
+                    "on-tertiary-fixed": "#370e00",
+                    "on-secondary": "#ffffff",
+                    "surface-bright": "#f9f9ff"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "gutter": "24px",
+                    "stack-md": "16px",
+                    "section-gap": "96px",
+                    "margin-mobile": "20px",
+                    "margin-desktop": "64px",
+                    "stack-sm": "8px",
+                    "stack-lg": "24px",
+                    "container-max": "1280px"
+            },
+            "fontFamily": {
+                    "headline-sm": ["Manrope"],
+                    "body-md": ["Work Sans"],
+                    "headline-xl-mobile": ["Manrope"],
+                    "body-lg": ["Work Sans"],
+                    "headline-lg": ["Manrope"],
+                    "label-md": ["Work Sans"],
+                    "headline-md": ["Manrope"],
+                    "headline-xl": ["Manrope"]
+            },
+            "fontSize": {
+                    "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                    "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                    "headline-xl-mobile": ["32px", {"lineHeight": "40px", "fontWeight": "700"}],
+                    "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                    "headline-lg": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                    "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                    "headline-md": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                    "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-effect {
+            backdrop-filter: blur(8px);
+            background: rgba(255, 255, 255, 0.8);
+        }
+        .product-card:hover .zoom-img {
+            transform: scale(1.05);
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md">
+<!-- TopAppBar -->
+<header class="docked full-width top-0 sticky z-[100] bg-surface/90 backdrop-blur-md shadow-sm border-b border-border-subtle">
+<div class="flex justify-between items-center max-w-container-max mx-auto px-margin-desktop py-4">
+<a class="font-headline-md text-headline-md font-bold text-primary" href="#">Sologix Energy</a>
+<nav class="hidden md:flex items-center space-x-8">
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Our Services</a>
+<a class="font-label-md text-label-md text-primary border-b-2 border-primary pb-1" href="#">Products</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Subsidies</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Become Partner</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Calculator</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary transition-colors duration-200" href="#">Projects</a>
+</nav>
+<button class="bg-primary text-on-primary px-6 py-2 rounded-lg font-label-md hover:bg-primary-container transition-transform active:scale-95">
+                Get Quote
+            </button>
+</div>
+</header>
+<main>
+<!-- Hero Section -->
+<section class="relative h-[614px] flex items-center overflow-hidden bg-on-background">
+<div class="absolute inset-0 opacity-40">
+<img class="w-full h-full object-cover" data-alt="A high-resolution wide shot of a massive solar farm installation under a clear blue sky during the golden hour. The sunlight reflects off the sleek blue panels, emphasizing precision engineering and clean energy production. The atmosphere is optimistic and professional, with a clean corporate aesthetic that highlights sustainable infrastructure development." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCa38BWql9OTfJrhn_LTt_L0r2ly6HpXBT9v0Ir2jI28uJNBgr7yNyIu0sJq6SC0nJw5wzW56Xk8gV-SoDwXbTmUOIAEH0Lwocl9ZV9PNWi52RsLx08IJ_oI194KPd6YD-pDOCfJRQ893UpZqHSXBEGcP76DXI9RyENaBE3HciTSlowR6_8fbCxqBrlBEhPx23N_pr9Vt8fZMGrrlIo523n2G17vFv_1DbxBxP2DfzC1gt-mAcYQbEPhxuToZOyXQsrvpx0Vv4QTWE"/>
+</div>
+<div class="relative max-w-container-max mx-auto px-margin-desktop w-full text-white">
+<div class="max-w-2xl">
+<span class="inline-block bg-primary px-4 py-1 rounded-full text-label-md mb-6 uppercase tracking-wider">Premium Solar Hardware</span>
+<h1 class="font-headline-xl text-headline-xl mb-6">Industrial Grade Solar Technology</h1>
+<p class="font-body-lg text-body-lg opacity-90 mb-8">Deploying the world's most efficient monocrystalline modules, smart hybrid inverters, and high-density storage solutions for a resilient energy future.</p>
+<div class="flex gap-4">
+<a class="bg-primary text-on-primary px-8 py-3 rounded-lg font-label-md hover:bg-primary-container transition-all" href="#panels">Explore Modules</a>
+<a class="border border-white/50 hover:bg-white/10 px-8 py-3 rounded-lg font-label-md transition-all" href="#">Technical Specs</a>
+</div>
+</div>
+</div>
+</section>
+<!-- Product Grid - Bento Style -->
+<section class="py-section-gap max-w-container-max mx-auto px-margin-desktop" id="products">
+<div class="text-center mb-16">
+<h2 class="font-headline-lg text-headline-lg text-on-background mb-4">Engineered for Performance</h2>
+<p class="text-on-surface-variant max-w-xl mx-auto">Every component in the Sologix ecosystem is selected for its durability, efficiency, and seamless integration capabilities.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-12 gap-8">
+<!-- Main Product: Monocrystalline Panels -->
+<div class="md:col-span-8 product-card group bg-white rounded-xl overflow-hidden border border-border-subtle hover:shadow-lg transition-all duration-300" id="panels">
+<div class="grid md:grid-cols-2 h-full">
+<div class="overflow-hidden">
+<img class="w-full h-full object-cover zoom-img transition-transform duration-500" data-alt="Close up detailed shot of a high-efficiency monocrystalline solar panel surface. The intricate grid of dark silicon cells is visible, reflecting a soft blue sky. The lighting is crisp and bright, highlighting the premium manufacturing quality and clean-tech aesthetic of the renewable energy hardware." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBtGPSBZj6igemCbmYbuUm4d_9Rm6UjQJ98wzRFqz6Mg4AzsXwbjTcQlgRgTMXx9inR1w-odQkY4ajJCVy11alCMtAy_Urq521GyPPYmDIBfj-M2sa8Hh11u-PAWUQ_O-s1B1BX_nvFJ_CiHRzw4X0jxMMnAEwr0p0gnvDCgZaGxo2aG5OxLfRpdu4yr8u7nSnqrHiSUZBfxzmOz2LLlKogqzgkqI_icMtS5-2H29975w2U9dbQZbL86S6WkHt8FIAJ8whgPsUfU6E"/>
+</div>
+<div class="p-8 flex flex-col justify-between">
+<div>
+<div class="flex justify-between items-start mb-4">
+<h3 class="font-headline-md text-headline-md">Sologix Ultra Monocrystalline</h3>
+<span class="bg-emerald-light/20 text-primary px-3 py-1 rounded-full text-label-md">22.8% Efficiency</span>
+</div>
+<p class="text-on-surface-variant mb-6">Next-generation N-Type silicon modules designed for maximum power density in limited spaces. Superior low-light performance and temperature coefficients.</p>
+<div class="grid grid-cols-2 gap-4 mb-8">
+<div class="border-l-2 border-primary pl-3">
+<p class="text-label-md text-on-surface-variant">Power Output</p>
+<p class="font-headline-sm text-headline-sm">580W Peak</p>
+</div>
+<div class="border-l-2 border-primary pl-3">
+<p class="text-label-md text-on-surface-variant">Warranty</p>
+<p class="font-headline-sm text-headline-sm">25 Years</p>
+</div>
+</div>
+</div>
+<button class="w-full bg-primary text-on-primary py-3 rounded-lg font-label-md hover:bg-primary-container transition-transform active:scale-95">Inquire Now</button>
+</div>
+</div>
+</div>
+<!-- Secondary: Smart Hybrid Inverter -->
+<div class="md:col-span-4 product-card group bg-sky-tint rounded-xl overflow-hidden border border-border-subtle hover:shadow-lg transition-all duration-300">
+<div class="h-48 overflow-hidden">
+<img class="w-full h-full object-cover zoom-img transition-transform duration-500" data-alt="A modern industrial smart hybrid inverter mounted on a clean white wall in a bright utility room. The device features a minimalist design with a small digital interface and subtle green LED indicators. The lighting is soft and even, portraying a high-tech, reliable piece of infrastructure in a residential or commercial setting." src="https://lh3.googleusercontent.com/aida-public/AB6AXuACF-pGS7sDDX0ZHJpRBregCdM9oeQ_Pd534MgiOP6zGUJCr2-6b6akbt9DlNnugBpcmDB7pT720tC6Zsh5OYsJv-u0sItrMMI7Ofk-GIaE6n8HyTUWUmdo-bQTf6cAAet2MmPO9lqsw9ZcmObAK00s5OzhBtOM0GO0zXRNZRA_K0lyhNtXetWYSkYqDPFfvBlYJOJfg4414IJjWTEXhNaK5e92LJfbLfnIITU_eGSFb39ovKIUsS863sBZSfH5SQ6QeIxS8hoP9kQ"/>
+</div>
+<div class="p-6">
+<div class="mb-4">
+<h3 class="font-headline-sm text-headline-sm">Nexus Hybrid Inverter</h3>
+<p class="text-label-md text-secondary">Smart Energy Management</p>
+</div>
+<p class="text-body-md text-on-surface-variant mb-6">Intelligent switching between grid, solar, and battery. Features built-in IoT monitoring and peak-shaving logic.</p>
+<ul class="space-y-2 mb-6">
+<li class="flex items-center text-label-md text-on-surface">
+<span class="material-symbols-outlined text-primary mr-2 text-[18px]">check_circle</span> 
+                                98.4% Euro Efficiency
+                            </li>
+<li class="flex items-center text-label-md text-on-surface">
+<span class="material-symbols-outlined text-primary mr-2 text-[18px]">check_circle</span> 
+                                WiFi / 4G Monitoring
+                            </li>
+</ul>
+<button class="w-full border-2 border-secondary text-secondary py-2 rounded-lg font-label-md hover:bg-secondary/5 transition-colors">View Specs</button>
+</div>
+</div>
+<!-- Tertiary: Lithium-ion Storage -->
+<div class="md:col-span-4 product-card group bg-white rounded-xl overflow-hidden border border-border-subtle hover:shadow-lg transition-all duration-300">
+<div class="h-48 overflow-hidden">
+<img class="w-full h-full object-cover zoom-img transition-transform duration-500" data-alt="A stack of sleek lithium-ion battery storage units in a professional server-room style enclosure. The batteries have a clean metallic finish with emerald green accents. The lighting is sophisticated and low-key, emphasizing the high-density energy storage technology and industrial reliability of the battery system." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBmsf8KNvSXHQcbQiLo_q2QDglMaooQCEbc5-zWM8BEXTX8WmJFqR9LwaWuSSlW7rtzL1RLffL-qvziYhqqOjMmmwtK5-lOoFgtBVemg684ZvU0db5OwzAgnVZeBKUzpmiTuediMZ5afwlDZOUCEhuXml3umXwEEJ-M-LHn-6XkJIk8c02U7Y88t3Jfd8Wqy5qGK5M0g3mgYrKKWoGiu_xDUoRUBU_clrPG5VCyXNPoasVXTRBNJN-nva4zrTBFjk_h4KYc5KluCRc"/>
+</div>
+<div class="p-6">
+<div class="mb-4">
+<h3 class="font-headline-sm text-headline-sm">VoltStack Storage</h3>
+<p class="text-label-md text-primary">LiFePO4 Technology</p>
+</div>
+<p class="text-body-md text-on-surface-variant mb-6">Modular battery system with 10kWh units. Scale your independence with high-safety cobalt-free chemistry.</p>
+<div class="flex justify-between items-center py-3 border-y border-border-subtle mb-6">
+<div class="text-center">
+<p class="text-label-md text-on-surface-variant">Cycles</p>
+<p class="font-bold text-primary">6000+</p>
+</div>
+<div class="w-[1px] h-8 bg-border-subtle"></div>
+<div class="text-center">
+<p class="text-label-md text-on-surface-variant">Safety</p>
+<p class="font-bold text-primary">IP65</p>
+</div>
+</div>
+<button class="w-full border-2 border-secondary text-secondary py-2 rounded-lg font-label-md hover:bg-secondary/5 transition-colors">Technical Data</button>
+</div>
+</div>
+<!-- Featured: Industrial Rooftop Solution -->
+<div class="md:col-span-8 product-card group bg-surface-gray rounded-xl overflow-hidden border border-border-subtle hover:shadow-lg transition-all duration-300 relative">
+<div class="grid md:grid-cols-2">
+<div class="p-8 z-10">
+<span class="text-primary font-bold text-label-md mb-2 block">Specialty Solution</span>
+<h3 class="font-headline-md text-headline-md mb-4">Bifacial High-Yield Modules</h3>
+<p class="text-on-surface-variant mb-6">Capture energy from both sides. Ideal for ground-mount and industrial rooftops with reflective surfaces. Increases yield by up to 30%.</p>
+<div class="space-y-4 mb-8">
+<div class="flex items-start">
+<div class="bg-primary/10 p-2 rounded-lg mr-4">
+<span class="material-symbols-outlined text-primary">wb_sunny</span>
+</div>
+<div>
+<p class="font-bold text-label-md">Double-Glass Durability</p>
+<p class="text-body-md text-on-surface-variant">Enhanced resistance to micro-cracks and PID.</p>
+</div>
+</div>
+<div class="flex items-start">
+<div class="bg-primary/10 p-2 rounded-lg mr-4">
+<span class="material-symbols-outlined text-primary">trending_up</span>
+</div>
+<div>
+<p class="font-bold text-label-md">Higher Albedo Gain</p>
+<p class="text-body-md text-on-surface-variant">Optimized for snow, sand, or white roofs.</p>
+</div>
+</div>
+</div>
+<button class="bg-primary text-on-primary px-8 py-3 rounded-lg font-label-md hover:bg-primary-container transition-all">Request Technical Quote</button>
+</div>
+<div class="overflow-hidden relative h-full min-h-[300px]">
+<img class="absolute inset-0 w-full h-full object-cover zoom-img transition-transform duration-500" data-alt="An expansive industrial rooftop covered with thousands of solar panels, extending towards the horizon. The image is taken from an elevated drone perspective, showing the geometric precision and vast scale of the installation. The lighting is bright midday sun, casting clear shadows and emphasizing the professional, engineering-led approach to large-scale renewable energy." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBt7KHkkXOEDJX0SAtsj9G-YcguER_bcDrgMjBxt33GeCoRCAHF20SiSErAsFcfOCD6GDCDBTg_O2beYilswkRzb4M4gSOfswLmQoLoIkfUDsUEhrx3FvYZ0ig1yjQ7w3qltyAVXaSLouk17Q0paWpTpPUSfmb1BBKyMFyV7JziauT6DQYw84xUIJahIEQLYK4-tsWChatxzCdfb9oAgDKHdAVj80gwNVDjj2yE2kcz9RTqqsHYDzwR6xt_ikvrY_hpTC5ZrV9vk8g"/>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Process Section -->
+<section class="bg-on-background py-section-gap text-white">
+<div class="max-w-container-max mx-auto px-margin-desktop">
+<div class="text-center mb-16">
+<h2 class="font-headline-lg text-headline-lg mb-4">Seamless Integration Process</h2>
+<p class="opacity-70 max-w-xl mx-auto">From selection to synchronization, we handle the technical complexity so you can focus on the savings.</p>
+</div>
+<!-- Work Process Timeline -->
+<div class="flex flex-col md:flex-row justify-between items-center relative">
+<!-- Connector Line (Desktop) -->
+<div class="hidden md:block absolute top-1/2 left-0 w-full h-[2px] bg-white/10 -translate-y-1/2 z-0"></div>
+<!-- Step 1 -->
+<div class="relative z-10 flex flex-col items-center text-center max-w-[240px] mb-12 md:mb-0">
+<div class="w-16 h-16 rounded-full bg-primary flex items-center justify-center mb-6 shadow-xl">
+<span class="font-headline-sm">01</span>
+</div>
+<h4 class="font-headline-sm mb-2">Needs Analysis</h4>
+<p class="text-label-md opacity-60">On-site survey and energy consumption audit.</p>
+</div>
+<!-- Step 2 -->
+<div class="relative z-10 flex flex-col items-center text-center max-w-[240px] mb-12 md:mb-0">
+<div class="w-16 h-16 rounded-full bg-primary flex items-center justify-center mb-6 shadow-xl">
+<span class="font-headline-sm">02</span>
+</div>
+<h4 class="font-headline-sm mb-2">Custom Design</h4>
+<p class="text-label-md opacity-60">Optimizing layout for maximum solar irradiance.</p>
+</div>
+<!-- Step 3 -->
+<div class="relative z-10 flex flex-col items-center text-center max-w-[240px] mb-12 md:mb-0">
+<div class="w-16 h-16 rounded-full bg-primary flex items-center justify-center mb-6 shadow-xl">
+<span class="font-headline-sm">03</span>
+</div>
+<h4 class="font-headline-sm mb-2">Hardware Selection</h4>
+<p class="text-label-md opacity-60">Deploying Sologix-certified industrial components.</p>
+</div>
+<!-- Step 4 -->
+<div class="relative z-10 flex flex-col items-center text-center max-w-[240px]">
+<div class="w-16 h-16 rounded-full bg-primary flex items-center justify-center mb-6 shadow-xl">
+<span class="font-headline-sm">04</span>
+</div>
+<h4 class="font-headline-sm mb-2">Grid Sync</h4>
+<p class="text-label-md opacity-60">Installation, testing, and net-metering activation.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- CTA Section -->
+<section class="py-section-gap">
+<div class="max-w-container-max mx-auto px-margin-desktop">
+<div class="bg-primary rounded-3xl p-12 text-on-primary flex flex-col md:flex-row items-center justify-between shadow-2xl relative overflow-hidden">
+<div class="absolute inset-0 opacity-10 pointer-events-none">
+<svg height="100%" preserveaspectratio="none" viewbox="0 0 100 100" width="100%">
+<path d="M0 100 C 20 0 50 0 100 100" fill="transparent" stroke="white" stroke-width="0.5"></path>
+<path d="M0 80 C 30 20 60 20 100 80" fill="transparent" stroke="white" stroke-width="0.5"></path>
+</svg>
+</div>
+<div class="mb-8 md:mb-0 z-10">
+<h2 class="font-headline-lg text-headline-lg mb-4">Ready to transition?</h2>
+<p class="text-body-lg opacity-90 max-w-lg">Speak with our engineers today for a detailed ROI analysis and customized hardware proposal.</p>
+</div>
+<div class="flex gap-4 z-10">
+<button class="bg-white text-primary px-10 py-4 rounded-xl font-headline-sm hover:bg-surface-container-low transition-all active:scale-95">Get a Free Quote</button>
+</div>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-dim border-t border-border-subtle py-section-gap">
+<div class="max-w-container-max mx-auto px-margin-desktop">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter mb-16">
+<div>
+<a class="font-headline-sm text-headline-sm font-bold text-primary mb-6 block" href="#">Sologix Energy</a>
+<p class="text-on-surface-variant text-body-md mb-6">Pioneering high-efficiency solar infrastructure for industrial and residential growth across the nation.</p>
+<div class="flex gap-4">
+<a class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">share</span>
+</a>
+<a class="w-10 h-10 rounded-full bg-white flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all" href="#">
+<span class="material-symbols-outlined text-[20px]">mail</span>
+</a>
+</div>
+</div>
+<div>
+<h5 class="font-label-md text-label-md font-bold mb-6 uppercase tracking-wider">Solutions</h5>
+<ul class="space-y-3">
+<li><a class="text-on-surface-variant hover:text-primary transition-all underline-offset-4 hover:underline" href="#">Residential Solar</a></li>
+<li><a class="text-on-surface-variant hover:text-primary transition-all underline-offset-4 hover:underline" href="#">Commercial Solar</a></li>
+<li><a class="text-on-surface-variant hover:text-primary transition-all underline-offset-4 hover:underline" href="#">Industrial Solar</a></li>
+<li><a class="text-on-surface-variant hover:text-primary transition-all underline-offset-4 hover:underline" href="#">Solar Calculator</a></li>
+</ul>
+</div>
+<div>
+<h5 class="font-label-md text-label-md font-bold mb-6 uppercase tracking-wider">Resources</h5>
+<ul class="space-y-3">
+<li><a class="text-on-surface-variant hover:text-primary transition-all underline-offset-4 hover:underline" href="#">Partner Portal</a></li>
+<li><a class="text-on-surface-variant hover:text-primary transition-all underline-offset-4 hover:underline" href="#">Project Gallery</a></li>
+<li><a class="text-on-surface-variant hover:text-primary transition-all underline-offset-4 hover:underline" href="#">About Us</a></li>
+<li><a class="text-on-surface-variant hover:text-primary transition-all underline-offset-4 hover:underline" href="#">Contact Support</a></li>
+</ul>
+</div>
+<div>
+<h5 class="font-label-md text-label-md font-bold mb-6 uppercase tracking-wider">Legal</h5>
+<ul class="space-y-3">
+<li><a class="text-on-surface-variant hover:text-primary transition-all underline-offset-4 hover:underline" href="#">Privacy Policy</a></li>
+<li><a class="text-on-surface-variant hover:text-primary transition-all underline-offset-4 hover:underline" href="#">Terms of Service</a></li>
+</ul>
+</div>
+</div>
+<div class="pt-8 border-t border-outline-variant flex flex-col md:flex-row justify-between items-center opacity-60">
+<p class="text-label-md">© 2024 Sologix Energy Private Limited. Powering Tomorrow, Naturally.</p>
+<div class="mt-4 md:mt-0">
+<span class="material-symbols-outlined text-primary align-middle mr-2">energy_savings_leaf</span>
+<span class="text-label-md">Certified Green Enterprise</span>
+</div>
+</div>
+</div>
+</footer>
+<script>
+        // Micro-interaction for smooth scrolling and header transparency
+        window.addEventListener('scroll', () => {
+            const header = document.querySelector('header');
+            if (window.scrollY > 50) {
+                header.classList.add('shadow-md');
+                header.classList.remove('shadow-sm');
+            } else {
+                header.classList.remove('shadow-md');
+                header.classList.add('shadow-sm');
+            }
+        });
+
+        // Hover effect for product cards
+        document.querySelectorAll('.product-card').forEach(card => {
+            card.addEventListener('mouseenter', () => {
+                card.style.transform = 'translateY(-4px)';
+            });
+            card.addEventListener('mouseleave', () => {
+                card.style.transform = 'translateY(0)';
+            });
+        });
+    </script>
+</body></html>

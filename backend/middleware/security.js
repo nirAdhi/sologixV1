@@ -1,0 +1,63 @@
+const { body, param, query, validationResult } = require('express-validator');
+const rateLimit = require('express-rate-limit');
+
+// ── Input sanitisation helper ──
+const sanitizeStr = (str, maxLen = 500) => {
+  if (!str) return str;
+  return String(str)
+    .trim()
+    .slice(0, maxLen)
+    .replace(/<script[^>]*>.*?<\/script>/gi, '')
+    .replace(/<[^>]+>/g, '')          // strip HTML tags
+    .replace(/javascript:/gi, '')      // strip JS protocol
+    .replace(/on\w+\s*=/gi, '');     // strip event handlers
+};
+
+// ── Validation result handler ──
+const validate = (req, res, next) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(422).json({ success: false, message: errors.array()[0].msg, errors: errors.array() });
+  }
+  next();
+};
+
+// ── Lead / contact form validators ──
+const leadValidators = [
+  body('name').trim().notEmpty().withMessage('Name is required').isLength({ max: 100 }).withMessage('Name too long').escape(),
+  body('phone').trim().notEmpty().withMessage('Phone is required').matches(/^[\d\s\+\-\(\)]{7,20}$/).withMessage('Invalid phone number'),
+  body('email').optional({ checkFalsy: true }).isEmail().withMessage('Invalid email').normalizeEmail(),
+  body('message').optional().trim().isLength({ max: 2000 }).withMessage('Message too long').escape(),
+  body('address').optional().trim().isLength({ max: 500 }).escape(),
+  body('source').optional().trim().isIn(['website','contact_us','partner','booking_request','consultation','calculator','product_quote','manual','referral','whatsapp']).withMessage('Invalid source'),
+  body('priority').optional().isIn(['high','medium','low']).withMessage('Invalid priority'),
+  validate,
+];
+
+// ── Product order validators ──
+const orderValidators = [
+  body('name').trim().notEmpty().withMessage('Name required').isLength({ max: 100 }).escape(),
+  body('phone').trim().notEmpty().withMessage('Phone required').matches(/^[\d\s\+\-\(\)]{7,20}$/).withMessage('Invalid phone'),
+  body('email').optional({ checkFalsy: true }).isEmail().normalizeEmail(),
+  body('address').trim().notEmpty().withMessage('Address required').isLength({ max: 1000 }).escape(),
+  body('items').isArray({ min: 1, max: 50 }).withMessage('Items must be a non-empty array'),
+  body('items.*.qty').isInt({ min: 1, max: 10000 }).withMessage('Invalid quantity'),
+  validate,
+];
+
+// ── Strict rate limiter for public form submissions ──
+const formLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000,   // 10 minutes
+  max: 10,                      // max 10 form submissions per IP per 10 min
+  message: { success: false, message: 'Too many submissions, please try again in 10 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// ── ID param validator (prevent non-numeric injection) ──
+const validateId = [
+  param('id').isInt({ min: 1 }).withMessage('Invalid ID'),
+  validate,
+];
+
+module.exports = { sanitizeStr, validate, leadValidators, orderValidators, formLimiter, validateId };

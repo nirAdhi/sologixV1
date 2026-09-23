@@ -1,0 +1,60 @@
+# docker-compose for use with Nginx Proxy Manager
+# NPM handles SSL — no nginx/certbot needed here
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: sologix-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-sologix_root_2026}
+      MYSQL_DATABASE: ${DB_NAME:-solar_booking}
+      MYSQL_USER: ${DB_USER:-sologix}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-sologix_db_secure_2026}
+    volumes:
+      - mysql_data:/var/lib/mysql
+    ports:
+      - "127.0.0.1:3306:3306"
+    networks:
+      - sologix-network
+    command: >
+      --default-authentication-plugin=mysql_native_password
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: sologix-backend
+    restart: unless-stopped
+    env_file:
+      - .env.docker
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      DB_HOST: mysql
+      DB_PORT: 3306
+    ports:
+      - "5000:5000"        # NPM will proxy to this port
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - sologix-network
+    volumes:
+      - uploads_data:/app/backend/uploads
+
+volumes:
+  mysql_data:
+  uploads_data:
+
+networks:
+  sologix-network:
+    driver: bridge

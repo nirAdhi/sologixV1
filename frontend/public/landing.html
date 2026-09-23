@@ -1,0 +1,792 @@
+<!DOCTYPE html>
+<html class="scroll-smooth" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sologix Energy | Turning Sunlight into Savings</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700;800&amp;family=Work+Sans:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface-container-high": "#e1e8fd",
+                        "tertiary-fixed": "#ffdbce",
+                        "outline-variant": "#bccac0",
+                        "surface-container-highest": "#dce2f7",
+                        "surface": "#f9f9ff",
+                        "emerald-light": "#34D399",
+                        "on-surface-variant": "#3d4a42",
+                        "sky-tint": "#EFF6FF",
+                        "on-primary": "#ffffff",
+                        "border-subtle": "#E5E7EB",
+                        "surface-gray": "#F9FAFB",
+                        "on-background": "#141b2b",
+                        "secondary-fixed-dim": "#b7c4ff",
+                        "surface-container-lowest": "#ffffff",
+                        "primary-fixed": "#85f8c4",
+                        "tertiary-container": "#cc4900",
+                        "on-primary-fixed-variant": "#005137",
+                        "error": "#ba1a1a",
+                        "primary": "#006948",
+                        "surface-bright": "#f9f9ff",
+                        "on-surface": "#141b2b",
+                        "on-primary-fixed": "#002114",
+                        "background": "#f9f9ff",
+                        "on-primary-container": "#f5fff7",
+                        "on-secondary-fixed-variant": "#0039b5",
+                        "tertiary-fixed-dim": "#ffb599",
+                        "surface-container": "#e9edff",
+                        "inverse-on-surface": "#edf0ff",
+                        "secondary": "#1d4ed8",
+                        "secondary-fixed": "#dce1ff",
+                        "outline": "#6d7a72",
+                        "on-tertiary-fixed-variant": "#7f2b00",
+                        "inverse-primary": "#68dba9",
+                        "inverse-surface": "#293040",
+                        "on-secondary-container": "#fffbff",
+                        "error-container": "#ffdad6",
+                        "on-secondary": "#ffffff",
+                        "on-tertiary-container": "#fffbff",
+                        "on-error-container": "#93000a",
+                        "primary-container": "#00855d",
+                        "surface-container-low": "#f1f3ff",
+                        "on-error": "#ffffff",
+                        "surface-dim": "#d3daef",
+                        "on-tertiary": "#ffffff",
+                        "surface-variant": "#dce2f7",
+                        "primary-fixed-dim": "#68dba9",
+                        "tertiary": "#a33900",
+                        "on-tertiary-fixed": "#370e00",
+                        "secondary-container": "#4069f2",
+                        "on-secondary-fixed": "#001551",
+                        "surface-tint": "#006c4a"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "gutter": "24px",
+                        "container-max": "1280px",
+                        "margin-mobile": "20px",
+                        "section-gap": "96px",
+                        "stack-lg": "24px",
+                        "margin-desktop": "64px",
+                        "stack-sm": "8px",
+                        "stack-md": "16px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Work Sans"],
+                        "headline-xl": ["Manrope"],
+                        "label-md": ["Work Sans"],
+                        "headline-md": ["Manrope"],
+                        "headline-lg": ["Manrope"],
+                        "headline-sm": ["Manrope"],
+                        "body-md": ["Work Sans"],
+                        "headline-xl-mobile": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", {"lineHeight": "28px", "fontWeight": "400"}],
+                        "headline-xl": ["48px", {"lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700"}],
+                        "label-md": ["14px", {"lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500"}],
+                        "headline-md": ["28px", {"lineHeight": "36px", "fontWeight": "600"}],
+                        "headline-lg": ["36px", {"lineHeight": "44px", "letterSpacing": "-0.01em", "fontWeight": "700"}],
+                        "headline-sm": ["20px", {"lineHeight": "28px", "fontWeight": "600"}],
+                        "body-md": ["16px", {"lineHeight": "24px", "fontWeight": "400"}],
+                        "headline-xl-mobile": ["32px", {"lineHeight": "40px", "fontWeight": "700"}]
+                    },
+                    "animation": {
+                        "marquee": "marquee 25s linear infinite",
+                        "fade-in-up": "fade-in-up 0.6s ease-out forwards",
+                    },
+                    "keyframes": {
+                        "marquee": {
+                            "0%": { transform: "translateX(0%)" },
+                            "100%": { transform: "translateX(-50%)" }
+                        },
+                        "fade-in-up": {
+                            "0%": { opacity: "0", transform: "translateY(20px)" },
+                            "100%": { opacity: "1", transform: "translateY(0)" }
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+        }
+        .focused-carousel-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 2rem;
+            overflow-x: hidden;
+            padding: 2rem 0;
+        }
+        .carousel-item {
+            transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+            flex-shrink: 0;
+            width: 300px;
+            opacity: 0.6;
+            transform: scale(0.85);
+        }
+        .carousel-item.active {
+            opacity: 1;
+            transform: scale(1.1);
+            width: 450px;
+            z-index: 10;
+        }
+        @media (max-width: 768px) {
+            .carousel-item { width: 240px; }
+            .carousel-item.active { width: 300px; }
+        }
+        .stat-label {
+            font-family: 'Work Sans', sans-serif;
+            font-weight: 500;
+            font-size: 0.875rem;
+            color: white;
+            text-transform: capitalize;
+            margin-top: 0.5rem;
+            z-index: 1;
+            text-align: center;
+        }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-md selection:bg-primary-fixed selection:text-on-primary-fixed">
+<!-- TopAppBar -->
+<header class="bg-white/95 backdrop-blur-md top-0 sticky z-[100] border-b border-gray-100 shadow-sm">
+<nav class="flex justify-between items-center max-w-container-max mx-auto px-6 lg:px-margin-desktop py-3">
+<div class="flex items-center gap-3">
+<a href="/">
+<img alt="Sologix Energy" class="h-12 w-auto rounded-full" src="https://res.cloudinary.com/dsiratycd/image/upload/v1780298344/logo_yo5zg9.png"/>
+</a>
+<span class="font-headline-md text-lg font-bold text-primary hidden md:block">Sologix Energy</span>
+</div>
+<div class="hidden lg:flex items-center gap-5">
+<a class="text-sm font-medium text-gray-600 hover:text-primary transition-colors" href="/">Home</a>
+<a class="text-sm font-medium text-gray-600 hover:text-primary transition-colors" href="/services">Services</a>
+<a class="text-sm font-medium text-gray-600 hover:text-primary transition-colors" href="/products">Products</a>
+<a class="text-sm font-medium text-gray-600 hover:text-primary transition-colors" href="/solutions">Solutions</a>
+<a class="text-sm font-medium text-gray-600 hover:text-primary transition-colors" href="/become-partner">Partner</a>
+<a class="text-sm font-medium text-gray-600 hover:text-primary transition-colors" href="/solar-calculator">Calculator</a>
+<a class="text-sm font-medium text-gray-600 hover:text-primary transition-colors" href="/gallery">Gallery</a>
+</div>
+<div class="flex items-center gap-3">
+<a href="/login" class="text-sm font-medium text-gray-600 hover:text-primary transition-colors hidden sm:block">Login</a>
+<a href="/booking" class="bg-primary text-white px-5 py-2.5 rounded-full text-sm font-medium hover:bg-green-700 transition-all">
+            Book Free
+        </a>
+<button class="lg:hidden text-gray-600" onclick="document.getElementById('mobile-menu').classList.toggle('hidden')">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</div>
+</nav>
+<div id="mobile-menu" class="hidden lg:hidden bg-white border-t border-gray-100 px-6 py-4 space-y-3">
+<a class="block text-sm font-medium text-gray-600 hover:text-primary" href="/">Home</a>
+<a class="block text-sm font-medium text-gray-600 hover:text-primary" href="/services">Services</a>
+<a class="block text-sm font-medium text-gray-600 hover:text-primary" href="/products">Products</a>
+<a class="block text-sm font-medium text-gray-600 hover:text-primary" href="/solutions">Solutions</a>
+<a class="block text-sm font-medium text-gray-600 hover:text-primary" href="/become-partner">Partner</a>
+<a class="block text-sm font-medium text-gray-600 hover:text-primary" href="/solar-calculator">Calculator</a>
+<a class="block text-sm font-medium text-gray-600 hover:text-primary" href="/gallery">Gallery</a>
+<a class="block text-sm font-medium text-gray-600 hover:text-primary" href="/login">Login</a>
+<a class="block text-center bg-primary text-white px-5 py-2.5 rounded-full text-sm font-medium" href="/booking">Book Free</a>
+</div>
+</header>
+<!-- Social Floating Icons -->
+<div class="fixed right-6 top-1/2 -translate-y-1/2 flex flex-col gap-4 z-50">
+<a class="w-12 h-12 bg-[#FF0000] text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform" href="#"><span class="material-symbols-outlined">play_circle</span></a>
+<a class="w-12 h-12 bg-[#25D366] text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform" href="#"><span class="material-symbols-outlined">chat</span></a>
+<a class="w-12 h-12 bg-[#1877F2] text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform" href="#"><span class="material-symbols-outlined">social_leaderboard</span></a>
+<a class="w-12 h-12 bg-gradient-to-tr from-yellow-400 via-red-500 to-purple-600 text-white rounded-full flex items-center justify-center shadow-lg hover:scale-110 transition-transform" href="#"><span class="material-symbols-outlined">camera</span></a>
+</div>
+<main>
+<!-- Hero Section with Background Video -->
+<section class="relative h-[85vh] flex items-center overflow-hidden">
+<div class="absolute inset-0 z-0">
+<video autoplay="" class="w-full h-full object-cover" loop="" muted="" playsinline="" poster="https://lh3.googleusercontent.com/aida-public/AB6AXuBtdoLQ0IYVRwCKeTUJKMPEr1hiBlM3VZMMm4VWth-9t1APauL0GbLCcQw49whSrc-wrtatIh6qzQ4hiNvrIyaGiNAi7TY5MRWuypnnse8I6_xxN-TxPEYF05WuNAJXxifYOv-3NGMMyDLNNDCBTfguaMG623nKIxweqXGQl2l2G4sReudqTJMuBCsjCeJ-BaincrNteLzNH3dD4EsFQUeUgFEhap-0OY9WZnOQq4OEu99tPh_3F_1izsG0V0QyWhejKnXWAl0noYY">
+<source src="https://static.videezy.com/system/resources/previews/000/039/075/original/Sun_Panels.mp4" type="video/mp4"/>
+</video>
+<div class="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent"></div>
+</div>
+<div class="container mx-auto px-margin-desktop relative z-10 text-center lg:text-left">
+<div class="max-w-3xl animate-fade-in-up">
+<div class="inline-block px-4 py-2 bg-primary/20 backdrop-blur-md rounded-full border border-white/20 mb-6">
+<span class="text-white font-label-md uppercase tracking-widest text-xs">Jharkhand's #1 Solar Partner</span>
+</div>
+<h1 class="font-headline-xl text-[44px] md:text-headline-xl text-white mb-6 leading-tight">Turning Sunlight into Savings</h1>
+<p class="font-body-lg text-body-lg text-white/90 mb-10 max-w-xl">Empowering homes and industries across Jharkhand with reliable, earth-centric energy solutions. Start your green journey today.</p>
+<div class="flex flex-wrap gap-4 justify-center lg:justify-start">
+<a href="/booking" class="bg-primary text-on-primary px-8 py-4 rounded-full font-label-md flex items-center gap-2 hover:bg-primary-container transition-all">
+                        Start Saving Now <span class="material-symbols-outlined">arrow_forward</span>
+</a>
+<button class="bg-white/10 backdrop-blur-md border border-white/30 text-white px-8 py-4 rounded-full font-label-md hover:bg-white/20 transition-all">
+                        Watch Process
+                    </button>
+</div>
+</div>
+</div>
+<!-- Floating Consultation Overlay -->
+<div class="absolute right-10 bottom-10 hidden md:block">
+<div class="glass-card p-6 rounded-2xl border border-white/30 shadow-2xl animate-bounce">
+<div class="flex items-center gap-4">
+<div class="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white">
+<span class="material-symbols-outlined">call</span>
+</div>
+<div>
+<p class="font-label-md text-xs text-primary font-bold uppercase tracking-wider">Free Consultation</p>
+<p class="font-headline-sm text-sm text-on-surface">Book a call today</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Trust Badges Section -->
+<section class="py-12 bg-white border-y border-gray-100">
+<div class="max-w-5xl mx-auto px-6">
+<div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+<div class="bg-gray-50 rounded-2xl p-6 text-center border border-gray-100 hover:border-primary/30 hover:shadow-md transition-all">
+<div class="text-3xl md:text-4xl font-bold text-primary" data-target="47" data-suffix="+">0+</div>
+<div class="text-sm text-gray-500 mt-2 font-medium">Years of Experience</div>
+</div>
+<div class="bg-gray-50 rounded-2xl p-6 text-center border border-gray-100 hover:border-primary/30 hover:shadow-md transition-all">
+<div class="text-3xl md:text-4xl font-bold text-primary" data-target="15000" data-suffix="+">0+</div>
+<div class="text-sm text-gray-500 mt-2 font-medium">Enterprise Clients</div>
+</div>
+<div class="bg-gray-50 rounded-2xl p-6 text-center border border-gray-100 hover:border-primary/30 hover:shadow-md transition-all">
+<div class="text-3xl md:text-4xl font-bold text-primary" data-target="1" data-suffix=" GW+" data-decimals="0">0 GW+</div>
+<div class="text-sm text-gray-500 mt-2 font-medium">Installed Capacity</div>
+</div>
+<div class="bg-gray-50 rounded-2xl p-6 text-center border border-gray-100 hover:border-primary/30 hover:shadow-md transition-all">
+<div class="text-3xl md:text-4xl font-bold text-primary" data-target="99.9" data-suffix="%" data-decimals="1">0.0%</div>
+<div class="text-sm text-gray-500 mt-2 font-medium">System Uptime</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Our Offerings (Focused Slider) -->
+<section class="py-section-gap bg-surface overflow-hidden">
+<div class="max-w-container-max mx-auto px-margin-desktop text-center mb-12">
+<span class="text-primary font-label-md uppercase tracking-[0.2em] block mb-4">What we do</span>
+<h2 class="font-headline-lg text-headline-lg">Our Offerings</h2>
+</div>
+<div class="focused-carousel-container" id="offerings-carousel">
+<div class="carousel-item">
+<div class="relative rounded-[2rem] overflow-hidden aspect-[4/3] group">
+<img alt="Residential Solar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida/ADBb0ugC7phNDgbHP7SLNKWgAnkMSuwJrUaTZigi37mSxUNObCqk5tCVHML7_EbXQXf4rGkp0-VyubUZtkuivTAfSXgVNm8diT4N0i8Nv-x8Q4tTz_b32Ov71kwqplUcfInfbMKW9qioYERpBiNo4I2sj2Zo5gVbVj6EDPA8Y7ZFYhHWrh1Tdxq7QeqQAEoYHTPibi5OTdJ602QCjHManAZyRwIKDWfLBJsgerplXS23T5pg1KnyuFBYbx0t_yE"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-8 text-left">
+<h3 class="text-white font-headline-md mb-2">Residential</h3>
+<p class="text-white/70 text-sm">Efficient solar solutions for modern homes.</p>
+</div>
+</div>
+</div>
+<div class="carousel-item active">
+<div class="relative rounded-[2rem] overflow-hidden aspect-[4/3] group">
+<img alt="Commercial Solar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida/ADBb0ug2ft3tCKYvp2pYsjeiaCBZ22HqLK5Gn3xUX1R4iekt8fu-P6kihESpFVkVrMUNhPs-RugcPYYObeJq2yxWmtJNDN1uGKel12of0bQBiBHXvv0aTe96n_cbFHLMyTRd-icdjUy1XH681LhDqHRuYv8U6jJreWoe2TjmloEj3wjii1Meou0tyDDCy5Q574MR0018g3IlOccWIjCu2Apd8_tOCzB5mSottxkCS8iMCMLnrsF2kOqZcsd26oI"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-8 text-left">
+<h3 class="text-white font-headline-md mb-2">Commercial</h3>
+<p class="text-white/70 text-sm">Powering businesses with renewable energy.</p>
+</div>
+</div>
+</div>
+<div class="carousel-item">
+<div class="relative rounded-[2rem] overflow-hidden aspect-[4/3] group">
+<img alt="Industrial Solar" class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBtdoLQ0IYVRwCKeTUJKMPEr1hiBlM3VZMMm4VWth-9t1APauL0GbLCcQw49whSrc-wrtatIh6qzQ4hiNvrIyaGiNAi7TY5MRWuypnnse8I6_xxN-TxPEYF05WuNAJXxifYOv-3NGMMyDLNNDCBTfguaMG623nKIxweqXGQl2l2G4sReudqTJMuBCsjCeJ-BaincrNteLzNH3dD4EsFQUeUgFEhap-0OY9WZnOQq4OEu99tPh_3F_1izsG0V0QyWhejKnXWAl0noYY"/>
+<div class="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-8 text-left">
+<h3 class="text-white font-headline-md mb-2">Industrial</h3>
+<p class="text-white/70 text-sm">Large scale infrastructure solar projects.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="flex justify-center gap-4 mt-8">
+<button class="w-12 h-12 rounded-full border border-primary text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-all" onclick="moveCarousel('offerings-carousel', 'prev')">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-12 h-12 rounded-full border border-primary text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-all" onclick="moveCarousel('offerings-carousel', 'next')">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</section>
+<!-- Our Products (Marquee) -->
+<section class="py-20 bg-surface-gray overflow-hidden border-y border-border-subtle">
+<div class="text-center mb-10">
+<h2 class="font-headline-md text-primary">Our Premium Products</h2>
+</div>
+<div class="relative flex overflow-x-hidden">
+<div class="animate-marquee whitespace-nowrap flex gap-8 items-center py-4">
+<div class="inline-flex flex-col items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-border-subtle min-w-[280px]">
+<img alt="Solar Panel" class="w-full h-40 object-cover rounded-xl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAqeEpRmOUrApdeWjpNlF9rLzmjtiMQ5p9eyd5mitEOK-TAcYuh_DHgGBcZge_jKjMtiTl5aBIUy-EJKrAwGsFhrWPddB4FnMnEUu9D6U5BnSrhMjTflCgySqpTQn5GAJAFL9LQofVJk2ox6f2tOEv-VdhXOBq59wVzFHT-31lKBDHBGRlijbFtLIU0G8OojBCIjs-rYPCCQjbX1dWQ2CPvDtS-dGSYQfRYZqzTXZOOUn1A-b8C8MOVY08UwWIh-3uF28NY33IRFpU"/>
+<div class="text-center">
+<h4 class="font-bold">Monocrystalline Panels</h4>
+<p class="text-xs text-on-surface-variant">High Efficiency Tier-1</p>
+</div>
+</div>
+<div class="inline-flex flex-col items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-border-subtle min-w-[280px]">
+<img alt="Inverter" class="w-full h-40 object-cover rounded-xl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBHaqPoIh70LJHbTRgsdU0mSWfGn7e1nrXqs95OvNebSXBf6m8WqTAj9uDyMPvbCfvE-7dHmJS8m9sB4otha_0qUMcKuPdPHWAAl04C_2c9vz4qLF3-3BR4ZL6DA9pOW96xPRNaGVmGOPMR52NH6m053lyUfZCwPGlhw7pvlJ0CNLMLljIVnjoV2q-wKegQdzYpy6hkid1C_FBhNOO93FQB3pvmAVeuRPJVe7ZW54ZbQHa2EoiKQxBXeWGYnawW9pdO-37tJ8WKL-o"/>
+<div class="text-center">
+<h4 class="font-bold">Smart Hybrid Inverters</h4>
+<p class="text-xs text-on-surface-variant">Dual-mode WiFi enabled</p>
+</div>
+</div>
+<div class="inline-flex flex-col items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-border-subtle min-w-[280px]">
+<img alt="Battery" class="w-full h-40 object-cover rounded-xl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCFAkRpJbgWzEwRYUvdh-kkIpbP2I60YEyb9hjdTDmtl59ZKJ1KThHs1lLDTux0ewURLyRbsqN9MgGvSdtgq_D-9EkdkXDXmRDJzoT_SFyu7SitL661WI6gFV-N7P61ugnLofHSybP5Qk2R5H7hZjcs3LEhq7ngEeVCAv-K2fkVlYZWEoPfGCGJ1-AdA28Dfb0IzuPFcO_BUvRWwMaXDBQJpz6VDAj40Hbx9Nn7AULakEyPVPfNEwRzw4Elkj99LjdrjDh94Ny7X7w"/>
+<div class="text-center">
+<h4 class="font-bold">Lithium-ion Storage</h4>
+<p class="text-xs text-on-surface-variant">10+ Year Lifecycle</p>
+</div>
+</div>
+<div class="inline-flex flex-col items-center gap-4 bg-white p-6 rounded-2xl shadow-sm border border-border-subtle min-w-[280px]">
+<img alt="Solar Panel" class="w-full h-40 object-cover rounded-xl" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDttSjLd24Mv3s67ouQLFhjYccC70E5OY5OM9tFU9Sv8UsvYhrsN8aJU6C0l1bXGSORG2ql94WCEyJSLTr5Ook2QNevYzD4GuRNMcM_kHJuD7rmKQAmskBrePqpAgUIMMYTecNLOdCAO2cFh4AYqurMvszU5bTf9LkOtQ-mb1_kp9h5zpwlJwq7SdXuem_TZDKxqlO_SbjAG_Ty2zBqL3skBDGDy3YbQw7BANCyVwDEuMKBnNIwQSGIReI3hDKwW5tCh8htO4_93Fw"/>
+<div class="text-center">
+<h4 class="font-bold">Monocrystalline Panels</h4>
+<p class="text-xs text-on-surface-variant">High Efficiency Tier-1</p>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Government Subsidy Section -->
+<section class="py-section-gap bg-sky-tint relative overflow-hidden">
+<div class="max-w-container-max mx-auto px-margin-desktop">
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+<div class="lg:col-span-6 order-2 lg:order-1 transition-transform duration-1000 translate-x-[-50px] opacity-0" id="subsidy-img-l">
+<div class="relative">
+<div class="absolute -inset-4 bg-primary/10 rounded-[3rem] blur-2xl"></div>
+<img alt="PM Surya Yojna" class="rounded-[2.5rem] shadow-2xl relative z-10 border-8 border-white w-full" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCRlo-YhVssWFyfF9Z4VVcymvGyDwYt5MX0QMI7iCcgyGAdp5_oKb7DF0tqE8abZ-eQ5jOMj49e5VmQS2jKtXCHrJ6k49AN4OMhZhcknTVNrRDMt1Fe2_LOXKJOYUS0h5TzjZTi80aYvjzmDFCxFaxl1qv77y0eoAdH9fEHt-2_DjuGbkiG4oEGEXn3wECbw4NloPc1ShpGTEQZYim6f1-uoibleSNXM05og8cdocdcExQhR-KZ_9_uSiYhYLPXghRcGMYWCPzP8v4"/>
+</div>
+</div>
+<div class="lg:col-span-6 order-1 lg:order-2">
+<div class="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-primary font-label-md mb-6">
+<span class="material-symbols-outlined text-sm">verified</span> Government Initiative
+                    </div>
+<h2 class="font-headline-lg text-headline-lg mb-6">PM Surya Ghar: Mufti Bijli Yojana</h2>
+<div class="prose prose-slate max-w-none mb-8 text-on-surface-variant font-body-md leading-relaxed">
+<p>The PM Surya Ghar Muft Bijli Yojana is India's flagship rooftop solar scheme launched to make solar energy affordable and accessible for residential households. Under this initiative, eligible households can receive benefits of up to 300 units of free electricity every month along with direct government subsidy support.</p>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+<div class="flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm">
+<span class="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white"><span class="material-symbols-outlined text-base">currency_rupee</span></span>
+<span class="text-sm font-semibold">Subsidy for 1 kW</span>
+</div>
+<div class="flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm">
+<span class="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white"><span class="material-symbols-outlined text-base">currency_rupee</span></span>
+<span class="text-sm font-semibold">Subsidy for 2 kW</span>
+</div>
+<div class="flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm">
+<span class="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white"><span class="material-symbols-outlined text-base">currency_rupee</span></span>
+<span class="text-sm font-semibold">Up to Subsidy for 3 kW+</span>
+</div>
+<div class="flex items-center gap-3 p-4 bg-white rounded-xl shadow-sm">
+<span class="w-8 h-8 bg-primary rounded-full flex items-center justify-center text-white"><span class="material-symbols-outlined text-base">electric_bolt</span></span>
+<span class="text-sm font-semibold">300 Units Free Electricity</span>
+</div>
+</div>
+<a href="/booking" class="bg-primary text-on-primary px-10 py-4 rounded-full font-label-md shadow-xl hover:scale-105 transition-all inline-block">Apply for Subsidy Now</a>
+</div>
+</div>
+</div>
+</section>
+<!-- Why Customers Choose Us -->
+<section class="py-section-gap bg-white">
+<div class="max-w-container-max mx-auto px-margin-desktop text-center">
+<span class="text-primary font-label-md uppercase tracking-[0.2em] block mb-4">The Sologix Advantage</span>
+<h2 class="font-headline-lg text-headline-lg mb-16">Why Customers Trust Us</h2>
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-gutter" id="why-us-grid">
+<div class="p-8 rounded-3xl bg-surface-gray border border-border-subtle hover:border-primary transition-all opacity-0 translate-y-10 reason-card">
+<div class="w-16 h-16 bg-sky-tint rounded-2xl flex items-center justify-center text-primary mb-6 mx-auto">
+<span class="material-symbols-outlined text-3xl">verified</span>
+</div>
+<h3 class="font-headline-sm mb-3">ISO Certified</h3>
+<p class="text-on-surface-variant text-sm">Global standards of safety and efficiency in every panel.</p>
+</div>
+<div class="p-8 rounded-3xl bg-surface-gray border border-border-subtle hover:border-primary transition-all opacity-0 translate-y-10 reason-card" style="transition-delay: 100ms">
+<div class="w-16 h-16 bg-sky-tint rounded-2xl flex items-center justify-center text-primary mb-6 mx-auto">
+<span class="material-symbols-outlined text-3xl">payments</span>
+</div>
+<h3 class="font-headline-sm mb-3">Easy EMI</h3>
+<p class="text-on-surface-variant text-sm">Flexible financing with low-interest rates for all.</p>
+</div>
+<div class="p-8 rounded-3xl bg-surface-gray border border-border-subtle hover:border-primary transition-all opacity-0 translate-y-10 reason-card" style="transition-delay: 200ms">
+<div class="w-16 h-16 bg-sky-tint rounded-2xl flex items-center justify-center text-primary mb-6 mx-auto">
+<span class="material-symbols-outlined text-3xl">support_agent</span>
+</div>
+<h3 class="font-headline-sm mb-3">Subsidy Aid</h3>
+<p class="text-on-surface-variant text-sm">Hassle-free documentation and application support.</p>
+</div>
+<div class="p-8 rounded-3xl bg-surface-gray border border-border-subtle hover:border-primary transition-all opacity-0 translate-y-10 reason-card" style="transition-delay: 300ms">
+<div class="w-16 h-16 bg-sky-tint rounded-2xl flex items-center justify-center text-primary mb-6 mx-auto">
+<span class="material-symbols-outlined text-3xl">savings</span>
+</div>
+<h3 class="font-headline-sm mb-3">Value for Money</h3>
+<p class="text-on-surface-variant text-sm">Optimal ROI with long-term savings guaranteed.</p>
+</div>
+</div>
+</div>
+</section>
+<!-- Our Work Process -->
+<section class="py-section-gap bg-surface-gray overflow-hidden">
+<div class="max-w-container-max mx-auto px-margin-desktop text-center mb-16">
+<h2 class="font-headline-lg text-headline-lg">Our Work Process</h2>
+<p class="text-on-surface-variant mt-2">From first survey to final installation, we guide you every step.</p>
+</div>
+<div class="focused-carousel-container" id="process-carousel">
+<div class="carousel-item active">
+<div class="bg-white p-10 rounded-[2.5rem] shadow-xl text-center border border-border-subtle h-[320px] flex flex-col justify-center">
+<div class="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6">1</div>
+<h4 class="font-headline-sm mb-2">On-Site Survey</h4>
+<p class="text-sm text-on-surface-variant">Expert technical assessment of your rooftop capacity.</p>
+</div>
+</div>
+<div class="carousel-item">
+<div class="bg-white p-10 rounded-[2.5rem] shadow-xl text-center border border-border-subtle h-[320px] flex flex-col justify-center">
+<div class="w-16 h-16 bg-primary text-white rounded-full flex items-center justify-center text-2xl font-bold mx-auto mb-6">2</div>
+<h4 class="font-headline-sm mb-2">Modeling</h4>
+<p class="text-sm text-on-surface-variant">Advanced 3D shadow analysis and ROI simulation.</p>
+</div>
+</div>
+</div>
+<div class="flex justify-center gap-4 mt-8">
+<button class="w-12 h-12 rounded-full border border-primary text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-all" onclick="moveCarousel('process-carousel', 'prev')">
+<span class="material-symbols-outlined">chevron_left</span>
+</button>
+<button class="w-12 h-12 rounded-full border border-primary text-primary flex items-center justify-center hover:bg-primary hover:text-white transition-all" onclick="moveCarousel('process-carousel', 'next')">
+<span class="material-symbols-outlined">chevron_right</span>
+</button>
+</div>
+</section>
+<!-- Estimate Savings (Calculator) -->
+<section class="py-section-gap bg-white">
+<div class="max-w-container-max mx-auto px-margin-desktop">
+<div class="bg-surface-container rounded-[3rem] p-12 lg:p-20 relative overflow-hidden shadow-xl">
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
+<div>
+<h2 class="font-headline-lg mb-6">Solar Savings Calculator</h2>
+<p class="text-on-surface-variant mb-10">Get an instant estimate of your system size and potential annual savings based on your location and electricity usage.</p>
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-6 mb-8">
+<div class="space-y-2">
+<label class="font-label-md text-xs uppercase text-on-surface-variant">State</label>
+<select class="w-full bg-white border border-border-subtle rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary">
+<option>Jharkhand</option>
+<option>Bihar</option>
+<option>Odisha</option>
+</select>
+</div>
+<div class="space-y-2">
+<label class="font-label-md text-xs uppercase text-on-surface-variant">Monthly Bill</label>
+<select class="w-full bg-white border border-border-subtle rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-primary">
+<option>1,000 - 5,000</option>
+<option>5,001 - 15,000</option>
+<option>Above 15,000</option>
+</select>
+</div>
+</div>
+<a href="/solar-calculator" class="w-full bg-primary text-on-primary py-4 rounded-xl font-headline-sm hover:bg-primary-container shadow-lg transition-all inline-block text-center">Calculate ROI</a>
+</div>
+<div class="hidden lg:block relative">
+<div class="bg-white p-10 rounded-[2.5rem] shadow-2xl relative z-10">
+<div class="flex items-center justify-between mb-8">
+<h4 class="font-headline-sm">Potential Annual Savings</h4>
+<span class="bg-emerald-light/20 text-primary px-3 py-1 rounded-full font-label-md text-xs">Estimate</span>
+</div>
+<div class="space-y-8">
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant">Savings (Annual)</span>
+<span class="font-headline-lg text-primary">72,400*</span>
+</div>
+<div class="flex items-center justify-between">
+<span class="text-on-surface-variant">System Capacity</span>
+<span class="font-headline-md">5.2 kWp</span>
+</div>
+<div class="h-2 bg-surface rounded-full overflow-hidden">
+<div class="h-full bg-primary w-[70%]"></div>
+</div>
+<p class="text-xs text-on-surface-variant italic font-body-md">*Estimates based on current state tariffs and PM Surya Ghar subsidy rules.</p>
+</div>
+</div>
+<div class="absolute -bottom-10 -right-10 w-64 h-64 bg-primary/10 rounded-full blur-3xl -z-10"></div>
+</div>
+</div>
+</div>
+</div>
+</section>
+<!-- Featured Projects Section -->
+<section class="py-section-gap bg-white">
+<div class="max-w-container-max mx-auto px-margin-desktop">
+<div class="text-center mb-12">
+<span class="text-primary font-label-md uppercase tracking-[0.2em] block mb-4">Portfolio</span>
+<h2 class="font-headline-lg text-headline-lg">Our Featured Projects</h2>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+<!-- Project 1 -->
+<div class="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-gray-100 group">
+<div class="relative h-56 overflow-hidden">
+<img alt="Commercial Rooftop" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="https://images.unsplash.com/photo-1509391366360-2e959784a276?w=600&h=400&fit=crop"/>
+<div class="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-gray-100">
+<span class="text-xs font-medium text-primary">Commercial</span>
+</div>
+</div>
+<div class="p-5">
+<h3 class="text-lg font-semibold text-gray-800 mb-2">5MW Commercial Rooftop</h3>
+<div class="flex items-center gap-2 text-gray-500 text-sm mb-3">
+<span class="material-symbols-outlined text-sm">location_on</span>
+Ranchi, Jharkhand
+</div>
+<div class="flex justify-between items-center border-t border-gray-100 pt-3">
+<span class="text-xs text-gray-400 uppercase tracking-wider">Capacity</span>
+<span class="text-sm font-semibold text-primary">50 kWp</span>
+</div>
+</div>
+</div>
+<!-- Project 2 -->
+<div class="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-gray-100 group">
+<div class="relative h-56 overflow-hidden">
+<img alt="Residential Solar" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="https://images.unsplash.com/photo-1559302504-64aae6ca6b6d?w=600&h=400&fit=crop"/>
+<div class="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-gray-100">
+<span class="text-xs font-medium text-primary">Residential</span>
+</div>
+</div>
+<div class="p-5">
+<h3 class="text-lg font-semibold text-gray-800 mb-2">3kW Residential Solar</h3>
+<div class="flex items-center gap-2 text-gray-500 text-sm mb-3">
+<span class="material-symbols-outlined text-sm">location_on</span>
+Bengaluru, Karnataka
+</div>
+<div class="flex justify-between items-center border-t border-gray-100 pt-3">
+<span class="text-xs text-gray-400 uppercase tracking-wider">Capacity</span>
+<span class="text-sm font-semibold text-primary">5 kWp</span>
+</div>
+</div>
+</div>
+<!-- Project 3 -->
+<div class="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-gray-100 group">
+<div class="relative h-56 overflow-hidden">
+<img alt="Industrial Project" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?w=600&h=400&fit=crop"/>
+<div class="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-gray-100">
+<span class="text-xs font-medium text-primary">Industrial</span>
+</div>
+</div>
+<div class="p-5">
+<h3 class="text-lg font-semibold text-gray-800 mb-2">250kW Industrial Project</h3>
+<div class="flex items-center gap-2 text-gray-500 text-sm mb-3">
+<span class="material-symbols-outlined text-sm">location_on</span>
+Bokaro, Jharkhand
+</div>
+<div class="flex justify-between items-center border-t border-gray-100 pt-3">
+<span class="text-xs text-gray-400 uppercase tracking-wider">Capacity</span>
+<span class="text-sm font-semibold text-primary">250 kWp</span>
+</div>
+</div>
+</div>
+<!-- Project 4 -->
+<div class="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-gray-100 group">
+<div class="relative h-56 overflow-hidden">
+<img alt="Shadowless Installation" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="https://images.unsplash.com/photo-1497440001374-f26997328c1b?w=600&h=400&fit=crop"/>
+<div class="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-gray-100">
+<span class="text-xs font-medium text-primary">Residential</span>
+</div>
+</div>
+<div class="p-5">
+<h3 class="text-lg font-semibold text-gray-800 mb-2">5kW Shadowless Installation</h3>
+<div class="flex items-center gap-2 text-gray-500 text-sm mb-3">
+<span class="material-symbols-outlined text-sm">location_on</span>
+Kolkata, Jharkhand
+</div>
+<div class="flex justify-between items-center border-t border-gray-100 pt-3">
+<span class="text-xs text-gray-400 uppercase tracking-wider">Capacity</span>
+<span class="text-sm font-semibold text-primary">15 kWp</span>
+</div>
+</div>
+</div>
+<!-- Project 5 -->
+<div class="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-gray-100 group">
+<div class="relative h-56 overflow-hidden">
+<img alt="Hybrid System" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="https://images.unsplash.com/photo-1624397640148-949b1732bb0a?w=600&h=400&fit=crop"/>
+<div class="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-gray-100">
+<span class="text-xs font-medium text-primary">Residential</span>
+</div>
+</div>
+<div class="p-5">
+<h3 class="text-lg font-semibold text-gray-800 mb-2">10kW Hybrid System</h3>
+<div class="flex items-center gap-2 text-gray-500 text-sm mb-3">
+<span class="material-symbols-outlined text-sm">location_on</span>
+Mumbai, Maharashtra
+</div>
+<div class="flex justify-between items-center border-t border-gray-100 pt-3">
+<span class="text-xs text-gray-400 uppercase tracking-wider">Capacity</span>
+<span class="text-sm font-semibold text-primary">10 kWp</span>
+</div>
+</div>
+</div>
+<!-- Project 6 -->
+<div class="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-gray-100 group">
+<div class="relative h-56 overflow-hidden">
+<img alt="Manufacturing Unit" class="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src="https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=600&h=400&fit=crop"/>
+<div class="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-gray-100">
+<span class="text-xs font-medium text-primary">Commercial</span>
+</div>
+</div>
+<div class="p-5">
+<h3 class="text-lg font-semibold text-gray-800 mb-2">150kW Manufacturing Unit</h3>
+<div class="flex items-center gap-2 text-gray-500 text-sm mb-3">
+<span class="material-symbols-outlined text-sm">location_on</span>
+Nagpur, Maharashtra
+</div>
+<div class="flex justify-between items-center border-t border-gray-100 pt-3">
+<span class="text-xs text-gray-400 uppercase tracking-wider">Capacity</span>
+<span class="text-sm font-semibold text-primary">150 kWp</span>
+</div>
+</div>
+</div>
+</div>
+<div class="text-center mt-10">
+<a href="/gallery" class="inline-flex items-center gap-2 bg-primary text-white px-8 py-3 rounded-full font-medium hover:bg-green-700 transition-all">
+View All Projects
+<span class="material-symbols-outlined text-xl">arrow_forward</span>
+</a>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-dim border-t border-border-subtle pt-20 pb-10">
+<div class="max-w-container-max mx-auto px-margin-desktop">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+<div class="space-y-6">
+<img alt="Sologix Energy" class="h-12 w-auto rounded-full" src="https://res.cloudinary.com/dsiratycd/image/upload/v1780298344/logo_yo5zg9.png"/>
+<p class="text-on-surface-variant text-sm">Jharkhand's premier solar installation partner since 2018. Powering Tomorrow, Naturally.</p>
+<div class="flex gap-4">
+<a class="w-10 h-10 bg-white border border-border-subtle rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all" href="#"><span class="material-symbols-outlined !text-base">facebook</span></a>
+<a class="w-10 h-10 bg-white border border-border-subtle rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all" href="#"><span class="material-symbols-outlined !text-base">video_library</span></a>
+<a class="w-10 h-10 bg-white border border-border-subtle rounded-full flex items-center justify-center text-primary hover:bg-primary hover:text-white transition-all" href="#"><span class="material-symbols-outlined !text-base">mail</span></a>
+</div>
+</div>
+<div>
+<h5 class="font-headline-sm text-primary mb-6">Our Services</h5>
+<ul class="space-y-3 text-sm text-on-surface-variant">
+<li><a class="hover:text-primary" href="/solutions">Residential Solar Solutions</a></li>
+<li><a class="hover:text-primary" href="/solutions">Commercial Solar Solutions</a></li>
+<li><a class="hover:text-primary" href="/solutions">Industrial Solar Solutions</a></li>
+<li><a class="hover:text-primary" href="/services">Solar Maintenance &amp; O&amp;M</a></li>
+<li><a class="hover:text-primary" href="/solutions">Turnkey EPC Solutions</a></li>
+</ul>
+</div>
+<div>
+<h5 class="font-headline-sm text-primary mb-6">Quick Links</h5>
+<ul class="space-y-3 text-sm text-on-surface-variant">
+<li><a class="hover:text-primary" href="/solar-calculator">Solar Calculator</a></li>
+<li><a class="hover:text-primary" href="/become-partner">Become a Partner</a></li>
+<li><a class="hover:text-primary" href="/gallery">Project Gallery</a></li>
+<li><a class="hover:text-primary" href="/services">FAQ &amp; Support</a></li>
+<li><a class="hover:text-primary" href="/solutions">Subsidy Updates</a></li>
+</ul>
+</div>
+<div>
+<h5 class="font-headline-sm text-primary mb-6">Newsletter</h5>
+<p class="text-sm text-on-surface-variant mb-6">Stay updated with latest solar news and government subsidies.</p>
+<div class="flex gap-2">
+<input class="flex-1 bg-white border border-border-subtle rounded-xl px-4 py-2 outline-none" placeholder="Email" type="email"/>
+<button class="bg-primary text-on-primary px-4 py-2 rounded-xl"><span class="material-symbols-outlined">send</span></button>
+</div>
+</div>
+</div>
+<div class="pt-8 border-t border-border-subtle flex flex-col md:row justify-between items-center gap-4 text-xs text-on-surface-variant">
+<p>&copy; 2024 Sologix Energy Private Limited. All Rights Reserved.</p>
+<div class="flex gap-6">
+<a class="hover:text-primary" href="#">Privacy Policy</a>
+<a class="hover:text-primary" href="#">Terms of Service</a>
+<a class="hover:text-primary" href="#">Sitemap</a>
+</div>
+</div>
+</div>
+</footer>
+<script>
+    function moveCarousel(id, direction) {
+        const container = document.getElementById(id);
+        const items = container.querySelectorAll('.carousel-item');
+        let activeIndex = Array.from(items).findIndex(item => item.classList.contains('active'));
+        
+        items[activeIndex].classList.remove('active');
+        
+        if (direction === 'next') {
+            activeIndex = (activeIndex + 1) % items.length;
+        } else {
+            activeIndex = (activeIndex - 1 + items.length) % items.length;
+        }
+        
+        items[activeIndex].classList.add('active');
+        
+        const activeItem = items[activeIndex];
+        const scrollOffset = activeItem.offsetLeft - (container.clientWidth / 2) + (activeItem.clientWidth / 2);
+        container.scrollTo({ left: scrollOffset, behavior: 'smooth' });
+    }
+
+    const observerOptions = { threshold: 0.1 };
+    const scrollObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting) {
+                if (entry.target.id === 'subsidy-img-l') {
+                    entry.target.style.transform = 'translateX(0)';
+                    entry.target.style.opacity = '1';
+                }
+                if (entry.target.classList.contains('reason-card')) {
+                    entry.target.style.transform = 'translateY(0)';
+                    entry.target.style.opacity = '1';
+                }
+            }
+        });
+    }, observerOptions);
+
+    document.querySelectorAll('.reason-card, #subsidy-img-l').forEach(el => scrollObserver.observe(el));
+
+    // Counter Animation
+    function animateCounter(el) {
+        const target = parseFloat(el.getAttribute('data-target'));
+        const suffix = el.getAttribute('data-suffix') || '';
+        const decimals = parseInt(el.getAttribute('data-decimals')) || 0;
+        const duration = 2000;
+        const startTime = performance.now();
+
+        function update(currentTime) {
+            const elapsed = currentTime - startTime;
+            const progress = Math.min(elapsed / duration, 1);
+            const eased = 1 - Math.pow(1 - progress, 3);
+            const current = eased * target;
+
+            if (decimals > 0) {
+                el.textContent = current.toFixed(decimals) + suffix;
+            } else {
+                el.textContent = Math.floor(current).toLocaleString('en-IN') + suffix;
+            }
+
+            if (progress < 1) {
+                requestAnimationFrame(update);
+            }
+        }
+        requestAnimationFrame(update);
+    }
+
+    const counterObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+            if (entry.isIntersecting && !entry.target.classList.contains('counted')) {
+                entry.target.classList.add('counted');
+                animateCounter(entry.target);
+            }
+        });
+    }, { threshold: 0.5 });
+
+    document.querySelectorAll('[data-target]').forEach(el => counterObserver.observe(el));
+</script>
+</body></html>

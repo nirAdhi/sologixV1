@@ -1,0 +1,29 @@
+{
+  "name": "sologix-solar",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Sologix Energy Solar Booking Application",
+  "main": "backend/server.js",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "cd backend && npm run dev",
+    "build": "cd backend && npm install && cd ../frontend && npm install && npm run build",
+    "heroku-postbuild": "npm run build"
+  },
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-validator": "^7.0.1",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.6.5",
+    "nodemailer": "^6.9.7",
+    "qrcode": "^1.5.4",
+    "razorpay": "^2.9.2"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}

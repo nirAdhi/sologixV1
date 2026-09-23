@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Sologix Energy - Solar Calculator</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@600;700&amp;family=Work+Sans:wght@400;500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "surface": "#f9f9ff",
+                        "surface-dim": "#d3daef",
+                        "inverse-on-surface": "#edf0ff",
+                        "border-subtle": "#E5E7EB",
+                        "primary-fixed": "#85f8c4",
+                        "inverse-surface": "#293040",
+                        "primary": "#006948",
+                        "on-primary-fixed-variant": "#005137",
+                        "outline-variant": "#bccac0",
+                        "error-container": "#ffdad6",
+                        "primary-container": "#00855d",
+                        "on-tertiary-container": "#fffbff",
+                        "tertiary-container": "#cc4900",
+                        "surface-container-low": "#f1f3ff",
+                        "surface-container-highest": "#dce2f7",
+                        "inverse-primary": "#68dba9",
+                        "surface-container-high": "#e1e8fd",
+                        "on-surface": "#141b2b",
+                        "on-secondary": "#ffffff",
+                        "primary-fixed-dim": "#68dba9",
+                        "outline": "#6d7a72",
+                        "surface-container": "#e9edff",
+                        "on-primary-fixed": "#002114",
+                        "on-background": "#141b2b",
+                        "on-secondary-fixed": "#001551",
+                        "on-error": "#ffffff",
+                        "emerald-light": "#34D399",
+                        "background": "#f9f9ff",
+                        "tertiary": "#a33900",
+                        "surface-gray": "#F9FAFB",
+                        "on-secondary-fixed-variant": "#0039b5",
+                        "surface-container-lowest": "#ffffff",
+                        "on-tertiary-fixed": "#370e00",
+                        "secondary-container": "#4069f2",
+                        "tertiary-fixed": "#ffdbce",
+                        "tertiary-fixed-dim": "#ffb599",
+                        "on-primary": "#ffffff",
+                        "on-secondary-container": "#fffbff",
+                        "sky-tint": "#EFF6FF",
+                        "surface-variant": "#dce2f7",
+                        "secondary-fixed": "#dce1ff",
+                        "error": "#ba1a1a",
+                        "on-tertiary": "#ffffff",
+                        "secondary-fixed-dim": "#b7c4ff",
+                        "on-surface-variant": "#3d4a42",
+                        "on-primary-container": "#f5fff7",
+                        "secondary": "#1d4ed8",
+                        "on-tertiary-fixed-variant": "#7f2b00",
+                        "on-error-container": "#93000a",
+                        "surface-tint": "#006c4a",
+                        "surface-bright": "#f9f9ff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                    "spacing": {
+                        "margin-mobile": "20px",
+                        "stack-lg": "24px",
+                        "margin-desktop": "64px",
+                        "container-max": "1280px",
+                        "stack-sm": "8px",
+                        "stack-md": "16px",
+                        "gutter": "24px",
+                        "section-gap": "96px"
+                    },
+                    "fontFamily": {
+                        "body-lg": ["Work Sans"],
+                        "headline-lg": ["Manrope"],
+                        "headline-xl": ["Manrope"],
+                        "body-md": ["Work Sans"],
+                        "headline-md": ["Manrope"],
+                        "headline-sm": ["Manrope"],
+                        "label-md": ["Work Sans"],
+                        "headline-xl-mobile": ["Manrope"]
+                    },
+                    "fontSize": {
+                        "body-lg": ["18px", { "lineHeight": "28px", "fontWeight": "400" }],
+                        "headline-lg": ["36px", { "lineHeight": "44px", "letterSpacing": "-0.01em", "fontWeight": "700" }],
+                        "headline-xl": ["48px", { "lineHeight": "56px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "body-md": ["16px", { "lineHeight": "24px", "fontWeight": "400" }],
+                        "headline-md": ["28px", { "lineHeight": "36px", "fontWeight": "600" }],
+                        "headline-sm": ["20px", { "lineHeight": "28px", "fontWeight": "600" }],
+                        "label-md": ["14px", { "lineHeight": "20px", "letterSpacing": "0.05em", "fontWeight": "500" }],
+                        "headline-xl-mobile": ["32px", { "lineHeight": "40px", "fontWeight": "700" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .custom-range::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #006948;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        .custom-range::-moz-range-thumb {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: #006948;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            border: none;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-md antialiased min-h-screen flex flex-col">
+<!-- TopAppBar -->
+<header class="bg-surface/90 backdrop-blur-md border-b border-border-subtle shadow-sm docked full-width top-0 sticky z-[100]">
+<div class="flex justify-between items-center max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-4">
+<div class="flex items-center gap-2">
+<img alt="Sologix Energy Logo" class="h-8 w-auto" src="https://lh3.googleusercontent.com/aida-public/AB6AXuASATwqZtdC_l8IGrHXsLPDcwq7Ns4SwuGdVCtEvG4G9J8KvnQ4C7w0NW7uGw2dBDTd1jO0jNPI8pMnJI7SuhSrRYnP1_k8b_nETYXnnNOaxWZlz_NZcssafCBBwWYHlu40A2RddsqQgqxUUP28vyRiUsz72BPVOnFXbS6tPxZvRnlnIO67xbBeP_iVeM6pb3gIWJv92lukOtEXnfQ_piyDP5D7Co3VRtDHz3Gt-GkHf2TtM3dJn_h7qNf_XbEzEnzlj4Bfiv05VeY"/>
+<span class="font-headline-md text-headline-md font-bold text-primary">Sologix Energy</span>
+</div>
+<nav class="hidden md:flex gap-6 items-center">
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200 px-3 py-2 rounded-md" href="#">Our Services</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200 px-3 py-2 rounded-md" href="#">Products</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200 px-3 py-2 rounded-md" href="#">Subsidies</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200 px-3 py-2 rounded-md" href="#">Become Partner</a>
+<a class="font-label-md text-label-md text-primary border-b-2 border-primary pb-1 px-3 py-2" href="#">Calculator</a>
+<a class="font-label-md text-label-md text-on-surface-variant hover:text-primary hover:bg-surface-container-low transition-colors duration-200 px-3 py-2 rounded-md" href="#">Projects</a>
+</nav>
+<button class="hidden md:block bg-primary text-white font-label-md text-label-md px-6 py-2.5 rounded-full scale-95 active:scale-90 transition-transform">Get Quote</button>
+<button class="md:hidden text-on-surface">
+<span class="material-symbols-outlined">menu</span>
+</button>
+</div>
+</header>
+<!-- Main Content -->
+<main class="flex-grow w-full max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-section-gap flex flex-col items-center">
+<div class="text-center mb-12 max-w-2xl">
+<h1 class="font-headline-xl-mobile md:font-headline-xl text-headline-xl-mobile md:text-headline-xl text-on-surface mb-4">Discover Your Solar Potential</h1>
+<p class="font-body-lg text-body-lg text-on-surface-variant">Calculate your estimated savings, ideal system size, and potential subsidies with our interactive tool.</p>
+</div>
+<div class="w-full grid grid-cols-1 lg:grid-cols-12 gap-gutter">
+<!-- Calculator Input Form -->
+<div class="lg:col-span-5 bg-sky-tint rounded-[16px] p-8 shadow-[0px_4px_20px_rgba(17,24,39,0.05)] border border-border-subtle">
+<h2 class="font-headline-md text-headline-md text-on-surface mb-6">Input Details</h2>
+<div class="flex flex-col gap-stack-lg">
+<!-- State Selection -->
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-md text-label-md text-on-surface-variant" for="state">State</label>
+<select class="w-full bg-white border border-border-subtle rounded-lg px-4 py-3 font-body-md text-body-md text-on-surface focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-colors appearance-none" id="state" style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2224%22%20height%3D%2224%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22%236d7a72%22%20stroke-width%3D%222%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpolyline%20points%3D%226%209%2012%2015%2018%209%22%3E%3C%2Fpolyline%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 12px center; background-size: 16px;">
+<option value="jharkhand">Jharkhand</option>
+<option value="maharashtra">Maharashtra</option>
+<option value="gujarat">Gujarat</option>
+<option value="karnataka">Karnataka</option>
+<option value="tamilnadu">Tamil Nadu</option>
+</select>
+</div>
+<!-- Monthly Bill Range -->
+<div class="flex flex-col gap-stack-sm">
+<div class="flex justify-between items-center">
+<label class="font-label-md text-label-md text-on-surface-variant" for="bill-slider">Average Monthly Electricity Bill (?)</label>
+<span class="font-headline-sm text-headline-sm text-primary" id="bill-value">?3,500</span>
+</div>
+<input class="w-full h-2 bg-surface-dim rounded-lg appearance-none cursor-pointer custom-range mt-2" id="bill-slider" max="15000" min="500" step="100" type="range" value="3500"/>
+<div class="flex justify-between text-xs text-outline mt-1 font-body-md">
+<span>?500</span>
+<span>?15,000+</span>
+</div>
+</div>
+<!-- Purpose -->
+<div class="flex flex-col gap-stack-sm">
+<label class="font-label-md text-label-md text-on-surface-variant">Installation Type</label>
+<div class="grid grid-cols-2 gap-4">
+<label class="flex items-center gap-2 p-3 border border-border-subtle rounded-lg cursor-pointer hover:border-primary transition-colors bg-white">
+<input checked="" class="text-primary focus:ring-primary w-4 h-4" name="install_type" type="radio" value="residential"/>
+<span class="font-body-md text-body-md">Residential</span>
+</label>
+<label class="flex items-center gap-2 p-3 border border-border-subtle rounded-lg cursor-pointer hover:border-primary transition-colors bg-white">
+<input class="text-primary focus:ring-primary w-4 h-4" name="install_type" type="radio" value="commercial"/>
+<span class="font-body-md text-body-md">Commercial</span>
+</label>
+</div>
+</div>
+<button class="mt-4 w-full bg-primary text-white font-label-md text-label-md py-3 rounded-lg hover:bg-primary-container transition-colors shadow-sm">Calculate Savings</button>
+</div>
+</div>
+<!-- Results Section -->
+<div class="lg:col-span-7 flex flex-col gap-stack-lg">
+<!-- Main Metrics -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-gutter">
+<!-- Savings Card -->
+<div class="bg-white border border-border-subtle rounded-xl p-6 shadow-sm flex flex-col gap-2 relative overflow-hidden group hover:shadow-[0px_4px_20px_rgba(17,24,39,0.05)] transition-shadow">
+<div class="absolute top-0 right-0 w-24 h-24 bg-emerald-light/10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+<div class="flex items-center gap-2 text-primary mb-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">savings</span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-on-surface-variant">Potential Annual Savings</span>
+</div>
+<div class="font-headline-xl text-headline-xl text-on-surface">?42,000</div>
+<div class="font-body-md text-body-md text-outline">~?3,500 monthly reduction</div>
+</div>
+<!-- System Capacity Card -->
+<div class="bg-white border border-border-subtle rounded-xl p-6 shadow-sm flex flex-col gap-2 relative overflow-hidden group hover:shadow-[0px_4px_20px_rgba(17,24,39,0.05)] transition-shadow">
+<div class="absolute top-0 right-0 w-24 h-24 bg-secondary-container/10 rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110"></div>
+<div class="flex items-center gap-2 text-secondary mb-1">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">solar_power</span>
+<span class="font-label-md text-label-md uppercase tracking-wider text-on-surface-variant">Recommended Capacity</span>
+</div>
+<div class="font-headline-xl text-headline-xl text-on-surface">5.2 <span class="font-headline-sm text-headline-sm text-outline">kWp</span></div>
+<div class="w-full bg-surface-dim rounded-full h-2 mt-2 overflow-hidden">
+<div class="bg-secondary h-2 rounded-full" style="width: 52%"></div>
+</div>
+<div class="font-body-md text-body-md text-outline text-right text-xs">Based on current usage</div>
+</div>
+</div>
+<!-- Secondary Metrics Bento Box -->
+<div class="bg-surface-gray rounded-xl p-6 border border-border-subtle">
+<h3 class="font-headline-sm text-headline-sm text-on-surface mb-4">Investment Overview</h3>
+<div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface-variant mb-1">Est. Cost</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">?2.8L</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface-variant mb-1">Subsidy (Approx)</span>
+<span class="font-headline-sm text-headline-sm text-emerald-light">?78,000</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface-variant mb-1">Net Investment</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">?2.02L</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-md text-label-md text-on-surface-variant mb-1">ROI Period</span>
+<span class="font-headline-sm text-headline-sm text-on-surface">4.8 Yrs</span>
+</div>
+</div>
+</div>
+<!-- Explanation Note -->
+<div class="flex items-start gap-4 p-4 bg-surface-container-low rounded-lg border border-surface-variant">
+<span class="material-symbols-outlined text-secondary mt-0.5" style="font-variation-settings: 'FILL' 1;">info</span>
+<p class="font-body-md text-body-md text-on-surface-variant text-sm">
+                        Estimates are calculated based on current state tariffs in <span class="font-semibold text-on-surface">Jharkhand</span> and maximum applicable subsidies under the <span class="font-semibold text-on-surface">PM Surya Ghar Yojana</span> for residential installations. Actual costs may vary based on site survey, structural requirements, and final component selection.
+                    </p>
+</div>
+<div class="mt-4 flex justify-end">
+<button class="bg-white border-2 border-secondary text-secondary font-label-md text-label-md px-6 py-2.5 rounded-full hover:bg-sky-tint transition-colors">Download Detailed Report</button>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-surface-dim border-t border-border-subtle full-width mt-auto">
+<div class="grid grid-cols-1 md:grid-cols-4 gap-gutter max-w-container-max mx-auto px-margin-mobile md:px-margin-desktop py-section-gap">
+<div class="flex flex-col gap-stack-md">
+<span class="font-headline-sm text-headline-sm font-bold text-primary">Sologix Energy</span>
+<p class="font-body-md text-body-md text-on-surface">© 2024 Sologix Energy Private Limited. Powering Tomorrow, Naturally.</p>
+</div>
+<div class="flex flex-col gap-stack-sm">
+<span class="font-label-md text-label-md font-bold text-on-surface mb-2">Solutions</span>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary hover:underline transition-all opacity-80 hover:opacity-100" href="#">Residential Solar</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary hover:underline transition-all opacity-80 hover:opacity-100" href="#">Commercial Solar</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary hover:underline transition-all opacity-80 hover:opacity-100" href="#">Industrial Solar</a>
+</div>
+<div class="flex flex-col gap-stack-sm">
+<span class="font-label-md text-label-md font-bold text-on-surface mb-2">Resources</span>
+<a class="font-body-md text-body-md text-primary font-bold hover:text-primary hover:underline transition-all opacity-80 hover:opacity-100" href="#">Solar Calculator</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary hover:underline transition-all opacity-80 hover:opacity-100" href="#">Partner Portal</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary hover:underline transition-all opacity-80 hover:opacity-100" href="#">Project Gallery</a>
+</div>
+<div class="flex flex-col gap-stack-sm">
+<span class="font-label-md text-label-md font-bold text-on-surface mb-2">Company</span>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary hover:underline transition-all opacity-80 hover:opacity-100" href="#">About Us</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary hover:underline transition-all opacity-80 hover:opacity-100" href="#">Contact Support</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary hover:underline transition-all opacity-80 hover:opacity-100" href="#">Privacy Policy</a>
+<a class="font-body-md text-body-md text-on-surface-variant hover:text-primary hover:underline transition-all opacity-80 hover:opacity-100" href="#">Terms of Service</a>
+</div>
+</div>
+</footer>
+<script>
+        // Simple slider interaction update
+        const slider = document.getElementById('bill-slider');
+        const display = document.getElementById('bill-value');
+
+        slider.addEventListener('input', function() {
+            // Format number to INR
+            const formatted = new Intl.NumberFormat('en-IN', {
+                style: 'currency',
+                currency: 'INR',
+                maximumFractionDigits: 0
+            }).format(this.value);
+            display.textContent = formatted;
+        });
+    </script>
+</body></html>
