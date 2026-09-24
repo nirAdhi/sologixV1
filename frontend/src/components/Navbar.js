@@ -37,7 +37,8 @@ const Navbar = () => {
     <header className="bg-white/95 backdrop-blur-md top-0 sticky z-[100] border-b border-gray-100 shadow-sm">
       <nav className="flex justify-between items-center max-w-[1280px] mx-auto px-4 lg:px-8 py-2">
         {/* Logo */}
-        <div className="flex items-center flex-shrink-0" style={{marginLeft:'-120px'}}>
+        {/* was a fixed -120px margin, which pushed the logo off-screen below ~1500px wide (all phones and most laptops) */}
+        <div className="flex items-center flex-shrink-0 2xl:-ml-[120px]">
           <Link to="/" className="outline-none focus:outline-none block">
             <img src="https://res.cloudinary.com/dsiratycd/image/upload/logo_yo5zg9.png" alt="Sologix Energy"
               className="h-16 w-auto select-none"

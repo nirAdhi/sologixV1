@@ -1,19 +1,21 @@
 import React from 'react';
+import { useT } from '../i18n';
 
 const ServiceAndSolution = () => {
+  const { t } = useT();
   return (
     <div>
       <section className="relative w-full min-h-[60vh] flex items-center justify-center overflow-hidden bg-[#ffffff]">
         <div className="absolute inset-0 z-0">
-          <img alt="Solar farm" className="w-full h-full object-cover object-center" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDE5qN-kU717z022SlQSkxKkAqeVrGvYRzKTHBZYVcaGW8OSJA9pHxGnp4H07a0MAVyLoYnOkE0RScsIEkoizXDyfnIH2Qo7tQN-593ITqsEOamj-PswIv-imc4EcYmspu7I5VlsA66QM2n0ZkOn1K3YPlS_4bbYXAeTfcdPLYcJ6oAv9YQ5Av5F0E4Db6-CBMTRkNJlo7ZSWcexcOeD6XaV2F-QH_S2rpb75TL7Zrsh8q8YtPUTgSuajKekpey0GaZyTSs7hLI-4A" />
+          <img alt={t('Solar farm')} className="w-full h-full object-cover object-center" src="https://lh3.googleusercontent.com/aida-public/AB6AXuDE5qN-kU717z022SlQSkxKkAqeVrGvYRzKTHBZYVcaGW8OSJA9pHxGnp4H07a0MAVyLoYnOkE0RScsIEkoizXDyfnIH2Qo7tQN-593ITqsEOamj-PswIv-imc4EcYmspu7I5VlsA66QM2n0ZkOn1K3YPlS_4bbYXAeTfcdPLYcJ6oAv9YQ5Av5F0E4Db6-CBMTRkNJlo7ZSWcexcOeD6XaV2F-QH_S2rpb75TL7Zrsh8q8YtPUTgSuajKekpey0GaZyTSs7hLI-4A" />
           <div className="absolute inset-0 bg-gradient-to-r from-[#293040]/90 via-[#293040]/60 to-transparent mix-blend-multiply"></div>
         </div>
         <div className="relative z-10 w-full max-w-[1280px] mx-auto px-5 md:px-[64px] py-24 flex flex-col items-start justify-center text-white">
-          <span className="text-[14px] text-[#34D399] uppercase tracking-widest mb-4 block" style={{ fontFamily: 'Work Sans', fontWeight: 500 }}>Comprehensive Energy Solutions</span>
-          <h1 className="text-[32px] md:text-[48px] font-bold mb-4 max-w-2xl leading-tight" style={{ fontFamily: 'Manrope' }}>Powering Tomorrow, <br/>Naturally.</h1>
-          <p className="text-[18px] text-[#b7c4ff] max-w-xl mb-6" style={{ fontFamily: 'Work Sans' }}>Discover tailored solar infrastructure for homes, businesses, and industrial campuses. We engineer high-efficiency systems designed for long-term reliability.</p>
+          <span className="text-[14px] text-[#34D399] uppercase tracking-widest mb-4 block" style={{ fontFamily: 'Work Sans', fontWeight: 500 }}>{t('Comprehensive Energy Solutions')}</span>
+          <h1 className="text-[32px] md:text-[48px] font-bold mb-4 max-w-2xl leading-tight" style={{ fontFamily: 'Manrope' }}>{t('Powering Tomorrow,')} <br/>{t('Naturally.')}</h1>
+          <p className="text-[18px] text-[#b7c4ff] max-w-xl mb-6" style={{ fontFamily: 'Work Sans' }}>{t('Discover tailored solar infrastructure for homes, businesses, and industrial campuses. We engineer high-efficiency systems designed for long-term reliability.')}</p>
           <button className="bg-[#006948] hover:bg-[#00855d] text-white font-medium py-3 px-8 rounded-full shadow-sm transition-all duration-200 inline-flex items-center gap-2" style={{ fontFamily: 'Work Sans', fontSize: '14px', letterSpacing: '0.05em' }}>
-            Explore Solutions
+            {t('Explore Solutions')}
             <svg className="w-4 h-4 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3"/></svg>
           </button>
         </div>
@@ -22,8 +24,8 @@ const ServiceAndSolution = () => {
       <section className="py-24 bg-[#f9f9ff]" id="solutions">
         <div className="max-w-[1280px] mx-auto px-5 md:px-[64px]">
           <div className="text-center mb-16">
-            <h2 className="text-[36px] font-bold text-[#141b2b] mb-2" style={{ fontFamily: 'Manrope' }}>Our Core Solutions</h2>
-            <p className="text-[18px] text-[#3d4a42] max-w-2xl mx-auto" style={{ fontFamily: 'Work Sans' }}>From residential rooftops to utility-scale plants, our engineering excellence delivers optimized energy generation.</p>
+            <h2 className="text-[36px] font-bold text-[#141b2b] mb-2" style={{ fontFamily: 'Manrope' }}>{t('Our Core Solutions')}</h2>
+            <p className="text-[18px] text-[#3d4a42] max-w-2xl mx-auto" style={{ fontFamily: 'Work Sans' }}>{t('From residential rooftops to utility-scale plants, our engineering excellence delivers optimized energy generation.')}</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {[
@@ -48,16 +50,16 @@ const ServiceAndSolution = () => {
             ].map((item, i) => (
               <div key={i} className="group relative overflow-hidden rounded-xl bg-[#ffffff] shadow-sm hover:shadow-md transition-shadow duration-300 border border-[#E5E7EB] flex flex-col h-full">
                 <div className="relative h-64 overflow-hidden">
-                  <img alt={item.title} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" src={item.img} />
+                  <img alt={t(item.title)} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" src={item.img} />
                   <div className="absolute top-4 left-4 bg-white/90 backdrop-blur font-medium px-3 py-1 rounded-full shadow-sm">
-                    <span className={`text-[14px] ${item.tagColor}`} style={{ fontFamily: 'Work Sans' }}>{item.tag}</span>
+                    <span className={`text-[14px] ${item.tagColor}`} style={{ fontFamily: 'Work Sans' }}>{t(item.tag)}</span>
                   </div>
                 </div>
                 <div className="p-8 flex flex-col flex-grow">
-                  <h3 className="text-[28px] font-semibold text-[#141b2b] mb-2" style={{ fontFamily: 'Manrope' }}>{item.title}</h3>
-                  <p className="text-[16px] text-[#3d4a42] mb-6 flex-grow" style={{ fontFamily: 'Work Sans' }}>{item.desc}</p>
+                  <h3 className="text-[28px] font-semibold text-[#141b2b] mb-2" style={{ fontFamily: 'Manrope' }}>{t(item.title)}</h3>
+                  <p className="text-[16px] text-[#3d4a42] mb-6 flex-grow" style={{ fontFamily: 'Work Sans' }}>{t(item.desc)}</p>
                   <button className="text-[14px] font-medium text-[#1d4ed8] hover:text-[#006948] flex items-center gap-1 transition-colors w-fit cursor-pointer" style={{ fontFamily: 'Work Sans', letterSpacing: '0.05em' }}>
-                    View {item.tag} Details <span className="text-sm">→</span>
+                    {t('View {tag} Details', { tag: t(item.tag) })} <span className="text-sm">→</span>
                   </button>
                 </div>
               </div>
@@ -67,18 +69,18 @@ const ServiceAndSolution = () => {
                 <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm">
                   <svg className="w-6 h-6 text-[#006948]" fill="currentColor" viewBox="0 0 24 24"><path d="M22.7 19l-9.1-9.1c.9-2.3.4-5-1.5-6.9-2-2-5-2.4-7.4-1.3L9 6 6 9 1.6 4.7C.4 7.1.9 10.1 2.9 12.1c1.9 1.9 4.6 2.4 6.9 1.5l9.1 9.1c.4.4 1 .4 1.4 0l2.3-2.3c.5-.4.5-1.1.1-1.4z"/></svg>
                 </div>
-                <h3 className="text-[28px] font-semibold text-[#141b2b] mb-2" style={{ fontFamily: 'Manrope' }}>Turnkey EPC Solutions</h3>
-                <p className="text-[16px] text-[#3d4a42] mb-6 flex-grow" style={{ fontFamily: 'Work Sans' }}>Engineering, Procurement, and Construction from end-to-end. We manage the entire lifecycle of your solar project, from initial site survey and financial modeling to grid integration and maintenance.</p>
+                <h3 className="text-[28px] font-semibold text-[#141b2b] mb-2" style={{ fontFamily: 'Manrope' }}>{t('Turnkey EPC Solutions')}</h3>
+                <p className="text-[16px] text-[#3d4a42] mb-6 flex-grow" style={{ fontFamily: 'Work Sans' }}>{t('Engineering, Procurement, and Construction from end-to-end. We manage the entire lifecycle of your solar project, from initial site survey and financial modeling to grid integration and maintenance.')}</p>
                 <ul className="space-y-3 mb-6">
                   {['Comprehensive Site Analysis', 'Custom System Design & Engineering', 'Regulatory Compliance & Permitting'].map((item, i) => (
                     <li key={i} className="flex items-start gap-2 text-[16px] text-[#141b2b]" style={{ fontFamily: 'Work Sans' }}>
                       <svg className="w-5 h-5 text-[#34D399] flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-                      {item}
+                      {t(item)}
                     </li>
                   ))}
                 </ul>
                 <button className="text-[14px] font-medium text-[#1d4ed8] hover:text-[#006948] flex items-center gap-1 transition-colors w-fit mt-auto cursor-pointer" style={{ fontFamily: 'Work Sans', letterSpacing: '0.05em' }}>
-                  Learn about EPC <span className="text-sm">→</span>
+                  {t('Learn about EPC')} <span className="text-sm">→</span>
                 </button>
               </div>
             </div>
@@ -90,11 +92,11 @@ const ServiceAndSolution = () => {
         <div className="max-w-[1280px] mx-auto px-5 md:px-[64px]">
           <div className="flex flex-col md:flex-row gap-12 items-center">
             <div className="w-full md:w-1/3">
-              <h2 className="text-[36px] font-bold text-[#141b2b] mb-2" style={{ fontFamily: 'Manrope' }}>Why Choose Sologix Energy?</h2>
-              <p className="text-[18px] text-[#3d4a42] mb-6" style={{ fontFamily: 'Work Sans' }}>We combine top-tier technology with precision engineering to ensure your investment yields maximum returns for decades.</p>
+              <h2 className="text-[36px] font-bold text-[#141b2b] mb-2" style={{ fontFamily: 'Manrope' }}>{t('Why Choose Sologix Energy?')}</h2>
+              <p className="text-[18px] text-[#3d4a42] mb-6" style={{ fontFamily: 'Work Sans' }}>{t('We combine top-tier technology with precision engineering to ensure your investment yields maximum returns for decades.')}</p>
               <div className="inline-flex items-center gap-4 bg-[#34D399]/20 px-4 py-2 rounded-full border border-[#34D399]/50">
                 <svg className="w-5 h-5 text-[#006948]" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/></svg>
-                <span className="text-[14px] font-medium text-[#00855d]" style={{ fontFamily: 'Work Sans', letterSpacing: '0.05em' }}>Certified Premium Partner</span>
+                <span className="text-[14px] font-medium text-[#00855d]" style={{ fontFamily: 'Work Sans', letterSpacing: '0.05em' }}>{t('Certified Premium Partner')}</span>
               </div>
             </div>
             <div className="w-full md:w-2/3 grid grid-cols-1 sm:grid-cols-2 gap-8">
@@ -114,8 +116,8 @@ const ServiceAndSolution = () => {
                     </svg>
                   </div>
                   <div>
-                    <h4 className="text-[20px] font-semibold text-[#141b2b] mb-1" style={{ fontFamily: 'Manrope' }}>{item.title}</h4>
-                    <p className="text-[16px] text-[#3d4a42]" style={{ fontFamily: 'Work Sans' }}>{item.desc}</p>
+                    <h4 className="text-[20px] font-semibold text-[#141b2b] mb-1" style={{ fontFamily: 'Manrope' }}>{t(item.title)}</h4>
+                    <p className="text-[16px] text-[#3d4a42]" style={{ fontFamily: 'Work Sans' }}>{t(item.desc)}</p>
                   </div>
                 </div>
               ))}
@@ -126,11 +128,11 @@ const ServiceAndSolution = () => {
 
       <section className="py-24 bg-[#293040] relative overflow-hidden">
         <div className="max-w-3xl mx-auto px-5 md:px-[64px] text-center relative z-10">
-          <h2 className="text-[36px] font-bold text-[#edf0ff] mb-2" style={{ fontFamily: 'Manrope' }}>Ready to Transition to Solar?</h2>
-          <p className="text-[18px] text-[#edf0ff] opacity-80 mb-8" style={{ fontFamily: 'Work Sans' }}>Get in touch for a free consultation and site assessment. Our team is ready to guide you.</p>
+          <h2 className="text-[36px] font-bold text-[#edf0ff] mb-2" style={{ fontFamily: 'Manrope' }}>{t('Ready to Transition to Solar?')}</h2>
+          <p className="text-[18px] text-[#edf0ff] opacity-80 mb-8" style={{ fontFamily: 'Work Sans' }}>{t('Get in touch for a free consultation and site assessment. Our team is ready to guide you.')}</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="bg-[#006948] text-white px-8 py-3 rounded-full font-medium hover:bg-[#00855d] transition-all" style={{ fontFamily: 'Work Sans', fontSize: '14px', letterSpacing: '0.05em' }}>Book a Free Consultation</button>
-            <button className="border border-white/30 text-white px-8 py-3 rounded-full font-medium hover:bg-white/10 transition-all" style={{ fontFamily: 'Work Sans', fontSize: '14px', letterSpacing: '0.05em' }}>Download Brochure</button>
+            <button className="bg-[#006948] text-white px-8 py-3 rounded-full font-medium hover:bg-[#00855d] transition-all" style={{ fontFamily: 'Work Sans', fontSize: '14px', letterSpacing: '0.05em' }}>{t('Book a Free Consultation')}</button>
+            <button className="border border-white/30 text-white px-8 py-3 rounded-full font-medium hover:bg-white/10 transition-all" style={{ fontFamily: 'Work Sans', fontSize: '14px', letterSpacing: '0.05em' }}>{t('Download Brochure')}</button>
           </div>
         </div>
       </section>

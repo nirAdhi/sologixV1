@@ -1,4 +1,5 @@
 import React from 'react';
+import { useT } from '../i18n';
 
 const projects = [
   { id: 1, category: 'Industrial', title: 'MegaTech Manufacturing Plant', location: 'Pune, Maharashtra', capacity: '500 kWp', savings: '₹45 Lakhs', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB4iLxwEu-WUr5Cb4TxzrCnr3YJwlJaJZf7dHvxtUjvnXwJ6PHkIPn_MlQQmSjnnOJE5Z_MdVqT4NUBKPQ25TCioskU404xLu9n4mmyAhjsF84rrgWDhs-DGlbWX9155vWM0wfLCtQcoJZTRBTce1s3q1X9tByfk1Un9OzzVccWklRJJRXDgnQVyzOF4q1F_jo56Opk7bDINGU3r5LCvvnLvnShtI_NgAjk2AzQYbAWHy423SvrPmWq_XZTbLmD-lz2nJ_9Ifv9vXY', tag: 'Industrial' },
@@ -10,19 +11,20 @@ const projects = [
 ];
 
 const Gallery = () => {
+  const { t } = useT();
   return (
     <div>
       <div className="pt-24 pb-24">
         <section className="max-w-[1280px] mx-auto px-5 md:px-[64px] mb-16 text-center">
-          <h1 className="text-[48px] font-bold text-[#141b2b] mb-4" style={{ fontFamily: 'Manrope' }}>Powering the Future</h1>
-          <p className="text-[18px] text-[#3d4a42] max-w-2xl mx-auto" style={{ fontFamily: 'Work Sans' }}>Explore our portfolio of successful solar installations across residential, commercial, and industrial sectors. See how we deliver reliable, forward-thinking energy solutions.</p>
+          <h1 className="text-[48px] font-bold text-[#141b2b] mb-4" style={{ fontFamily: 'Manrope' }}>{t('Powering the Future')}</h1>
+          <p className="text-[18px] text-[#3d4a42] max-w-2xl mx-auto" style={{ fontFamily: 'Work Sans' }}>{t('Explore our portfolio of successful solar installations across residential, commercial, and industrial sectors. See how we deliver reliable, forward-thinking energy solutions.')}</p>
         </section>
 
         <section className="max-w-[1280px] mx-auto px-5 md:px-[64px] mb-12 flex justify-center gap-4 flex-wrap">
-          <button className="px-6 py-2 rounded-full border border-[#006948] text-[#006948] font-medium hover:bg-[#006948] hover:text-white transition-colors bg-[#00855d]/10" style={{ fontFamily: 'Work Sans', fontSize: '14px', letterSpacing: '0.05em' }}>All Projects</button>
-          <button className="px-6 py-2 rounded-full border border-[#E5E7EB] text-[#3d4a42] font-medium hover:border-[#006948] hover:text-[#006948] transition-colors" style={{ fontFamily: 'Work Sans', fontSize: '14px', letterSpacing: '0.05em' }}>Residential</button>
-          <button className="px-6 py-2 rounded-full border border-[#E5E7EB] text-[#3d4a42] font-medium hover:border-[#006948] hover:text-[#006948] transition-colors" style={{ fontFamily: 'Work Sans', fontSize: '14px', letterSpacing: '0.05em' }}>Commercial</button>
-          <button className="px-6 py-2 rounded-full border border-[#E5E7EB] text-[#3d4a42] font-medium hover:border-[#006948] hover:text-[#006948] transition-colors" style={{ fontFamily: 'Work Sans', fontSize: '14px', letterSpacing: '0.05em' }}>Industrial</button>
+          <button className="px-6 py-2 rounded-full border border-[#006948] text-[#006948] font-medium hover:bg-[#006948] hover:text-white transition-colors bg-[#00855d]/10" style={{ fontFamily: 'Work Sans', fontSize: '14px', letterSpacing: '0.05em' }}>{t('All Projects')}</button>
+          <button className="px-6 py-2 rounded-full border border-[#E5E7EB] text-[#3d4a42] font-medium hover:border-[#006948] hover:text-[#006948] transition-colors" style={{ fontFamily: 'Work Sans', fontSize: '14px', letterSpacing: '0.05em' }}>{t('Residential')}</button>
+          <button className="px-6 py-2 rounded-full border border-[#E5E7EB] text-[#3d4a42] font-medium hover:border-[#006948] hover:text-[#006948] transition-colors" style={{ fontFamily: 'Work Sans', fontSize: '14px', letterSpacing: '0.05em' }}>{t('Commercial')}</button>
+          <button className="px-6 py-2 rounded-full border border-[#E5E7EB] text-[#3d4a42] font-medium hover:border-[#006948] hover:text-[#006948] transition-colors" style={{ fontFamily: 'Work Sans', fontSize: '14px', letterSpacing: '0.05em' }}>{t('Industrial')}</button>
         </section>
 
         <section className="max-w-[1280px] mx-auto px-5 md:px-[64px]">
@@ -32,7 +34,7 @@ const Gallery = () => {
                 <div className="relative h-64 overflow-hidden">
                   <img alt={project.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src={project.img} />
                   <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-[#E5E7EB]">
-                    <span className="text-[14px] font-medium text-[#006948]" style={{ fontFamily: 'Work Sans' }}>{project.tag}</span>
+                    <span className="text-[14px] font-medium text-[#006948]" style={{ fontFamily: 'Work Sans' }}>{t(project.tag)}</span>
                   </div>
                 </div>
                 <div className="p-6">
@@ -43,11 +45,11 @@ const Gallery = () => {
                   </div>
                   <div className="grid grid-cols-2 gap-4 border-t border-[#E5E7EB] pt-4">
                     <div>
-                      <span className="text-[14px] text-[#3d4a42] block uppercase tracking-wider" style={{ fontFamily: 'Work Sans', fontWeight: 500 }}>System Capacity</span>
+                      <span className="text-[14px] text-[#3d4a42] block uppercase tracking-wider" style={{ fontFamily: 'Work Sans', fontWeight: 500 }}>{t('System Capacity')}</span>
                       <span className="text-[16px] text-[#141b2b] font-semibold" style={{ fontFamily: 'Work Sans' }}>{project.capacity}</span>
                     </div>
                     <div>
-                      <span className="text-[14px] text-[#3d4a42] block uppercase tracking-wider" style={{ fontFamily: 'Work Sans', fontWeight: 500 }}>Annual Savings</span>
+                      <span className="text-[14px] text-[#3d4a42] block uppercase tracking-wider" style={{ fontFamily: 'Work Sans', fontWeight: 500 }}>{t('Annual Savings')}</span>
                       <span className="text-[16px] text-[#006948] font-semibold" style={{ fontFamily: 'Work Sans' }}>{project.savings}</span>
                     </div>
                   </div>

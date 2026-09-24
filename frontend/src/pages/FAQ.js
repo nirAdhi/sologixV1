@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useT } from '../i18n';
 
 const faqs = [
   { category:'Solar Basics', items:[
@@ -34,21 +35,22 @@ const faqs = [
 ];
 
 const FAQ = () => {
+  const { t } = useT();
   const [open, setOpen] = useState({});
   const toggle = (key) => setOpen(prev => ({ ...prev, [key]: !prev[key] }));
 
   return (
     <div className="min-h-screen">
       <section className="bg-gradient-to-r from-[#006948] to-[#059669] py-20 text-white text-center">
-        <h1 className="text-5xl font-bold mb-4">Frequently Asked Questions</h1>
-        <p className="text-xl text-white/80 max-w-2xl mx-auto">Everything you need to know about solar energy and Sologix services</p>
+        <h1 className="text-5xl font-bold mb-4">{t('Frequently Asked Questions')}</h1>
+        <p className="text-xl text-white/80 max-w-2xl mx-auto">{t('Everything you need to know about solar energy and Sologix services')}</p>
       </section>
 
       <section className="py-20 bg-white">
         <div className="max-w-4xl mx-auto px-6 lg:px-16">
           {faqs.map(({ category, items }) => (
             <div key={category} className="mb-12">
-              <h2 className="text-2xl font-bold text-[#006948] mb-6 pb-2 border-b-2 border-green-100">{category}</h2>
+              <h2 className="text-2xl font-bold text-[#006948] mb-6 pb-2 border-b-2 border-green-100">{t(category)}</h2>
               <div className="space-y-3">
                 {items.map(({ q, a }, i) => {
                   const key = `${category}-${i}`;
@@ -58,12 +60,12 @@ const FAQ = () => {
                         onClick={() => toggle(key)}
                         className="w-full flex justify-between items-center p-5 text-left bg-gray-50 hover:bg-green-50 transition-colors"
                       >
-                        <span className="font-semibold text-gray-800 pr-4">{q}</span>
+                        <span className="font-semibold text-gray-800 pr-4">{t(q)}</span>
                         <span className={`text-[#006948] text-xl flex-shrink-0 transition-transform ${open[key] ? 'rotate-45' : ''}`}>+</span>
                       </button>
                       {open[key] && (
                         <div className="p-5 bg-white border-t border-gray-100">
-                          <p className="text-gray-600 leading-relaxed">{a}</p>
+                          <p className="text-gray-600 leading-relaxed">{t(a)}</p>
                         </div>
                       )}
                     </div>
@@ -74,9 +76,9 @@ const FAQ = () => {
           ))}
 
           <div className="text-center mt-12 bg-[#EFF6FF] rounded-3xl p-10">
-            <h3 className="text-2xl font-bold mb-4">Still have questions?</h3>
-            <p className="text-gray-600 mb-6">Our team is happy to help. Get in touch for a free consultation.</p>
-            <a href="/booking" className="inline-block bg-[#006948] text-white px-10 py-4 rounded-full font-medium hover:bg-green-700 transition-all">Get Free Consultation</a>
+            <h3 className="text-2xl font-bold mb-4">{t('Still have questions?')}</h3>
+            <p className="text-gray-600 mb-6">{t('Our team is happy to help. Get in touch for a free consultation.')}</p>
+            <a href="/booking" className="inline-block bg-[#006948] text-white px-10 py-4 rounded-full font-medium hover:bg-green-700 transition-all">{t('Get Free Consultation')}</a>
           </div>
         </div>
       </section>

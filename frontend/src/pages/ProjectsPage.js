@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useT } from '../i18n';
 
 const TYPES = ['All', 'Residential', 'Commercial', 'Industrial', 'Institutional'];
 
@@ -18,6 +19,7 @@ const staticProjects = [
 const typeColor = (t) => ({ Residential:'bg-blue-100 text-blue-700', Commercial:'bg-green-100 text-green-700', Industrial:'bg-orange-100 text-orange-700', Institutional:'bg-purple-100 text-purple-700' }[t] || 'bg-gray-100 text-gray-700');
 
 export default function ProjectsPage() {
+  const { t } = useT();
   const [projects, setProjects] = useState([]);
   const [filter, setFilter] = useState('All');
   const [selected, setSelected] = useState(null);
@@ -30,19 +32,19 @@ export default function ProjectsPage() {
   }, []);
 
   const filtered = filter === 'All' ? projects : projects.filter(p => p.type === filter);
-  const counts = TYPES.reduce((acc, t) => { acc[t] = t === 'All' ? projects.length : projects.filter(p=>p.type===t).length; return acc; }, {});
+  const counts = TYPES.reduce((acc, type) => { acc[type] = type === 'All' ? projects.length : projects.filter(p=>p.type===type).length; return acc; }, {});
 
   return (
     <div className="min-h-screen">
       {/* Hero */}
       <section className="bg-gradient-to-r from-[#006948] to-[#059669] py-20 text-white text-center">
-        <h1 className="text-5xl font-bold mb-4">Our Projects</h1>
-        <p className="text-xl text-white/80 max-w-2xl mx-auto">Successful solar installations across Jharkhand and India — from homes to industries</p>
+        <h1 className="text-5xl font-bold mb-4">{t('Our Projects')}</h1>
+        <p className="text-xl text-white/80 max-w-2xl mx-auto">{t('Successful solar installations across Jharkhand and India — from homes to industries')}</p>
         <div className="flex justify-center gap-6 mt-8">
           {[{ v:`${projects.length}+`, l:'Projects' }, { v:'300 MWh', l:'Power Generated' }, { v:'270 tons', l:'CO₂ Abated' }].map(({v,l}) => (
             <div key={l} className="text-center">
-              <p className="text-3xl font-bold">{v}</p>
-              <p className="text-white/70 text-sm">{l}</p>
+              <p className="text-3xl font-bold">{t(v)}</p>
+              <p className="text-white/70 text-sm">{t(l)}</p>
             </div>
           ))}
         </div>
@@ -52,11 +54,11 @@ export default function ProjectsPage() {
         <div className="max-w-[1280px] mx-auto px-6 lg:px-16">
           {/* Filter tabs */}
           <div className="flex flex-wrap gap-3 mb-10 justify-center">
-            {TYPES.map(t => (
-              <button key={t} onClick={() => setFilter(t)}
+            {TYPES.map(type => (
+              <button key={type} onClick={() => setFilter(type)}
                 className={"px-5 py-2 rounded-full text-sm font-medium transition-all border " +
-                  (filter === t ? 'bg-[#006948] text-white border-[#006948]' : 'bg-white text-gray-600 border-gray-200 hover:border-[#006948] hover:text-[#006948]')}>
-                {t} <span className="ml-1 opacity-60">({counts[t]})</span>
+                  (filter === type ? 'bg-[#006948] text-white border-[#006948]' : 'bg-white text-gray-600 border-gray-200 hover:border-[#006948] hover:text-[#006948]')}>
+                {t(type)} <span className="ml-1 opacity-60">({counts[type]})</span>
               </button>
             ))}
           </div>
@@ -70,17 +72,17 @@ export default function ProjectsPage() {
                   <img src={p.image_url} alt={p.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" onError={e=>{e.target.src='https://images.unsplash.com/photo-1509391366360-2e959784a276?w=600&h=400&fit=crop';}} />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent"></div>
                   <div className="absolute top-4 left-4">
-                    <span className={"text-xs px-2.5 py-1 rounded-full font-medium " + typeColor(p.type)}>{p.type}</span>
+                    <span className={"text-xs px-2.5 py-1 rounded-full font-medium " + typeColor(p.type)}>{t(p.type)}</span>
                   </div>
                   {p.capacity && <div className="absolute top-4 right-4 bg-[#006948] text-white text-xs px-2.5 py-1 rounded-full font-semibold">{p.capacity}</div>}
                 </div>
                 <div className="p-5">
                   <h3 className="font-bold text-gray-800 mb-1 group-hover:text-[#006948] transition-colors">{p.title}</h3>
                   <p className="text-sm text-gray-500 mb-3">📍 {p.location}</p>
-                  {p.description && <p className="text-xs text-gray-600 line-clamp-2 mb-3">{p.description}</p>}
+                  {p.description && <p className="text-xs text-gray-600 line-clamp-2 mb-3">{t(p.description)}</p>}
                   {p.savings && (
                     <div className="flex items-center justify-between border-t border-gray-50 pt-3">
-                      <span className="text-xs text-gray-400 uppercase tracking-wider">Annual Savings</span>
+                      <span className="text-xs text-gray-400 uppercase tracking-wider">{t('Annual Savings')}</span>
                       <span className="text-sm font-bold text-[#006948]">{p.savings}</span>
                     </div>
                   )}
@@ -92,13 +94,13 @@ export default function ProjectsPage() {
           {filtered.length === 0 && (
             <div className="text-center py-16 text-gray-400">
               <div className="text-5xl mb-3">🔍</div>
-              <p>No {filter} projects found</p>
+              <p>{t('No {type} projects found', { type: t(filter) })}</p>
             </div>
           )}
 
           <div className="text-center mt-12">
             <Link to="/booking" className="inline-flex items-center gap-2 bg-[#006948] text-white px-10 py-4 rounded-full font-semibold hover:bg-green-700 transition-all shadow-lg text-lg">
-              Start Your Solar Journey →
+              {t('Start Your Solar Journey →')}
             </Link>
           </div>
         </div>
@@ -112,25 +114,25 @@ export default function ProjectsPage() {
               <img src={selected.image_url} alt={selected.title} className="w-full h-full object-cover" onError={e=>{e.target.src='https://images.unsplash.com/photo-1509391366360-2e959784a276?w=600&h=400&fit=crop';}} />
               <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-6">
                 <div>
-                  <span className={"text-xs px-2 py-1 rounded-full font-medium mb-2 inline-block " + typeColor(selected.type)}>{selected.type}</span>
+                  <span className={"text-xs px-2 py-1 rounded-full font-medium mb-2 inline-block " + typeColor(selected.type)}>{t(selected.type)}</span>
                   <h2 className="text-2xl font-bold text-white">{selected.title}</h2>
                 </div>
               </div>
-              <button onClick={() => setSelected(null)} className="absolute top-4 right-4 w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full text-white flex items-center justify-center hover:bg-white/40">✕</button>
+              <button onClick={() => setSelected(null)} className="absolute top-4 right-4 w-8 h-8 bg-white/20 backdrop-blur-sm rounded-full text-white flex items-center justify-center hover:bg-white/40" aria-label={t('Close')}>✕</button>
             </div>
             <div className="p-6">
               <div className="grid grid-cols-2 gap-4 mb-6">
-                {[{ label:'Location', value: selected.location }, { label:'Capacity', value: selected.capacity }, { label:'Annual Savings', value: selected.savings }, { label:'System Type', value: selected.type + ' Solar' }].filter(i=>i.value).map(({label,value}) => (
+                {[{ label:'Location', value: selected.location }, { label:'Capacity', value: selected.capacity }, { label:'Annual Savings', value: selected.savings }, { label:'System Type', value: selected.type && t('{type} Solar', { type: t(selected.type) }) }].filter(i=>i.value).map(({label,value}) => (
                   <div key={label} className="bg-gray-50 rounded-xl p-4">
-                    <p className="text-xs text-gray-400 font-medium mb-1">{label}</p>
+                    <p className="text-xs text-gray-400 font-medium mb-1">{t(label)}</p>
                     <p className="font-bold text-gray-800">{value}</p>
                   </div>
                 ))}
               </div>
-              {selected.description && <p className="text-gray-600 leading-relaxed mb-6">{selected.description}</p>}
+              {selected.description && <p className="text-gray-600 leading-relaxed mb-6">{t(selected.description)}</p>}
               <Link to="/booking" onClick={() => setSelected(null)}
                 className="w-full block text-center bg-[#006948] text-white py-3 rounded-xl font-semibold hover:bg-green-700 transition-colors">
-                Get a Similar System →
+                {t('Get a Similar System →')}
               </Link>
             </div>
           </div>

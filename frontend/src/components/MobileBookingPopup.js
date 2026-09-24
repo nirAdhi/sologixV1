@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { servicesAPI, bookingsAPI } from '../utils/api';
 import toast from 'react-hot-toast';
+import { useT } from '../i18n';
 
 const MobileBookingPopup = () => {
+  const { t } = useT();
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [services, setServices] = useState([]);
@@ -72,18 +74,18 @@ const MobileBookingPopup = () => {
       const response = await bookingsAPI.quick(formData);
       
       if (response.data.success) {
-        toast.success('Booking request submitted! We will contact you shortly.');
+        toast.success(t('Booking request submitted! We will contact you shortly.'));
         handleClose();
         // Optionally redirect to booking confirmation
         // window.location.href = `/booking-confirmation/${response.data.data.booking_id}`;
       } else {
-        toast.error(response.data.message || 'Failed to submit booking');
+        toast.error(t(response.data.message || 'Failed to submit booking'));
       }
     } catch (error) {
       const errorMessage = error.response?.data?.message || 
                           error.response?.data?.errors?.[0]?.msg || 
                           'Failed to submit booking';
-      toast.error(errorMessage);
+      toast.error(t(errorMessage));
     } finally {
       setLoading(false);
     }
@@ -119,17 +121,17 @@ const MobileBookingPopup = () => {
               </div>
               <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
                 <h3 className="text-lg leading-6 font-medium text-gray-900">
-                  Book Your Solar Now!
+                  {t('Book Your Solar Now!')}
                 </h3>
                 <div className="mt-2">
                   <p className="text-sm text-gray-500 mb-4">
-                    Fill out this quick form and our team will call you back within 24 hours to confirm your appointment.
+                    {t('Fill out this quick form and our team will call you back within 24 hours to confirm your appointment.')}
                   </p>
                   
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                       <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
-                        Full Name *
+                        {t('Full Name *')}
                       </label>
                       <input
                         type="text"
@@ -139,13 +141,13 @@ const MobileBookingPopup = () => {
                         value={formData.name}
                         onChange={handleChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        placeholder="Your name"
+                        placeholder={t('Your name')}
                       />
                     </div>
                     
                     <div>
                       <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
-                        Phone Number *
+                        {t('Phone Number *')}
                       </label>
                       <input
                         type="tel"
@@ -155,13 +157,13 @@ const MobileBookingPopup = () => {
                         value={formData.phone}
                         onChange={handleChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
-                        placeholder="Your phone number"
+                        placeholder={t('Your phone number')}
                       />
                     </div>
                     
                     <div>
                       <label htmlFor="service_id" className="block text-sm font-medium text-gray-700 mb-1">
-                        Service (Optional)
+                        {t('Service (Optional)')}
                       </label>
                       <select
                         id="service_id"
@@ -170,10 +172,10 @@ const MobileBookingPopup = () => {
                         onChange={handleChange}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
                       >
-                        <option value="">Select a service</option>
+                        <option value="">{t('Select a service')}</option>
                         {services.map(service => (
                           <option key={service.id} value={service.id}>
-                            {service.name} - ₹{parseInt(service.price).toLocaleString('en-IN')}
+                            {t(service.name)} - ₹{parseInt(service.price).toLocaleString('en-IN')}
                           </option>
                         ))}
                       </select>
@@ -185,14 +187,14 @@ const MobileBookingPopup = () => {
                         onClick={handleClose}
                         className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500"
                       >
-                        Later
+                        {t('Later')}
                       </button>
                       <button
                         type="submit"
                         disabled={loading}
                         className="px-4 py-2 text-sm font-medium text-white bg-green-600 border border-transparent rounded-md hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 disabled:opacity-50"
                       >
-                        {loading ? 'Submitting...' : 'Book Now'}
+                        {loading ? t('Submitting...') : t('Book Now')}
                       </button>
                     </div>
                   </form>

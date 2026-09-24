@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Link, useSearchParams, useNavigate } from 'react-router-dom';
 import { catalogAPI } from '../utils/api';
 import toast from 'react-hot-toast';
+import { useT } from '../i18n';
 
 const API_URL = process.env.REACT_APP_API_URL || '/api';
 
@@ -29,7 +30,24 @@ const CATEGORIES = ['All Products','Solar Panels','On-Grid Inverters','Hybrid In
 const CAT_ICONS = { 'All Products':'☀️','Solar Panels':'🔆','On-Grid Inverters':'⚡','Hybrid Inverters':'🔋','Lithium Batteries':'🔌','BOS & Accessories':'🛠️' };
 const BADGE_STYLE = { 'Best Seller':'bg-[#006948] text-white','Popular':'bg-orange-500 text-white','New':'bg-purple-600 text-white' };
 
+// Short spec lines ("580W · 21.5% efficiency · 25yr warranty" or the DB's comma form)
+// are translated piece by piece; numbers/models without a Hindi entry stay as they are.
+const SPEC_PATTERNS = [
+  [/^([\d.]+%) efficiency$/i, '{value} efficiency'],
+  [/^(\d+)\s?yrs? warranty$/i, '{value} year warranty'],
+  [/^([\d,]+\+?) cycles$/i, '{value} cycles'],
+];
+const translateSpecs = (specs, t) => {
+  if (!specs) return specs;
+  return String(specs).split(/(\s·\s|,\s)/).map(part => {
+    if (/^(\s·\s|,\s)$/.test(part)) return part;
+    for (const [re, key] of SPEC_PATTERNS) { const m = part.match(re); if (m) return t(key, { value: m[1] }); }
+    return t(part);
+  }).join('');
+};
+
 export default function Products() {
+  const { t } = useT();
   const [products, setProducts] = useState(STATIC);
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -85,7 +103,7 @@ export default function Products() {
       if (ex) return prev.map(i => i.id === product.id ? { ...i, qty: i.qty+1 } : i);
       return [...prev, { ...product, qty: 1 }];
     });
-    toast.success(product.model + ' added to quote cart');
+    toast.success(t('{model} added to quote cart', { model: product.model }));
   };
 
   const removeFromCart = (id) => setCart(prev => prev.filter(i => i.id !== id));
@@ -95,7 +113,7 @@ export default function Products() {
   };
 
   const submitQuote = async () => {
-    if (!quoteForm.name || !quoteForm.phone) { toast.error('Name and phone required'); return; }
+    if (!quoteForm.name || !quoteForm.phone) { toast.error(t('Name and phone required')); return; }
     setSubmitting(true);
     const items = cart.length > 0 ? cart.map(i => i.qty+'x '+i.brand+' '+i.model).join(', ') : 'General inquiry';
     try {
@@ -113,7 +131,7 @@ export default function Products() {
       setSubmitted(true);
       setCart([]);
       localStorage.removeItem('sologix_cart');
-    } catch { toast.error('Failed to submit. Please call us directly.'); }
+    } catch { toast.error(t('Failed to submit. Please call us directly.')); }
     finally { setSubmitting(false); }
   };
 
@@ -157,20 +175,20 @@ export default function Products() {
           });
           const result = await verify.json();
           if (result.success) { onSuccess(response.razorpay_payment_id); }
-          else { toast.error('Payment verification failed. Contact support.'); }
-        } catch { toast.error('Verification error. Please contact us.'); }
+          else { toast.error(t('Payment verification failed. Contact support.')); }
+        } catch { toast.error(t('Verification error. Please contact us.')); }
       },
       prefill: { name: customerDetails.name, email: customerDetails.email || '', contact: customerDetails.phone },
       theme: { color: '#006948' },
-      modal: { ondismiss: () => toast('Payment cancelled') },
+      modal: { ondismiss: () => toast(t('Payment cancelled')) },
     };
     const rzp = new window.Razorpay(options);
-    rzp.on('payment.failed', (r) => toast.error('Payment failed: ' + (r.error?.description || 'Please try again')));
+    rzp.on('payment.failed', (r) => toast.error(t('Payment failed: {reason}', { reason: r.error?.description || t('Please try again') })));
     rzp.open();
   };
 
   const submitOrder = async () => {
-    if (!orderForm.name || !orderForm.phone || !orderForm.address) { toast.error('Name, phone and address required'); return; }
+    if (!orderForm.name || !orderForm.phone || !orderForm.address) { toast.error(t('Name, phone and address required')); return; }
     const items = [{ id: orderProduct.id, brand: orderProduct.brand, model: orderProduct.model, qty: orderForm.qty, unit: orderProduct.unit }];
     setOrderSubmitting(true);
     try {
@@ -187,10 +205,10 @@ export default function Products() {
           }),
         });
         const rpData = await rpRes.json();
-        if (!rpData.success) { toast.error('Payment gateway error. Try COD or call us.'); setOrderSubmitting(false); return; }
+        if (!rpData.success) { toast.error(t('Payment gateway error. Try COD or call us.')); setOrderSubmitting(false); return; }
         setOrderSubmitting(false);
         launchRazorpay(rpData.data, { name: orderForm.name, phone: orderForm.phone, email: orderForm.email }, items,
-          (paymentId) => { setOrderDone(true); toast.success('Payment successful! Order confirmed. Payment ID: ' + paymentId); }
+          (paymentId) => { setOrderDone(true); toast.success(t('Payment successful! Order confirmed. Payment ID: {id}', { id: paymentId })); }
         );
         return;
       }
@@ -205,9 +223,9 @@ export default function Products() {
           customer_type: 'direct_order', status: 'pending',
         }),
       });
-      if (res.ok) { setOrderDone(true); toast.success('Order placed! Team will confirm within 2 hours.'); }
-      else toast.error('Order failed. Please call us.');
-    } catch { toast.error('Network error. Please call us.'); }
+      if (res.ok) { setOrderDone(true); toast.success(t('Order placed! Team will confirm within 2 hours.')); }
+      else toast.error(t('Order failed. Please call us.'));
+    } catch { toast.error(t('Network error. Please call us.')); }
     finally { setOrderSubmitting(false); }
   };
 
@@ -217,27 +235,27 @@ export default function Products() {
       {/* Hero */}
       <section className="relative py-14 text-white overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img src="https://images.unsplash.com/photo-1509391366360-2e959784a276?w=1600&h=400&fit=crop" alt="Products" className="w-full h-full object-cover" loading="lazy" />
+          <img src="https://images.unsplash.com/photo-1509391366360-2e959784a276?w=1600&h=400&fit=crop" alt={t('Products')} className="w-full h-full object-cover" loading="lazy" />
           <div className="absolute inset-0" data-theme-hero="1" style={{background:'linear-gradient(135deg,rgba(0,105,72,0.92) 0%,rgba(0,77,52,0.85) 100%)'}}></div>
         </div>
         <div className="relative z-10 max-w-[1280px] mx-auto px-6 lg:px-16">
           <div className="flex items-center justify-between flex-wrap gap-4 mb-8">
             <div>
               <p className="text-white/70 text-sm mb-1 uppercase tracking-widest">Sologix Energy</p>
-              <h1 className="text-4xl font-bold mb-2">Solar Product Catalog</h1>
-              <p className="text-white/80">Add to cart, request a quote, get the best price within 24 hours</p>
+              <h1 className="text-4xl font-bold mb-2">{t('Solar Product Catalog')}</h1>
+              <p className="text-white/80">{t('Add to cart, request a quote, get the best price within 24 hours')}</p>
             </div>
             <button onClick={() => setShowCart(true)}
               className="relative bg-white/20 border border-white/40 text-white px-6 py-3 rounded-full font-semibold transition-all flex items-center gap-2 hover:bg-white/30">
-              🛒 Quote Cart
+              🛒 {t('Quote Cart')}
               {totalItems > 0 && <span className="bg-orange-500 text-xs px-2 py-0.5 rounded-full font-bold ml-1">{totalItems}</span>}
             </button>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {[['01','Browse Products','🔍'],['02','Add to Quote Cart','🛒'],['03','Get Best Price in 24h','💰'],['04','Confirm and Pay','✅']].map(([n,t,i]) => (
+            {[['01','Browse Products','🔍'],['02','Add to Quote Cart','🛒'],['03','Get Best Price in 24h','💰'],['04','Confirm and Pay','✅']].map(([n,label,i]) => (
               <div key={n} className="bg-white/10 border border-white/20 rounded-xl p-3 flex items-center gap-3">
                 <span className="text-2xl">{i}</span>
-                <div><p className="text-white/50 text-xs">Step {n}</p><p className="text-white text-sm font-medium">{t}</p></div>
+                <div><p className="text-white/50 text-xs">{t('Step {n}', { n })}</p><p className="text-white text-sm font-medium">{t(label)}</p></div>
               </div>
             ))}
           </div>
@@ -250,12 +268,12 @@ export default function Products() {
           <div className="flex-1 relative">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
             <input value={search} onChange={e => setSearch(e.target.value)}
-              placeholder="Search products, brands, specifications..."
+              placeholder={t('Search products, brands, specifications...')}
               className="w-full pl-9 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#006948]" />
           </div>
           <button onClick={() => setShowCart(true)}
             className="relative bg-[#006948] text-white px-5 py-2.5 rounded-xl text-sm font-semibold flex items-center gap-2 hover:bg-[#004d34] transition-colors">
-            🛒 {totalItems > 0 ? <span className="bg-orange-500 text-xs px-1.5 py-0.5 rounded-full">{totalItems}</span> : 'Cart'}
+            🛒 {totalItems > 0 ? <span className="bg-orange-500 text-xs px-1.5 py-0.5 rounded-full">{totalItems}</span> : t('Cart')}
           </button>
         </div>
       </div>
@@ -265,18 +283,18 @@ export default function Products() {
         {/* Sidebar */}
         <aside className="w-56 flex-shrink-0 hidden lg:block">
           <div className="bg-white rounded-2xl border border-gray-100 p-4 sticky top-20">
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Categories</p>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">{t('Categories')}</p>
             {CATEGORIES.map(cat => (
               <button key={cat} onClick={() => setCategory(cat)}
                 className={"w-full text-left flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all mb-1 " +
                   (activeCategory === cat ? 'bg-[#006948] text-white' : 'text-gray-600 hover:bg-gray-50')}>
-                <span>{CAT_ICONS[cat]}</span>{cat}
+                <span>{CAT_ICONS[cat]}</span>{t(cat)}
               </button>
             ))}
-            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 mt-5">Filter by Brand</p>
+            <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 mt-5">{t('Filter by Brand')}</p>
             <button onClick={() => setBrandFilter('')}
               className={"w-full text-left px-3 py-1.5 rounded-lg text-sm mb-1 " + (!brandFilter ? 'bg-gray-100 font-semibold text-gray-800' : 'text-gray-500 hover:bg-gray-50')}>
-              All Brands
+              {t('All Brands')}
             </button>
             {uniqueBrands.map(b => (
               <button key={b} onClick={() => setBrandFilter(brandFilter === b ? '' : b)}
@@ -286,11 +304,11 @@ export default function Products() {
               </button>
             ))}
             <div className="mt-5 bg-[#006948]/5 border border-[#006948]/20 rounded-xl p-3">
-              <p className="text-xs font-bold text-[#006948] mb-1">Can not find what you need?</p>
-              <p className="text-xs text-gray-500 mb-2">We can source any solar equipment for you.</p>
+              <p className="text-xs font-bold text-[#006948] mb-1">{t('Can not find what you need?')}</p>
+              <p className="text-xs text-gray-500 mb-2">{t('We can source any solar equipment for you.')}</p>
               <button onClick={() => { setShowQuoteModal(true); setSubmitted(false); }}
                 className="w-full bg-[#006948] text-white text-xs py-2 rounded-lg font-semibold hover:bg-[#004d34] transition-colors">
-                Request Item
+                {t('Request Item')}
               </button>
             </div>
           </div>
@@ -304,7 +322,7 @@ export default function Products() {
               <button key={cat} onClick={() => setCategory(cat)}
                 className={"flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all " +
                   (activeCategory === cat ? 'bg-[#006948] text-white border-[#006948]' : 'bg-white border-gray-200 text-gray-600')}>
-                {CAT_ICONS[cat]} {cat}
+                {CAT_ICONS[cat]} {t(cat)}
               </button>
             ))}
           </div>
@@ -317,25 +335,25 @@ export default function Products() {
                   ((b === 'All' && !brandFilter) || brandFilter === b
                     ? 'bg-[#006948] text-white border-[#006948]'
                     : 'bg-white border-gray-200 text-gray-600 hover:border-[#006948] hover:text-[#006948]')}>
-                {b}
+                {b === 'All' ? t('All') : b}
               </button>
             ))}
           </div>
 
           <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-gray-500"><span className="font-semibold text-gray-800">{filtered.length}</span> products</p>
+            <p className="text-sm text-gray-500"><span className="font-semibold text-gray-800">{filtered.length}</span> {t('products')}</p>
             {(activeCategory !== 'All Products' || brandFilter || search) && (
               <button onClick={() => { setCategory('All Products'); setBrandFilter(''); setSearch(''); }}
-                className="text-xs text-[#006948] hover:underline">Clear all filters</button>
+                className="text-xs text-[#006948] hover:underline">{t('Clear all filters')}</button>
             )}
           </div>
 
           {filtered.length === 0 ? (
             <div className="text-center py-20 bg-white rounded-2xl border border-gray-100">
               <p className="text-5xl mb-4">🔍</p>
-              <p className="text-gray-500 mb-4">No products match your filters.</p>
+              <p className="text-gray-500 mb-4">{t('No products match your filters.')}</p>
               <button onClick={() => { setCategory('All Products'); setBrandFilter(''); setSearch(''); }}
-                className="bg-[#006948] text-white px-6 py-2.5 rounded-full text-sm font-semibold">Show All Products</button>
+                className="bg-[#006948] text-white px-6 py-2.5 rounded-full text-sm font-semibold">{t('Show All Products')}</button>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -344,44 +362,44 @@ export default function Products() {
                   <div className="relative h-48 overflow-hidden bg-gray-50 cursor-pointer" onClick={() => navigate('/products/'+p.id)}>
                     <img src={p.image_url || 'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=400&h=300&fit=crop'}
                       alt={p.model} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
-                    {p.badge && <span className={"absolute top-3 left-3 text-xs px-2.5 py-1 rounded-full font-bold shadow " + (BADGE_STYLE[p.badge] || 'bg-gray-100 text-gray-600')}>{p.badge}</span>}
-                    {!p.in_stock && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><span className="text-white font-bold text-sm bg-red-600 px-3 py-1 rounded-full">Out of Stock</span></div>}
-                    <div className="absolute top-3 right-3 bg-white/90 backdrop-blur text-xs px-2 py-1 rounded-full text-gray-600 font-medium border border-gray-100">{p.unit || 'per NOS'}</div>
+                    {p.badge && <span className={"absolute top-3 left-3 text-xs px-2.5 py-1 rounded-full font-bold shadow " + (BADGE_STYLE[p.badge] || 'bg-gray-100 text-gray-600')}>{t(p.badge)}</span>}
+                    {!p.in_stock && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><span className="text-white font-bold text-sm bg-red-600 px-3 py-1 rounded-full">{t('Out of Stock')}</span></div>}
+                    <div className="absolute top-3 right-3 bg-white/90 backdrop-blur text-xs px-2 py-1 rounded-full text-gray-600 font-medium border border-gray-100">{t(p.unit || 'per NOS')}</div>
                   </div>
                   <div className="p-4 flex flex-col flex-1">
                     <p className="text-xs text-[#006948] font-semibold uppercase tracking-wider mb-1">{p.brand}</p>
                     <h3 className="font-bold text-gray-800 text-sm mb-1 cursor-pointer hover:text-[#006948]" onClick={() => navigate('/products/'+p.id)}>{p.model}</h3>
-                    <p className="text-xs text-gray-500 leading-relaxed mb-3 flex-1">{p.specs}</p>
+                    <p className="text-xs text-gray-500 leading-relaxed mb-3 flex-1">{translateSpecs(p.specs, t)}</p>
                     <div className="flex flex-wrap gap-1 mb-3">
                       {['Authorised Seller','Pan India Delivery','Quality Assured'].map(b => (
-                        <span key={b} className="text-xs bg-green-50 text-[#006948] border border-green-100 px-2 py-0.5 rounded-full">{b}</span>
+                        <span key={b} className="text-xs bg-green-50 text-[#006948] border border-green-100 px-2 py-0.5 rounded-full">{t(b)}</span>
                       ))}
                     </div>
                     <div className="border-t border-gray-50 pt-3">
                       <div className="flex items-center justify-between mb-3">
                         {(() => { const pr = getPrice(p); return pr ? (
                           <div className="flex-1">
-                            <p className="text-xs text-gray-400">{p.unit || 'per NOS'}</p>
+                            <p className="text-xs text-gray-400">{t(p.unit || 'per NOS')}</p>
                             <div className="flex items-baseline gap-2 flex-wrap">
                               <p className="text-lg font-bold text-[#006948]">₹{pr.toLocaleString('en-IN')}</p>
                               {p.discount_price && Number(p.discount_price) > 0 && <p className="text-xs text-gray-400 line-through">₹{Number(p.discount_price).toLocaleString('en-IN')}</p>}
-                              {p.discount_price && Number(p.discount_price) > 0 && <span className="text-xs bg-red-50 text-red-600 px-1.5 py-0.5 rounded-full font-bold">{Math.round((1-pr/p.discount_price)*100)}% OFF</span>}
+                              {p.discount_price && Number(p.discount_price) > 0 && <span className="text-xs bg-red-50 text-red-600 px-1.5 py-0.5 rounded-full font-bold">{t('{pct}% OFF', { pct: Math.round((1-pr/p.discount_price)*100) })}</span>}
                             </div>
                           </div>
                         ) : (
                           <div className="flex-1">
-                            <p className="text-xs text-gray-500 text-sm">Contact for pricing</p>
+                            <p className="text-xs text-gray-500 text-sm">{t('Contact for pricing')}</p>
                           </div>
                         ); })()}
                       </div>
                       <div className="flex gap-2">
                         <button onClick={() => addToCart(p)} disabled={!p.in_stock}
                           className="flex-1 border border-[#006948] text-[#006948] py-2 rounded-xl text-xs font-semibold hover:bg-[#006948]/5 transition-colors disabled:opacity-40">
-                          + Quote
+                          + {t('Quote')}
                         </button>
                         <button onClick={() => openOrder(p)} disabled={!p.in_stock}
                           className="flex-1 bg-[#006948] text-white py-2 rounded-xl text-xs font-bold hover:bg-[#004d34] transition-colors disabled:opacity-40">
-                          Buy Now
+                          {t('Buy Now')}
                         </button>
                       </div>
                     </div>
@@ -399,7 +417,7 @@ export default function Products() {
           className="fixed bottom-28 left-1/2 -translate-x-1/2 bg-[#006948] text-white px-8 py-3 rounded-full shadow-2xl font-semibold text-sm z-50 flex items-center gap-2 hover:bg-[#004d34] transition-all"
           style={{animation:'floatBounce 2s ease-in-out infinite'}}>
           <style>{'@keyframes floatBounce{0%,100%{transform:translateX(-50%) translateY(0)}50%{transform:translateX(-50%) translateY(-6px)}}'}</style>
-          🛒 View Quote Cart — {totalItems} item{totalItems > 1 ? 's' : ''}
+          🛒 {t(totalItems > 1 ? 'View Quote Cart — {count} items' : 'View Quote Cart — {count} item', { count: totalItems })}
         </button>
       )}
 
@@ -409,14 +427,14 @@ export default function Products() {
           <div className="flex-1 bg-black/50" onClick={() => setShowCart(false)}></div>
           <div className="w-full max-w-md bg-white h-full overflow-y-auto flex flex-col shadow-2xl">
             <div className="p-5 border-b border-gray-100 flex items-center justify-between sticky top-0 bg-white z-10">
-              <h2 className="text-lg font-bold">Quote Cart ({totalItems} items)</h2>
+              <h2 className="text-lg font-bold">{t('Quote Cart ({count} items)', { count: totalItems })}</h2>
               <button onClick={() => setShowCart(false)} className="text-gray-400 hover:text-gray-600 text-xl">✕</button>
             </div>
             {cart.length === 0 ? (
               <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
                 <p className="text-5xl mb-4">🛒</p>
-                <p className="text-gray-500 mb-4">Your quote cart is empty</p>
-                <button onClick={() => setShowCart(false)} className="text-[#006948] font-semibold text-sm hover:underline">Browse Products</button>
+                <p className="text-gray-500 mb-4">{t('Your quote cart is empty')}</p>
+                <button onClick={() => setShowCart(false)} className="text-[#006948] font-semibold text-sm hover:underline">{t('Browse Products')}</button>
               </div>
             ) : (
               <>
@@ -431,7 +449,7 @@ export default function Products() {
                           <button onClick={() => updateQty(item.id, item.qty-1)} className="w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center text-sm hover:bg-gray-100">-</button>
                           <span className="text-sm font-semibold w-8 text-center">{item.qty}</span>
                           <button onClick={() => updateQty(item.id, item.qty+1)} className="w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center text-sm hover:bg-gray-100">+</button>
-                          <span className="text-xs text-gray-400 ml-1">{item.unit}</span>
+                          <span className="text-xs text-gray-400 ml-1">{t(item.unit)}</span>
                         </div>
                       </div>
                       <button onClick={() => removeFromCart(item.id)} className="text-gray-300 hover:text-red-500 text-lg">x</button>
@@ -441,9 +459,9 @@ export default function Products() {
                 <div className="p-4 border-t border-gray-100 sticky bottom-0 bg-white">
                   <button onClick={() => { setShowCart(false); setShowQuoteModal(true); setSubmitted(false); }}
                     className="w-full bg-[#006948] text-white py-4 rounded-xl font-bold text-sm hover:bg-[#004d34] transition-colors">
-                    Submit Quote Request
+                    {t('Submit Quote Request')}
                   </button>
-                  <p className="text-xs text-gray-400 text-center mt-2">Best price guaranteed within 24 hours</p>
+                  <p className="text-xs text-gray-400 text-center mt-2">{t('Best price guaranteed within 24 hours')}</p>
                 </div>
               </>
             )}
@@ -457,49 +475,49 @@ export default function Products() {
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
             <div className="bg-[#006948] px-6 py-5 text-white flex justify-between items-start">
               <div>
-                <h2 className="text-xl font-bold mb-1">{cart.length > 0 ? 'Submit Quote Request' : 'Request an Item'}</h2>
-                <p className="text-white/80 text-sm">We respond with the best price within 24 hours</p>
+                <h2 className="text-xl font-bold mb-1">{cart.length > 0 ? t('Submit Quote Request') : t('Request an Item')}</h2>
+                <p className="text-white/80 text-sm">{t('We respond with the best price within 24 hours')}</p>
               </div>
               <button onClick={() => setShowQuoteModal(false)} className="text-white/70 hover:text-white text-xl ml-4">x</button>
             </div>
             {submitted ? (
               <div className="p-8 text-center">
                 <div className="text-5xl mb-4">✅</div>
-                <h3 className="text-xl font-bold text-[#006948] mb-2">Quote Request Sent!</h3>
-                <p className="text-gray-500 text-sm mb-6">Our team will contact you within 24 hours with the best pricing for your requirements.</p>
-                <button onClick={() => setShowQuoteModal(false)} className="bg-[#006948] text-white px-8 py-3 rounded-xl font-semibold">Done</button>
+                <h3 className="text-xl font-bold text-[#006948] mb-2">{t('Quote Request Sent!')}</h3>
+                <p className="text-gray-500 text-sm mb-6">{t('Our team will contact you within 24 hours with the best pricing for your requirements.')}</p>
+                <button onClick={() => setShowQuoteModal(false)} className="bg-[#006948] text-white px-8 py-3 rounded-xl font-semibold">{t('Done')}</button>
               </div>
             ) : (
               <div className="p-6 space-y-4">
                 {cart.length > 0 && (
                   <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
-                    <p className="text-xs font-semibold text-gray-700 mb-2">Items in your quote:</p>
+                    <p className="text-xs font-semibold text-gray-700 mb-2">{t('Items in your quote:')}</p>
                     {cart.map(i => <p key={i.id} className="text-xs text-gray-600">• {i.qty} x {i.brand} {i.model}</p>)}
                   </div>
                 )}
-                <input type="text" placeholder="Your Full Name *" required value={quoteForm.name}
+                <input type="text" placeholder={t('Your Full Name *')} required value={quoteForm.name}
                   onChange={e => setQuoteForm(f => ({...f, name: e.target.value}))}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948]" />
-                <input type="tel" placeholder="Phone / WhatsApp Number *" required value={quoteForm.phone}
+                <input type="tel" placeholder={t('Phone / WhatsApp Number *')} required value={quoteForm.phone}
                   onChange={e => setQuoteForm(f => ({...f, phone: e.target.value}))}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948]" />
-                <input type="email" placeholder="Email Address (optional)" value={quoteForm.email}
+                <input type="email" placeholder={t('Email Address (optional)')} value={quoteForm.email}
                   onChange={e => setQuoteForm(f => ({...f, email: e.target.value}))}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948]" />
-                <input type="text" placeholder="Company / Organisation (optional)" value={quoteForm.company}
+                <input type="text" placeholder={t('Company / Organisation (optional)')} value={quoteForm.company}
                   onChange={e => setQuoteForm(f => ({...f, company: e.target.value}))}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948]" />
-                <textarea placeholder="Specific requirements, quantities, or any message..." rows={3}
+                <textarea placeholder={t('Specific requirements, quantities, or any message...')} rows={3}
                   value={quoteForm.notes} onChange={e => setQuoteForm(f => ({...f, notes: e.target.value}))}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948] resize-none" />
                 <div className="flex gap-3">
-                  <button onClick={() => setShowQuoteModal(false)} className="flex-1 border border-gray-200 text-gray-600 py-3 rounded-xl text-sm font-medium hover:bg-gray-50">Cancel</button>
+                  <button onClick={() => setShowQuoteModal(false)} className="flex-1 border border-gray-200 text-gray-600 py-3 rounded-xl text-sm font-medium hover:bg-gray-50">{t('Cancel')}</button>
                   <button onClick={submitQuote} disabled={submitting}
                     className="flex-1 bg-[#006948] text-white py-3 rounded-xl text-sm font-bold hover:bg-[#004d34] transition-colors disabled:opacity-60">
-                    {submitting ? 'Sending...' : 'Submit Quote'}
+                    {submitting ? t('Sending...') : t('Submit Quote')}
                   </button>
                 </div>
-                <p className="text-xs text-gray-400 text-center">Razorpay payment integration — coming soon</p>
+                <p className="text-xs text-gray-400 text-center">{t('Razorpay payment integration — coming soon')}</p>
               </div>
             )}
           </div>
@@ -512,7 +530,7 @@ export default function Products() {
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
             <div className="bg-[#006948] px-6 py-4 text-white flex justify-between items-center sticky top-0">
               <div>
-                <h2 className="text-lg font-bold">Place Order</h2>
+                <h2 className="text-lg font-bold">{t('Place Order')}</h2>
                 <p className="text-white/80 text-xs">{orderProduct.brand} — {orderProduct.model}</p>
               </div>
               <button onClick={() => setShowOrderModal(false)} className="text-white/70 hover:text-white text-xl">✕</button>
@@ -520,10 +538,10 @@ export default function Products() {
             {orderDone ? (
               <div className="p-8 text-center">
                 <div className="text-5xl mb-4">🎉</div>
-                <h3 className="text-xl font-bold text-[#006948] mb-2">Order Placed!</h3>
-                <p className="text-gray-500 text-sm mb-2">Thank you! Our team will call you within 2 hours to confirm your order and delivery details.</p>
-                <p className="text-xs text-gray-400 mb-6">Order reference: #{Date.now().toString().slice(-6)}</p>
-                <button onClick={() => setShowOrderModal(false)} className="bg-[#006948] text-white px-8 py-3 rounded-xl font-semibold">Done</button>
+                <h3 className="text-xl font-bold text-[#006948] mb-2">{t('Order Placed!')}</h3>
+                <p className="text-gray-500 text-sm mb-2">{t('Thank you! Our team will call you within 2 hours to confirm your order and delivery details.')}</p>
+                <p className="text-xs text-gray-400 mb-6">{t('Order reference: #{ref}', { ref: Date.now().toString().slice(-6) })}</p>
+                <button onClick={() => setShowOrderModal(false)} className="bg-[#006948] text-white px-8 py-3 rounded-xl font-semibold">{t('Done')}</button>
               </div>
             ) : (
               <div className="p-6 space-y-4">
@@ -533,7 +551,7 @@ export default function Products() {
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-[#006948] font-semibold">{orderProduct.brand}</p>
                     <p className="text-sm font-bold text-gray-800 truncate">{orderProduct.model}</p>
-                    <p className="text-xs text-gray-400">{orderProduct.unit}</p>
+                    <p className="text-xs text-gray-400">{t(orderProduct.unit)}</p>
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button onClick={() => setOrderForm(f => ({...f, qty: Math.max(1, f.qty-1)}))} className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 font-bold">-</button>
@@ -542,50 +560,50 @@ export default function Products() {
                   </div>
                 </div>
 
-                <input type="text" placeholder="Your Full Name *" required value={orderForm.name}
+                <input type="text" placeholder={t('Your Full Name *')} required value={orderForm.name}
                   onChange={e => setOrderForm(f => ({...f, name: e.target.value}))}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948]" />
-                <input type="tel" placeholder="Phone / WhatsApp Number *" required value={orderForm.phone}
+                <input type="tel" placeholder={t('Phone / WhatsApp Number *')} required value={orderForm.phone}
                   onChange={e => setOrderForm(f => ({...f, phone: e.target.value}))}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948]" />
-                <input type="email" placeholder="Email Address (for order confirmation)" value={orderForm.email}
+                <input type="email" placeholder={t('Email Address (for order confirmation)')} value={orderForm.email}
                   onChange={e => setOrderForm(f => ({...f, email: e.target.value}))}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948]" />
-                <textarea placeholder="Delivery Address (full address with PIN code) *" rows={3} required
+                <textarea placeholder={t('Delivery Address (full address with PIN code) *')} rows={3} required
                   value={orderForm.address} onChange={e => setOrderForm(f => ({...f, address: e.target.value}))}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948] resize-none" />
 
                 {/* Payment method */}
                 <div>
-                  <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wider">Payment Method</p>
+                  <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wider">{t('Payment Method')}</p>
                   <div className="grid grid-cols-2 gap-2">
-                    {[['cod','💵 Pay on Delivery'],['online','💳 Online Payment']].map(([val,label]) => (
+                    {[['cod','💵', 'Pay on Delivery'],['online','💳', 'Online Payment']].map(([val,icon,label]) => (
                       <button key={val} onClick={() => setOrderForm(f => ({...f, payment: val}))}
                         className={"py-3 rounded-xl border-2 text-sm font-semibold transition-all " +
                           (orderForm.payment === val ? 'border-[#006948] bg-[#006948]/5 text-[#006948]' : 'border-gray-200 text-gray-600 hover:border-gray-300')}>
-                        {label}
+                        {icon} {t(label)}
                       </button>
                     ))}
                   </div>
                   {orderForm.payment === 'online' && (
                     <p className="text-xs text-orange-600 mt-2 bg-orange-50 rounded-lg px-3 py-2">
-                      ⚡ Razorpay online payment coming soon. Our team will share a payment link after confirming your order.
+                      ⚡ {t('Razorpay online payment coming soon. Our team will share a payment link after confirming your order.')}
                     </p>
                   )}
                 </div>
 
-                <textarea placeholder="Any special instructions or notes (optional)" rows={2}
+                <textarea placeholder={t('Any special instructions or notes (optional)')} rows={2}
                   value={orderForm.notes} onChange={e => setOrderForm(f => ({...f, notes: e.target.value}))}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948] resize-none" />
 
                 <div className="flex gap-3">
-                  <button onClick={() => setShowOrderModal(false)} className="flex-1 border border-gray-200 text-gray-600 py-3 rounded-xl text-sm font-medium hover:bg-gray-50">Cancel</button>
+                  <button onClick={() => setShowOrderModal(false)} className="flex-1 border border-gray-200 text-gray-600 py-3 rounded-xl text-sm font-medium hover:bg-gray-50">{t('Cancel')}</button>
                   <button onClick={submitOrder} disabled={orderSubmitting}
                     className="flex-1 bg-[#006948] text-white py-3 rounded-xl text-sm font-bold hover:bg-[#004d34] disabled:opacity-60 transition-colors">
-                    {orderSubmitting ? 'Placing Order...' : 'Place Order →'}
+                    {orderSubmitting ? t('Placing Order...') : t('Place Order') + ' →'}
                   </button>
                 </div>
-                <p className="text-xs text-gray-400 text-center">Our team will call you within 2 hours to confirm.</p>
+                <p className="text-xs text-gray-400 text-center">{t('Our team will call you within 2 hours to confirm.')}</p>
               </div>
             )}
           </div>

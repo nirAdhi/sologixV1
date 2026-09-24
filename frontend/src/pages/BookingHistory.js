@@ -2,8 +2,10 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { bookingsAPI } from '../utils/api';
+import { useT } from '../i18n';
 
 const BookingHistory = () => {
+  const { t, locale } = useT();
   const [searchType, setSearchType] = useState('email');
   const [searchValue, setSearchValue] = useState('');
   const [bookings, setBookings] = useState([]);
@@ -14,7 +16,7 @@ const BookingHistory = () => {
     e.preventDefault();
     
     if (!searchValue.trim()) {
-      toast.error(`Please enter your ${searchType}`);
+      toast.error(t(searchType === 'email' ? 'Please enter your email' : 'Please enter your phone number'));
       return;
     }
 
@@ -30,7 +32,7 @@ const BookingHistory = () => {
       }
       setBookings(response.data.data);
     } catch (error) {
-      toast.error('Failed to fetch bookings');
+      toast.error(t('Failed to fetch bookings'));
       setBookings([]);
     } finally {
       setLoading(false);
@@ -51,12 +53,12 @@ const BookingHistory = () => {
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">My Bookings</h1>
-          <p className="text-gray-600">View your solar installation bookings — no payment required</p>
+          <h1 className="text-3xl font-bold text-gray-800 mb-2">{t('My Bookings')}</h1>
+          <p className="text-gray-600">{t('View your solar installation bookings — no payment required')}</p>
         </div>
 
         <div className="card p-6 mb-8">
-          <h2 className="text-lg font-semibold text-gray-800 mb-4">Find Your Bookings</h2>
+          <h2 className="text-lg font-semibold text-gray-800 mb-4">{t('Find Your Bookings')}</h2>
           
           <form onSubmit={handleSearch}>
             <div className="flex flex-col md:flex-row gap-4">
@@ -66,8 +68,8 @@ const BookingHistory = () => {
                   onChange={(e) => setSearchType(e.target.value)}
                   className="input-field"
                 >
-                  <option value="email">Email</option>
-                  <option value="phone">Phone</option>
+                  <option value="email">{t('Email')}</option>
+                  <option value="phone">{t('Phone')}</option>
                 </select>
               </div>
               <div className="flex-1">
@@ -75,12 +77,12 @@ const BookingHistory = () => {
                   type={searchType === 'email' ? 'email' : 'tel'}
                   value={searchValue}
                   onChange={(e) => setSearchValue(e.target.value)}
-                  placeholder={searchType === 'email' ? 'Enter your email' : 'Enter your phone number'}
+                  placeholder={t(searchType === 'email' ? 'Enter your email' : 'Enter your phone number')}
                   className="input-field"
                 />
               </div>
               <button type="submit" className="btn-primary" disabled={loading}>
-                {loading ? 'Searching...' : 'Search'}
+                {loading ? t('Searching...') : t('Search')}
               </button>
             </div>
           </form>
@@ -89,12 +91,12 @@ const BookingHistory = () => {
         {searched && bookings.length === 0 && !loading && (
           <div className="card p-8 text-center">
             <div className="text-4xl mb-4">📭</div>
-            <h3 className="text-lg font-semibold text-gray-800 mb-2">No Bookings Found</h3>
+            <h3 className="text-lg font-semibold text-gray-800 mb-2">{t('No Bookings Found')}</h3>
             <p className="text-gray-600 mb-4">
-              No bookings found for this {searchType}. Please check your input or make a new booking.
+              {t(searchType === 'email' ? 'No bookings found for this email. Please check your input or make a new booking.' : 'No bookings found for this phone number. Please check your input or make a new booking.')}
             </p>
             <Link to="/booking" className="btn-primary">
-              Book Appointment
+              {t('Book Appointment')}
             </Link>
           </div>
         )}
@@ -105,42 +107,45 @@ const BookingHistory = () => {
               <div key={booking.id} className="card p-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between mb-4">
                   <div>
-                    <span className="text-sm text-gray-500">Booking ID</span>
+                    <span className="text-sm text-gray-500">{t('Booking ID')}</span>
                     <p className="text-lg font-bold text-primary-600">{booking.booking_id}</p>
                   </div>
                   <div className="flex gap-2 mt-2 md:mt-0">
                     <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusBadge(booking.status)}`}>
-                      {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                      {t(booking.status.charAt(0).toUpperCase() + booking.status.slice(1))}
                     </span>
                     <span className="px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-700">
-                      Free Booking
+                      {t('Free Booking')}
                     </span>
                   </div>
                 </div>
 
                 <div className="grid md:grid-cols-2 gap-4 text-sm">
                   <div>
-                    <p className="text-gray-500">Service</p>
-                    <p className="font-medium text-gray-800">{booking.service_name}</p>
+                    <p className="text-gray-500">{t('Service')}</p>
+                    <p className="font-medium text-gray-800">{t(booking.service_name)}</p>
                   </div>
                   <div>
-                    <p className="text-gray-500">Appointment</p>
+                    <p className="text-gray-500">{t('Appointment')}</p>
                     <p className="font-medium text-gray-800">
-                      {new Date(booking.appointment_date).toLocaleDateString('en-IN', {
-                        year: 'numeric',
-                        month: 'long',
-                        day: 'numeric'
-                      })} at {booking.appointment_time}
+                      {t('{date} at {time}', {
+                        date: new Date(booking.appointment_date).toLocaleDateString(locale, {
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        }),
+                        time: booking.appointment_time,
+                      })}
                     </p>
                   </div>
                   <div>
-                    <p className="text-gray-500">Amount</p>
-                    <p className="font-medium text-green-600">Free</p>
+                    <p className="text-gray-500">{t('Amount')}</p>
+                    <p className="font-medium text-green-600">{t('Free')}</p>
                   </div>
                   <div>
-                    <p className="text-gray-500">Booked On</p>
+                    <p className="text-gray-500">{t('Booked On')}</p>
                     <p className="font-medium text-gray-800">
-                      {new Date(booking.created_at).toLocaleDateString('en-IN')}
+                      {new Date(booking.created_at).toLocaleDateString(locale)}
                     </p>
                   </div>
                 </div>
@@ -151,7 +156,7 @@ const BookingHistory = () => {
 
         <div className="mt-8 text-center">
           <Link to="/booking" className="text-primary-600 hover:text-primary-700 font-medium">
-            + Make a New Booking
+            + {t('Make a New Booking')}
           </Link>
         </div>
       </div>

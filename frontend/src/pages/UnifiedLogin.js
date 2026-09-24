@@ -4,10 +4,13 @@ import toast from 'react-hot-toast';
 import { adminAPI, customerAPI } from '../utils/api';
 import { BRANDING } from '../utils/branding';
 import BrandLogo from '../components/BrandLogo';
+import { useT } from '../i18n';
+import LanguageToggle from '../i18n/LanguageToggle';
 
 const UnifiedLogin = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { t } = useT();
   const isAdminRoute = location.pathname === '/admin/login';
   const [userType, setUserType] = useState(isAdminRoute ? 'admin' : 'customer');
   const [isRegister, setIsRegister] = useState(false);
@@ -56,7 +59,7 @@ const UnifiedLogin = () => {
   const handleLogin = async (e) => {
     e.preventDefault();
     if (!loginData.email || !loginData.password) {
-      toast.error('Please enter your email and password');
+      toast.error(t('Please enter your email and password'));
       return;
     }
     // Trim whitespace to avoid accidental spaces/question marks
@@ -70,13 +73,13 @@ const UnifiedLogin = () => {
       if (userType === 'admin') {
         const response = await adminAPI.login(trimmedData);
         localStorage.setItem('adminToken', response.data.data.token);
-        toast.success('Login successful!');
+        toast.success(t('Login successful!'));
         navigate('/admin');
       } else {
         const response = await customerAPI.login(trimmedData);
         localStorage.setItem('customerToken', response.data.data.token);
         localStorage.setItem('customerData', JSON.stringify(response.data.data.customer));
-        toast.success('Login successful!');
+        toast.success(t('Login successful!'));
         navigate('/portal');
       }
     } catch (error) {
@@ -84,11 +87,11 @@ const UnifiedLogin = () => {
       const isNetworkError = !error.response && (error.code === 'ERR_NETWORK' || error.message === 'Network Error');
       if (isNetworkError) {
         toast.error(
-          '⚠️ Cannot reach server — check your internet connection. If the problem persists, try a different network or VPN.',
+          '⚠️ ' + t('Cannot reach server — check your internet connection. If the problem persists, try a different network or VPN.'),
           { duration: 6000 }
         );
       } else {
-        toast.error(error.response?.data?.message || 'Login failed. Please try again.');
+        toast.error(t(error.response?.data?.message || 'Login failed. Please try again.'));
       }
     } finally {
       setLoading(false);
@@ -98,15 +101,15 @@ const UnifiedLogin = () => {
   const handleRegister = async (e) => {
     e.preventDefault();
     if (!registerData.name || !registerData.email || !registerData.phone || !registerData.password) {
-      toast.error('Please fill all required fields');
+      toast.error(t('Please fill all required fields'));
       return;
     }
     if (registerData.password !== registerData.confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error(t('Passwords do not match'));
       return;
     }
     if (registerData.password.length < 6) {
-      toast.error('Password must be at least 6 characters');
+      toast.error(t('Password must be at least 6 characters'));
       return;
     }
 
@@ -115,17 +118,17 @@ const UnifiedLogin = () => {
       const response = await customerAPI.register(registerData);
       localStorage.setItem('customerToken', response.data.data.token);
       localStorage.setItem('customerData', JSON.stringify(response.data.data.customer));
-      toast.success('Registration successful! Welcome to ' + BRANDING.name);
+      toast.success(t('Registration successful! Welcome to {name}', { name: BRANDING.name }));
       navigate("/booking");
     } catch (error) {
       const isNetworkError = !error.response && (error.code === 'ERR_NETWORK' || error.message === 'Network Error');
       if (isNetworkError) {
         toast.error(
-          '⚠️ Cannot reach server — check your internet connection. If the problem persists, try a different network or VPN.',
+          '⚠️ ' + t('Cannot reach server — check your internet connection. If the problem persists, try a different network or VPN.'),
           { duration: 6000 }
         );
       } else {
-        toast.error(error.response?.data?.message || 'Registration failed. Please try again.');
+        toast.error(t(error.response?.data?.message || 'Registration failed. Please try again.'));
       }
     } finally {
       setLoading(false);
@@ -135,12 +138,13 @@ const UnifiedLogin = () => {
   return (
     <div className="min-h-screen flex flex-col" style={{ background: `linear-gradient(to bottom right, ${BRANDING.colors.primary[700]}, ${BRANDING.colors.primary[900]})` }}>
       {/* ── Top navbar ── */}
-      <nav className="w-full px-6 py-3 flex items-center justify-between" style={{ background: 'rgba(0,0,0,0.15)' }}>
+      <nav className="w-full px-4 sm:px-6 py-3 flex items-center justify-between gap-3" style={{ background: 'rgba(0,0,0,0.15)' }}>
         <BrandLogo size="sm" linkTo="/" />
-        <div className="flex items-center gap-4">
-          <Link to="/" className="text-sm font-medium text-white opacity-80 hover:opacity-100 transition-opacity">Home</Link>
-          <Link to="/services" className="text-sm font-medium text-white opacity-80 hover:opacity-100 transition-opacity">Services</Link>
-          <Link to="/booking" className="text-sm font-medium text-white opacity-80 hover:opacity-100 transition-opacity">Book Now</Link>
+        <div className="flex items-center gap-3 sm:gap-4">
+          <Link to="/" className="hidden sm:inline text-sm font-medium text-white opacity-80 hover:opacity-100 transition-opacity">{t('Home')}</Link>
+          <Link to="/services" className="text-sm font-medium text-white opacity-80 hover:opacity-100 transition-opacity whitespace-nowrap">{t('Services')}</Link>
+          <Link to="/booking" className="text-sm font-medium text-white opacity-80 hover:opacity-100 transition-opacity whitespace-nowrap">{t('Book Now')}</Link>
+          <LanguageToggle compact />
         </div>
       </nav>
 
@@ -149,7 +153,7 @@ const UnifiedLogin = () => {
       <div className="max-w-md w-full">
         <div className="text-center mb-6">
           <h1 className="text-2xl font-bold text-white mt-2">{BRANDING.name}</h1>
-          <p className="mt-2" style={{ color: BRANDING.colors.primary[200] }}>Login or Sign Up to manage your bookings</p>
+          <p className="mt-2" style={{ color: BRANDING.colors.primary[200] }}>{t('Login or Sign Up to manage your bookings')}</p>
         </div>
 
         <div className="bg-white rounded-xl shadow-2xl p-8">
@@ -164,7 +168,7 @@ const UnifiedLogin = () => {
                   : 'text-gray-600 hover:text-gray-800'
               }`}
             >
-              Customer
+              {t('Customer')}
             </button>
             <button
               type="button"
@@ -175,7 +179,7 @@ const UnifiedLogin = () => {
                   : 'text-gray-600 hover:text-gray-800'
               }`}
             >
-              Admin
+              {t('Admin')}
             </button>
           </div>
 
@@ -183,26 +187,26 @@ const UnifiedLogin = () => {
             <div>
               <form onSubmit={handleLogin} className="space-y-5">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('Email Address')}</label>
                   <input
                     type="email"
                     name="email"
                     value={loginData.email}
                     onChange={handleLoginChange}
                     className="input-field"
-                    placeholder="Enter your email"
+                    placeholder={t('Enter your email')}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Password</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('Password')}</label>
                   <input
                     type="password"
                     name="password"
                     value={loginData.password}
                     onChange={handleLoginChange}
                     className="input-field"
-                    placeholder="Enter your password"
+                    placeholder={t('Enter your password')}
                   />
                 </div>
 
@@ -212,7 +216,7 @@ const UnifiedLogin = () => {
                   className="w-full py-3 px-4 rounded-lg font-semibold text-white transition-colors"
                   style={{ backgroundColor: BRANDING.colors.primary[600] }}
                 >
-                  {loading ? 'Please wait...' : 'Sign In'}
+                  {loading ? t('Please wait...') : t('Sign In')}
                 </button>
               </form>
 
@@ -224,7 +228,7 @@ const UnifiedLogin = () => {
                     className="text-sm font-medium"
                     style={{ color: BRANDING.colors.primary[600] }}
                   >
-                    Forgot Password? Reset here
+                    {t('Forgot Password? Reset here')}
                   </Link>
                 </div>
               )}
@@ -233,21 +237,21 @@ const UnifiedLogin = () => {
             /* Registration Form */
             <form onSubmit={handleRegister} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Full Name *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('Full Name')} *</label>
                 <input
                   type="text"
                   name="name"
                   value={registerData.name}
                   onChange={handleRegisterChange}
                   className="input-field"
-                  placeholder="Your full name"
+                  placeholder={t('Your full name')}
                   required
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Phone Number *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('Phone Number')} *</label>
                   <input
                     type="tel"
                     name="phone"
@@ -259,7 +263,7 @@ const UnifiedLogin = () => {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Alternate Phone</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('Alternate Phone')}</label>
                   <input
                     type="tel"
                     name="alternate_phone"
@@ -272,7 +276,7 @@ const UnifiedLogin = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email Address *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('Email Address')} *</label>
                 <input
                   type="email"
                   name="email"
@@ -285,13 +289,13 @@ const UnifiedLogin = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Full Address *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('Full Address')} *</label>
                 <textarea
                   name="address"
                   value={registerData.address}
                   onChange={handleRegisterChange}
                   className="input-field"
-                  placeholder="Your complete address"
+                  placeholder={t('Your complete address')}
                   rows="2"
                   required
                 />
@@ -299,31 +303,31 @@ const UnifiedLogin = () => {
 
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">City *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('City')} *</label>
                   <input
                     type="text"
                     name="city"
                     value={registerData.city}
                     onChange={handleRegisterChange}
                     className="input-field"
-                    placeholder="City"
+                    placeholder={t('City')}
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">State *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('State')} *</label>
                   <input
                     type="text"
                     name="state"
                     value={registerData.state}
                     onChange={handleRegisterChange}
                     className="input-field"
-                    placeholder="State"
+                    placeholder={t('State')}
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Pincode *</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">{t('Pincode')} *</label>
                   <input
                     type="text"
                     name="pincode"
@@ -337,64 +341,64 @@ const UnifiedLogin = () => {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Service You're Interested In</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t("Service You're Interested In")}</label>
                 <select
                   name="service_interest"
                   value={registerData.service_interest}
                   onChange={handleRegisterChange}
                   className="input-field"
                 >
-                  <option value="">Select a service</option>
-                  <option value="residential">Residential Solar Installation</option>
-                  <option value="commercial">Commercial Solar Installation</option>
-                  <option value="water_heater">Solar Water Heater</option>
-                  <option value="inverter">Solar Inverter Setup</option>
-                  <option value="maintenance">Maintenance Service</option>
-                  <option value="other">Other</option>
+                  <option value="">{t('Select a service')}</option>
+                  <option value="residential">{t('Residential Solar Installation')}</option>
+                  <option value="commercial">{t('Commercial Solar Installation')}</option>
+                  <option value="water_heater">{t('Solar Water Heater')}</option>
+                  <option value="inverter">{t('Solar Inverter Setup')}</option>
+                  <option value="maintenance">{t('Maintenance Service')}</option>
+                  <option value="other">{t('Other')}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">How did you hear about us?</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('How did you hear about us?')}</label>
                 <select
                   name="how_heard"
                   value={registerData.how_heard}
                   onChange={handleRegisterChange}
                   className="input-field"
                 >
-                  <option value="">Select an option</option>
-                  <option value="google">Google Search</option>
+                  <option value="">{t('Select an option')}</option>
+                  <option value="google">{t('Google Search')}</option>
                   <option value="facebook">Facebook</option>
                   <option value="instagram">Instagram</option>
-                  <option value="referral">Friend/Referral</option>
-                  <option value="advertisement">Advertisement</option>
-                  <option value="other">Other</option>
+                  <option value="referral">{t('Friend/Referral')}</option>
+                  <option value="advertisement">{t('Advertisement')}</option>
+                  <option value="other">{t('Other')}</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Password *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('Password')} *</label>
                 <input
                   type="password"
                   name="password"
                   value={registerData.password}
                   onChange={handleRegisterChange}
                   className="input-field"
-                  placeholder="Create a password (min 6 characters)"
+                  placeholder={t('Create a password (min 6 characters)')}
                   minLength="6"
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('Confirm Password')} *</label>
                 <input
                   type="password"
                   name="confirmPassword"
                   value={registerData.confirmPassword}
                   onChange={handleRegisterChange}
                   className="input-field"
-                  placeholder="Confirm your password"
+                  placeholder={t('Confirm your password')}
                   required
                 />
               </div>
@@ -405,7 +409,7 @@ const UnifiedLogin = () => {
                 className="w-full py-3 px-4 rounded-lg font-semibold text-white transition-colors"
                 style={{ backgroundColor: BRANDING.colors.primary[600] }}
               >
-                {loading ? 'Please wait...' : 'Create Account'}
+                {loading ? t('Please wait...') : t('Create Account')}
               </button>
             </form>
           )}
@@ -415,16 +419,16 @@ const UnifiedLogin = () => {
             <div className="mt-5 text-center">
               {isRegister ? (
                 <p className="text-gray-600">
-                  Already have an account?{' '}
+                  {t('Already have an account?')}{' '}
                   <button type="button" onClick={() => setIsRegister(false)} className="font-medium" style={{ color: BRANDING.colors.primary[600] }}>
-                    Sign In
+                    {t('Sign In')}
                   </button>
                 </p>
               ) : (
                 <p className="text-gray-600">
-                  Don't have an account?{' '}
+                  {t("Don't have an account?")}{' '}
                   <button type="button" onClick={() => setIsRegister(true)} className="font-medium" style={{ color: BRANDING.colors.primary[600] }}>
-                    Sign Up
+                    {t('Sign Up')}
                   </button>
                 </p>
               )}
@@ -433,7 +437,7 @@ const UnifiedLogin = () => {
         </div>
 
         <p className="text-center text-gray-400 text-sm mt-4">
-          © {new Date().getFullYear()} {BRANDING.name}. All rights reserved.
+          © {new Date().getFullYear()} {BRANDING.name}. {t('All rights reserved.')}
         </p>
       </div>
       </div>

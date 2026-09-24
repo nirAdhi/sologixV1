@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { catalogAPI } from '../utils/api';
 import toast from 'react-hot-toast';
+import { useT } from '../i18n';
 
 const API_URL = process.env.REACT_APP_API_URL || '/api';
 
@@ -25,7 +26,24 @@ const STATIC = [
   { id:17, category:'BOS & Accessories', brand:'Sologix',         model:'Solar DC Cable 4mm',    unit:'per metre', specs:'TUV certified · UV resistant', badge:'', in_stock:1, image_url:'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=800&h=600&fit=crop', warranty:'1 Year', description:'Sologix 4mm2 TUV certified DC cable — UV resistant and double insulated for outdoor solar installations.', specs_table:[['Cross Section','4 mm2'],['Rating','TUV Certified'],['Insulation','Double (UV resistant)'],['Warranty','1 Year']] },
 ];
 
+// Short spec lines ("580W · 21.5% efficiency · 25yr warranty" or the DB's comma form)
+// are translated piece by piece; numbers/models without a Hindi entry stay as they are.
+const SPEC_PATTERNS = [
+  [/^([\d.]+%) efficiency$/i, '{value} efficiency'],
+  [/^(\d+)\s?yrs? warranty$/i, '{value} year warranty'],
+  [/^([\d,]+\+?) cycles$/i, '{value} cycles'],
+];
+const translateSpecs = (specs, t) => {
+  if (!specs) return specs;
+  return String(specs).split(/(\s·\s|,\s)/).map(part => {
+    if (/^(\s·\s|,\s)$/.test(part)) return part;
+    for (const [re, key] of SPEC_PATTERNS) { const m = part.match(re); if (m) return t(key, { value: m[1] }); }
+    return t(part);
+  }).join('');
+};
+
 export default function ProductDetail() {
+  const { t } = useT();
   const { id } = useParams();
   const navigate = useNavigate();
   const [allProducts, setAllProducts] = useState(STATIC);
@@ -52,8 +70,8 @@ export default function ProductDetail() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
       <div className="text-center">
         <p className="text-5xl mb-4">😕</p>
-        <p className="text-gray-500 mb-4">Product not found</p>
-        <button onClick={() => navigate('/products')} className="bg-[#006948] text-white px-6 py-3 rounded-full font-semibold">Back to Products</button>
+        <p className="text-gray-500 mb-4">{t('Product not found')}</p>
+        <button onClick={() => navigate('/products')} className="bg-[#006948] text-white px-6 py-3 rounded-full font-semibold">{t('Back to Products')}</button>
       </div>
     </div>
   );
@@ -67,11 +85,11 @@ export default function ProductDetail() {
       if (ex) return prev.map(i => i.id === product.id ? {...i, qty: i.qty+1} : i);
       return [...prev, {...product, qty: 1}];
     });
-    toast.success(product.model + ' added to quote cart');
+    toast.success(t('{model} added to quote cart', { model: product.model }));
   };
 
   const submitQuote = async () => {
-    if (!quoteForm.name || !quoteForm.phone) { toast.error('Name and phone required'); return; }
+    if (!quoteForm.name || !quoteForm.phone) { toast.error(t('Name and phone required')); return; }
     setSubmitting(true);
     try {
       await fetch(API_URL + '/leads/public', {
@@ -85,8 +103,8 @@ export default function ProductDetail() {
         }),
       });
       setSubmitted(true);
-      toast.success('Enquiry submitted! We will contact you within 24 hours.');
-    } catch { toast.error('Failed to submit. Please call us.'); }
+      toast.success(t('Enquiry submitted! We will contact you within 24 hours.'));
+    } catch { toast.error(t('Failed to submit. Please call us.')); }
     finally { setSubmitting(false); }
   };
 
@@ -113,15 +131,15 @@ export default function ProductDetail() {
           });
           const result = await verify.json();
           if (result.success) { onSuccess(response.razorpay_payment_id); }
-          else { toast.error('Payment verification failed. Contact support.'); }
-        } catch { toast.error('Verification error. Please contact us.'); }
+          else { toast.error(t('Payment verification failed. Contact support.')); }
+        } catch { toast.error(t('Verification error. Please contact us.')); }
       },
       prefill: { name: customerDetails.name, email: customerDetails.email || '', contact: customerDetails.phone },
       theme: { color: '#006948' },
-      modal: { ondismiss: () => toast('Payment cancelled') },
+      modal: { ondismiss: () => toast(t('Payment cancelled')) },
     };
     const rzp = new window.Razorpay(options);
-    rzp.on('payment.failed', (r) => toast.error('Payment failed: ' + (r.error?.description || 'Please try again')));
+    rzp.on('payment.failed', (r) => toast.error(t('Payment failed: {reason}', { reason: r.error?.description || t('Please try again') })));
     rzp.open();
   };
 
@@ -132,7 +150,7 @@ export default function ProductDetail() {
   };
 
   const submitOrder = async () => {
-    if (!orderForm.name || !orderForm.phone || !orderForm.address) { toast.error('Name, phone and address required'); return; }
+    if (!orderForm.name || !orderForm.phone || !orderForm.address) { toast.error(t('Name, phone and address required')); return; }
     const items = [{ id: product.id, brand: product.brand, model: product.model, qty: orderForm.qty, unit: product.unit }];
     setOrderSubmitting(true);
     try {
@@ -143,10 +161,10 @@ export default function ProductDetail() {
           body: JSON.stringify({ name: orderForm.name, phone: orderForm.phone, email: orderForm.email, address: orderForm.address, items, amount_paise: 100, notes: orderForm.notes || '' }),
         });
         const rpData = await rpRes.json();
-        if (!rpData.success) { toast.error('Payment gateway error. Try COD.'); setOrderSubmitting(false); return; }
+        if (!rpData.success) { toast.error(t('Payment gateway error. Try COD.')); setOrderSubmitting(false); return; }
         setOrderSubmitting(false);
         launchRazorpay(rpData.data, { name: orderForm.name, phone: orderForm.phone, email: orderForm.email }, items,
-          (paymentId) => { setOrderDone(true); toast.success('Payment confirmed! ID: ' + paymentId); }
+          (paymentId) => { setOrderDone(true); toast.success(t('Payment confirmed! ID: {id}', { id: paymentId })); }
         );
         return;
       }
@@ -154,9 +172,9 @@ export default function ProductDetail() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: orderForm.name, phone: orderForm.phone, email: orderForm.email, address: orderForm.address, items, notes: 'Pay on Delivery. ' + (orderForm.notes||''), customer_type: 'direct_order', status: 'pending' }),
       });
-      if (res.ok) { setOrderDone(true); toast.success('Order placed! Team confirms within 2 hours.'); }
-      else toast.error('Order failed. Please call us.');
-    } catch { toast.error('Network error.'); }
+      if (res.ok) { setOrderDone(true); toast.success(t('Order placed! Team confirms within 2 hours.')); }
+      else toast.error(t('Order failed. Please call us.'));
+    } catch { toast.error(t('Network error.')); }
     finally { setOrderSubmitting(false); }
   };
 
@@ -165,11 +183,11 @@ export default function ProductDetail() {
       {/* Breadcrumb */}
       <div className="bg-white border-b border-gray-100">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-16 py-3 flex items-center gap-2 text-sm text-gray-500">
-          <Link to="/" className="hover:text-[#006948]">Home</Link>
+          <Link to="/" className="hover:text-[#006948]">{t('Home')}</Link>
           <span>/</span>
-          <Link to="/products" className="hover:text-[#006948]">Products</Link>
+          <Link to="/products" className="hover:text-[#006948]">{t('Products')}</Link>
           <span>/</span>
-          <Link to={'/products?category=' + encodeURIComponent(product.category)} className="hover:text-[#006948]">{product.category}</Link>
+          <Link to={'/products?category=' + encodeURIComponent(product.category)} className="hover:text-[#006948]">{t(product.category)}</Link>
           <span>/</span>
           <span className="text-gray-800 font-medium">{product.model}</span>
         </div>
@@ -185,9 +203,9 @@ export default function ProductDetail() {
             </div>
             {/* Trust badges */}
             <div className="flex gap-3 mt-4 flex-wrap">
-              {[['🏅','Authorised Seller'],['🚚','Pan India Delivery'],['✅','Quality Assured'],['📋','Datasheet Available']].map(([i,t]) => (
-                <div key={t} className="flex items-center gap-1.5 bg-white border border-gray-100 rounded-full px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm">
-                  <span>{i}</span>{t}
+              {[['🏅','Authorised Seller'],['🚚','Pan India Delivery'],['✅','Quality Assured'],['📋','Datasheet Available']].map(([i,label]) => (
+                <div key={label} className="flex items-center gap-1.5 bg-white border border-gray-100 rounded-full px-3 py-1.5 text-xs font-medium text-gray-700 shadow-sm">
+                  <span>{i}</span>{t(label)}
                 </div>
               ))}
             </div>
@@ -198,59 +216,59 @@ export default function ProductDetail() {
             <div className="flex items-center gap-2 mb-2">
               <span className="text-xs font-bold text-[#006948] uppercase tracking-widest">{product.brand}</span>
               <span className="text-gray-300">•</span>
-              <span className="text-xs text-gray-400">{product.category}</span>
-              {product.badge && <span className="ml-auto bg-[#006948] text-white text-xs px-2.5 py-1 rounded-full font-bold">{product.badge}</span>}
+              <span className="text-xs text-gray-400">{t(product.category)}</span>
+              {product.badge && <span className="ml-auto bg-[#006948] text-white text-xs px-2.5 py-1 rounded-full font-bold">{t(product.badge)}</span>}
             </div>
             <h1 className="text-3xl font-bold text-gray-900 mb-4">{product.model}</h1>
 
             {/* Warranty badge */}
             {product.warranty && (
               <div className="inline-flex items-center gap-2 bg-green-50 border border-green-100 text-[#006948] px-4 py-2 rounded-full text-sm font-semibold mb-6">
-                🏆 {product.warranty} Warranty
+                🏆 {t('{warranty} Warranty', { warranty: t(product.warranty) })}
               </div>
             )}
 
-            <p className="text-gray-600 leading-relaxed mb-6">{product.description || product.specs}</p>
+            <p className="text-gray-600 leading-relaxed mb-6">{product.description ? t(product.description) : translateSpecs(product.specs, t)}</p>
 
             {/* Price section */}
             <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5 mb-6">
               <div className="flex items-center justify-between mb-3">
                 <div>
-                  <p className="text-xs text-gray-400 mb-1">Estimated Price ({product.unit})</p>
+                  <p className="text-xs text-gray-400 mb-1">{t('Estimated Price ({unit})', { unit: t(product.unit || 'per NOS') })}</p>
                   <div className="flex items-center gap-2">
                     <span className="text-2xl font-bold text-gray-200 select-none" style={{filter:'blur(5px)'}}>Rs 99,999</span>
-                    <span className="text-xs text-gray-400">🔒 Contact for price</span>
+                    <span className="text-xs text-gray-400">🔒 {t('Contact for price')}</span>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-xs text-[#006948] font-semibold">{product.in_stock ? '✅ In Stock' : '❌ Out of Stock'}</p>
-                  <p className="text-xs text-gray-400">Ships pan India</p>
+                  <p className="text-xs text-[#006948] font-semibold">{product.in_stock ? '✅ ' + t('In Stock') : '❌ ' + t('Out of Stock')}</p>
+                  <p className="text-xs text-gray-400">{t('Ships pan India')}</p>
                 </div>
               </div>
               <div className="flex gap-3 mb-2">
                 <button onClick={() => { setShowOrder(true); setOrderDone(false); }}
                   className="flex-1 bg-[#006948] text-white py-3.5 rounded-xl font-bold hover:bg-[#004d34] transition-colors disabled:opacity-40" disabled={!product.in_stock}>
-                  🛒 Buy Now
+                  🛒 {t('Buy Now')}
                 </button>
               </div>
               <div className="flex gap-3">
                 <button onClick={addToCart} disabled={!product.in_stock}
                   className="flex-1 border-2 border-[#006948] text-[#006948] py-3.5 rounded-xl font-bold hover:bg-[#006948]/5 transition-colors disabled:opacity-40">
-                  {inCart ? '✓ In Quote Cart' : '+ Add to Quote Cart'}
+                  {inCart ? '✓ ' + t('In Quote Cart') : '+ ' + t('Add to Quote Cart')}
                 </button>
                 <button onClick={() => { setShowQuote(true); setSubmitted(false); }}
                   className="flex-1 border-2 border-gray-200 text-gray-600 py-3.5 rounded-xl font-bold hover:bg-gray-50 transition-colors">
-                  Get Best Price
+                  {t('Get Best Price')}
                 </button>
               </div>
             </div>
 
             {/* 4-step journey */}
             <div className="grid grid-cols-2 gap-2">
-              {[['1','Add to Cart','🛒'],['2','Submit Quote','📋'],['3','Get Price 24h','💰'],['4','Pay & Deliver','🚚']].map(([n,t,i]) => (
+              {[['1','Add to Cart','🛒'],['2','Submit Quote','📋'],['3','Get Price 24h','💰'],['4','Pay & Deliver','🚚']].map(([n,label,i]) => (
                 <div key={n} className="bg-white border border-gray-100 rounded-xl p-3 flex items-center gap-2">
                   <span className="text-lg">{i}</span>
-                  <div><p className="text-xs text-gray-400">Step {n}</p><p className="text-xs font-semibold text-gray-700">{t}</p></div>
+                  <div><p className="text-xs text-gray-400">{t('Step {n}', { n })}</p><p className="text-xs font-semibold text-gray-700">{t(label)}</p></div>
                 </div>
               ))}
             </div>
@@ -261,15 +279,15 @@ export default function ProductDetail() {
         {product.specs_table && product.specs_table.length > 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-12 shadow-sm">
             <div className="bg-[#006948] px-6 py-4">
-              <h2 className="text-white font-bold text-lg">Technical Specifications</h2>
+              <h2 className="text-white font-bold text-lg">{t('Technical Specifications')}</h2>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full">
                 <tbody>
                   {product.specs_table.map(([label, value], i) => (
                     <tr key={label} className={i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                      <td className="px-6 py-3 text-sm font-semibold text-gray-600 w-1/2">{label}</td>
-                      <td className="px-6 py-3 text-sm text-gray-800 font-medium">{value}</td>
+                      <td className="px-6 py-3 text-sm font-semibold text-gray-600 w-1/2">{t(label)}</td>
+                      <td className="px-6 py-3 text-sm text-gray-800 font-medium">{t(value)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -282,8 +300,8 @@ export default function ProductDetail() {
         {related.length > 0 && (
           <div>
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold">More from {product.category}</h2>
-              <Link to={'/products?category=' + encodeURIComponent(product.category)} className="text-[#006948] text-sm font-semibold hover:underline">View All →</Link>
+              <h2 className="text-2xl font-bold">{t('More from {category}', { category: t(product.category) })}</h2>
+              <Link to={'/products?category=' + encodeURIComponent(product.category)} className="text-[#006948] text-sm font-semibold hover:underline">{t('View All')} →</Link>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {related.map(p => (
@@ -295,7 +313,7 @@ export default function ProductDetail() {
                   <div className="p-3">
                     <p className="text-xs text-[#006948] font-semibold">{p.brand}</p>
                     <p className="text-sm font-bold text-gray-800 truncate">{p.model}</p>
-                    <p className="text-xs text-gray-400 mt-1 truncate">{p.specs}</p>
+                    <p className="text-xs text-gray-400 mt-1 truncate">{translateSpecs(p.specs, t)}</p>
                   </div>
                 </div>
               ))}
@@ -310,7 +328,7 @@ export default function ProductDetail() {
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden">
             <div className="bg-[#006948] px-6 py-5 text-white flex justify-between items-start">
               <div>
-                <h2 className="text-xl font-bold mb-1">Get Best Price</h2>
+                <h2 className="text-xl font-bold mb-1">{t('Get Best Price')}</h2>
                 <p className="text-white/80 text-sm">{product.brand} {product.model}</p>
               </div>
               <button onClick={() => setShowQuote(false)} className="text-white/70 hover:text-white text-xl">x</button>
@@ -318,9 +336,9 @@ export default function ProductDetail() {
             {submitted ? (
               <div className="p-8 text-center">
                 <div className="text-5xl mb-4">✅</div>
-                <h3 className="text-xl font-bold text-[#006948] mb-2">Enquiry Sent!</h3>
-                <p className="text-gray-500 text-sm mb-6">Our team will call you within 24 hours with the best price.</p>
-                <button onClick={() => setShowQuote(false)} className="bg-[#006948] text-white px-8 py-3 rounded-xl font-semibold">Done</button>
+                <h3 className="text-xl font-bold text-[#006948] mb-2">{t('Enquiry Sent!')}</h3>
+                <p className="text-gray-500 text-sm mb-6">{t('Our team will call you within 24 hours with the best price.')}</p>
+                <button onClick={() => setShowQuote(false)} className="bg-[#006948] text-white px-8 py-3 rounded-xl font-semibold">{t('Done')}</button>
               </div>
             ) : (
               <div className="p-6 space-y-4">
@@ -328,23 +346,23 @@ export default function ProductDetail() {
                   <img src={product.image_url} alt={product.model} className="w-12 h-10 object-cover rounded-lg" />
                   <div><p className="text-xs text-[#006948] font-semibold">{product.brand}</p><p className="text-sm font-bold">{product.model}</p></div>
                 </div>
-                <input type="text" placeholder="Your Full Name *" required value={quoteForm.name}
+                <input type="text" placeholder={t('Your Full Name *')} required value={quoteForm.name}
                   onChange={e => setQuoteForm(f => ({...f, name: e.target.value}))}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948]" />
-                <input type="tel" placeholder="Phone / WhatsApp *" required value={quoteForm.phone}
+                <input type="tel" placeholder={t('Phone / WhatsApp *')} required value={quoteForm.phone}
                   onChange={e => setQuoteForm(f => ({...f, phone: e.target.value}))}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948]" />
-                <input type="email" placeholder="Email (optional)" value={quoteForm.email}
+                <input type="email" placeholder={t('Email (optional)')} value={quoteForm.email}
                   onChange={e => setQuoteForm(f => ({...f, email: e.target.value}))}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948]" />
-                <textarea placeholder="Quantity needed, installation location, or any other requirements..." rows={3}
+                <textarea placeholder={t('Quantity needed, installation location, or any other requirements...')} rows={3}
                   value={quoteForm.notes} onChange={e => setQuoteForm(f => ({...f, notes: e.target.value}))}
                   className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948] resize-none" />
                 <div className="flex gap-3">
-                  <button onClick={() => setShowQuote(false)} className="flex-1 border border-gray-200 text-gray-600 py-3 rounded-xl text-sm font-medium">Cancel</button>
+                  <button onClick={() => setShowQuote(false)} className="flex-1 border border-gray-200 text-gray-600 py-3 rounded-xl text-sm font-medium">{t('Cancel')}</button>
                   <button onClick={submitQuote} disabled={submitting}
                     className="flex-1 bg-[#006948] text-white py-3 rounded-xl text-sm font-bold hover:bg-[#004d34] transition-colors disabled:opacity-60">
-                    {submitting ? 'Sending...' : 'Get Best Price'}
+                    {submitting ? t('Sending...') : t('Get Best Price')}
                   </button>
                 </div>
               </div>
@@ -358,7 +376,7 @@ export default function ProductDetail() {
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
             <div className="bg-[#006948] px-6 py-4 text-white flex justify-between items-center sticky top-0">
               <div>
-                <h2 className="text-lg font-bold">Place Order</h2>
+                <h2 className="text-lg font-bold">{t('Place Order')}</h2>
                 <p className="text-white/80 text-xs">{product.brand} — {product.model}</p>
               </div>
               <button onClick={() => setShowOrder(false)} className="text-white/70 hover:text-white text-xl">✕</button>
@@ -366,9 +384,9 @@ export default function ProductDetail() {
             {orderDone ? (
               <div className="p-8 text-center">
                 <div className="text-5xl mb-4">🎉</div>
-                <h3 className="text-xl font-bold text-[#006948] mb-2">Order Placed!</h3>
-                <p className="text-gray-500 text-sm mb-6">Our team will call you within 2 hours to confirm delivery details.</p>
-                <button onClick={() => setShowOrder(false)} className="bg-[#006948] text-white px-8 py-3 rounded-xl font-semibold">Done</button>
+                <h3 className="text-xl font-bold text-[#006948] mb-2">{t('Order Placed!')}</h3>
+                <p className="text-gray-500 text-sm mb-6">{t('Our team will call you within 2 hours to confirm delivery details.')}</p>
+                <button onClick={() => setShowOrder(false)} className="bg-[#006948] text-white px-8 py-3 rounded-xl font-semibold">{t('Done')}</button>
               </div>
             ) : (
               <div className="p-6 space-y-4">
@@ -384,29 +402,29 @@ export default function ProductDetail() {
                     <button onClick={() => setOrderForm(f => ({...f, qty: f.qty+1}))} className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100">+</button>
                   </div>
                 </div>
-                <input type="text" placeholder="Full Name *" required value={orderForm.name} onChange={e => setOrderForm(f => ({...f, name: e.target.value}))} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948]" />
-                <input type="tel" placeholder="Phone / WhatsApp *" required value={orderForm.phone} onChange={e => setOrderForm(f => ({...f, phone: e.target.value}))} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948]" />
-                <input type="email" placeholder="Email (for confirmation)" value={orderForm.email} onChange={e => setOrderForm(f => ({...f, email: e.target.value}))} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948]" />
-                <textarea placeholder="Delivery Address with PIN code *" rows={3} required value={orderForm.address} onChange={e => setOrderForm(f => ({...f, address: e.target.value}))} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948] resize-none" />
+                <input type="text" placeholder={t('Full Name *')} required value={orderForm.name} onChange={e => setOrderForm(f => ({...f, name: e.target.value}))} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948]" />
+                <input type="tel" placeholder={t('Phone / WhatsApp *')} required value={orderForm.phone} onChange={e => setOrderForm(f => ({...f, phone: e.target.value}))} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948]" />
+                <input type="email" placeholder={t('Email (for confirmation)')} value={orderForm.email} onChange={e => setOrderForm(f => ({...f, email: e.target.value}))} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948]" />
+                <textarea placeholder={t('Delivery Address with PIN code *')} rows={3} required value={orderForm.address} onChange={e => setOrderForm(f => ({...f, address: e.target.value}))} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948] resize-none" />
                 <div>
-                  <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wider">Payment</p>
+                  <p className="text-xs font-semibold text-gray-600 mb-2 uppercase tracking-wider">{t('Payment')}</p>
                   <div className="grid grid-cols-2 gap-2">
-                    {[['cod','💵 Pay on Delivery'],['online','💳 Online Payment']].map(([val,label]) => (
+                    {[['cod','💵', 'Pay on Delivery'],['online','💳', 'Online Payment']].map(([val,icon,label]) => (
                       <button key={val} onClick={() => setOrderForm(f => ({...f, payment: val}))}
                         className={"py-3 rounded-xl border-2 text-sm font-semibold transition-all " + (orderForm.payment === val ? 'border-[#006948] bg-[#006948]/5 text-[#006948]' : 'border-gray-200 text-gray-600')}>
-                        {label}
+                        {icon} {t(label)}
                       </button>
                     ))}
                   </div>
-                  {orderForm.payment === 'online' && <p className="text-xs text-orange-600 mt-2 bg-orange-50 rounded-lg px-3 py-2">⚡ Razorpay coming soon — our team will share a payment link after confirmation.</p>}
+                  {orderForm.payment === 'online' && <p className="text-xs text-orange-600 mt-2 bg-orange-50 rounded-lg px-3 py-2">⚡ {t('Razorpay coming soon — our team will share a payment link after confirmation.')}</p>}
                 </div>
                 <div className="flex gap-3">
-                  <button onClick={() => setShowOrder(false)} className="flex-1 border border-gray-200 text-gray-600 py-3 rounded-xl text-sm font-medium">Cancel</button>
+                  <button onClick={() => setShowOrder(false)} className="flex-1 border border-gray-200 text-gray-600 py-3 rounded-xl text-sm font-medium">{t('Cancel')}</button>
                   <button onClick={submitOrder} disabled={orderSubmitting} className="flex-1 bg-[#006948] text-white py-3 rounded-xl text-sm font-bold hover:bg-[#004d34] disabled:opacity-60 transition-colors">
-                    {orderSubmitting ? 'Placing...' : 'Place Order →'}
+                    {orderSubmitting ? t('Placing...') : t('Place Order') + ' →'}
                   </button>
                 </div>
-                <p className="text-xs text-gray-400 text-center">We will call you within 2 hours to confirm.</p>
+                <p className="text-xs text-gray-400 text-center">{t('We will call you within 2 hours to confirm.')}</p>
               </div>
             )}
           </div>

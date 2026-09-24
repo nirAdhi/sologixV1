@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useT } from '../i18n';
 
 // Electricity tariffs — FY 2024-25 rates (₹/kWh)
 // ✅ Verified states | ~ Approximate average for unverified states
@@ -98,6 +99,7 @@ const SolarCalculator = () => {
   const [result, setResult] = useState(null);
   const [form, setForm] = useState({ name:'', mobile:'', email:'', pincode:'' });
   const [downloaded, setDownloaded] = useState(false);
+  const { t } = useT();
 
   const handleCalc = () => setResult(calculate(state, billRange, serviceType));
 
@@ -124,40 +126,40 @@ const SolarCalculator = () => {
     { icon: ICONS.cost,      label:'Total Project Cost',      value: fmt(result.grossCost),      color:'bg-amber-50 border-amber-100' },
     { icon: ICONS.subsidy,   label:'Government Subsidy',      value: fmt(result.subsidy),        color:'bg-green-50 border-green-100' },
     { icon: ICONS.landed,    label:'Landed Project Cost',     value: fmt(result.landedCost),     color:'bg-purple-50 border-purple-100' },
-    { icon: ICONS.daily,     label:'Average Daily Generation',value: result.dailyGen + ' kWh/Day', color:'bg-yellow-50 border-yellow-100' },
+    { icon: ICONS.daily,     label:'Average Daily Generation',value: t('{n} kWh/Day', { n: result.dailyGen }), color:'bg-yellow-50 border-yellow-100' },
     { icon: ICONS.yearly,    label:'Average Yearly Generation',value: result.yearlyGen.toLocaleString('en-IN') + ' kWh', color:'bg-blue-50 border-blue-100' },
     { icon: ICONS.savings,   label:'Yearly Savings',          value: fmt(result.yearlySavings),  color:'bg-emerald-50 border-emerald-100' },
-    { icon: ICONS.roi,       label:'Return on Investment',    value: result.roi + ' years',      color:'bg-violet-50 border-violet-100' },
+    { icon: ICONS.roi,       label:'Return on Investment',    value: t('{n} years', { n: result.roi }),      color:'bg-violet-50 border-violet-100' },
     { icon: ICONS.co2,       label:'CO2 Savings per Year',    value: result.co2PerYear.toLocaleString('en-IN') + ' kg', color:'bg-green-50 border-green-100' },
     { icon: ICONS.savings25, label:'Total Savings in 25 Years', value: fmt(result.savings25yr), color:'bg-amber-50 border-amber-100' },
     { icon: ICONS.trees,     label:'Equivalent Trees Planted',value: result.treesPlanted,        color:'bg-lime-50 border-lime-100' },
-    { icon: ICONS.lifespan,  label:'System Life Span',        value: result.systemLife + ' years', color:'bg-indigo-50 border-indigo-100' },
-    { icon: ICONS.roof,      label:'Total Roof Area Needed',  value: result.roofArea + ' sq ft', color:'bg-red-50 border-red-100' },
+    { icon: ICONS.lifespan,  label:'System Life Span',        value: t('{n} years', { n: result.systemLife }), color:'bg-indigo-50 border-indigo-100' },
+    { icon: ICONS.roof,      label:'Total Roof Area Needed',  value: t('{n} sq ft', { n: result.roofArea }), color:'bg-red-50 border-red-100' },
   ] : [];
 
   return (
     <div className="min-h-screen">
       <section className="relative min-h-[380px] flex flex-col items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0">
-          <img src="https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?w=1600&h=600&fit=crop" alt="Solar Calculator" className="w-full h-full object-cover" />
+          <img src="https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?w=1600&h=600&fit=crop" alt={t('Solar Calculator')} className="w-full h-full object-cover" />
           <div className="absolute inset-0" data-theme-hero="1" style={{background:'linear-gradient(135deg, rgba(0,105,72,0.88) 0%, rgba(0,77,52,0.82) 50%, rgba(0,50,35,0.75) 100%)'}}></div>
         </div>
         <div className="relative z-10 text-center px-6 w-full max-w-4xl mx-auto py-16">
-          <h1 className="text-4xl md:text-5xl font-bold text-white mb-10 tracking-wide uppercase">Solar Calculator</h1>
+          <h1 className="text-4xl md:text-5xl font-bold text-white mb-10 tracking-wide uppercase">{t('Solar Calculator')}</h1>
           <div className="flex flex-wrap justify-center gap-4 mb-6">
             <select value={state} onChange={e => setState(e.target.value)} className="bg-white/95 text-gray-800 px-6 py-3 rounded-full text-sm font-medium outline-none min-w-[160px] shadow">
-              {Object.keys(tariffs).map(s => <option key={s}>{s}</option>)}
+              {Object.keys(tariffs).map(s => <option key={s} value={s}>{t(s)}</option>)}
             </select>
             <select value={billRange} onChange={e => setBillRange(e.target.value)} className="bg-white/95 text-gray-800 px-6 py-3 rounded-full text-sm font-medium outline-none min-w-[200px] shadow">
-              {Object.keys(billRanges).map(b => <option key={b}>{b}</option>)}
+              {Object.keys(billRanges).map(b => <option key={b} value={b}>{t(b)}</option>)}
             </select>
             <select value={serviceType} onChange={e => setServiceType(e.target.value)} className="bg-white/95 text-gray-800 px-6 py-3 rounded-full text-sm font-medium outline-none min-w-[160px] shadow">
-              <option value="residential">Residential</option>
-              <option value="commercial">Commercial</option>
-              <option value="industrial">Industrial</option>
+              <option value="residential">{t('Residential')}</option>
+              <option value="commercial">{t('Commercial')}</option>
+              <option value="industrial">{t('Industrial')}</option>
             </select>
           </div>
-          <button onClick={handleCalc} className="bg-[#006948] text-white px-12 py-3 rounded-full font-semibold text-base hover:bg-[#004d34] transition-all shadow-xl">Calculate</button>
+          <button onClick={handleCalc} className="bg-[#006948] text-white px-12 py-3 rounded-full font-semibold text-base hover:bg-[#004d34] transition-all shadow-xl">{t('Calculate')}</button>
         </div>
       </section>
 
@@ -165,18 +167,18 @@ const SolarCalculator = () => {
         <>
           <section className="py-12 bg-white border-b border-gray-100">
             <div className="max-w-[1400px] mx-auto px-6">
-              <h2 className="text-center text-xl font-bold text-gray-800 mb-6">Your Solar Calculations 💡</h2>
+              <h2 className="text-center text-xl font-bold text-gray-800 mb-6">{t('Your Solar Calculations')} 💡</h2>
               <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-xl px-5 py-3 mb-8 max-w-3xl mx-auto">
                 <span className="text-amber-500 text-lg flex-shrink-0 mt-0.5">⚠️</span>
                 <p className="text-xs text-amber-800 leading-relaxed">
-                  <strong>These are approximate estimates only.</strong> Actual system size, cost, savings and ROI may vary depending on your roof area, shadow analysis, local electricity tariff slab, equipment brand, installation charges and applicable subsidies at the time of installation. Please contact our team for a free on-site survey and accurate quotation.
+                  <strong>{t('These are approximate estimates only.')}</strong> {t('Actual system size, cost, savings and ROI may vary depending on your roof area, shadow analysis, local electricity tariff slab, equipment brand, installation charges and applicable subsidies at the time of installation. Please contact our team for a free on-site survey and accurate quotation.')}
                 </p>
               </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-4">
                 {metrics.map(({ icon, label, value, color }) => (
                   <div key={label} className={"flex flex-col items-center text-center rounded-2xl p-4 border hover:shadow-md transition-all " + (color || 'bg-gray-50 border-gray-100')}>
                     <div className="mb-2">{icon}</div>
-                    <p className="text-xs text-gray-500 mb-1 leading-tight font-medium">{label}</p>
+                    <p className="text-xs text-gray-500 mb-1 leading-tight font-medium">{t(label)}</p>
                     <p className="text-sm font-bold text-gray-800">{value}</p>
                   </div>
                 ))}
@@ -186,35 +188,35 @@ const SolarCalculator = () => {
 
           <section className="py-6 bg-[#fffde7] border-b border-yellow-100">
             <div className="max-w-4xl mx-auto px-6">
-              <p className="text-xs text-gray-500 mb-2 font-semibold">Other Companies Cost Comparison</p>
+              <p className="text-xs text-gray-500 mb-2 font-semibold">{t('Other Companies Cost Comparison')}</p>
               <div className="flex items-center gap-6 flex-wrap text-sm">
-                <span className="text-green-700 font-bold">Sologix: {fmt(result.landedCost)}</span>
-                <span className="text-gray-600">Market Avg: {fmt(Math.round(result.landedCost * 1.15))}</span>
-                <span className="text-red-600">Premium: {fmt(Math.round(result.landedCost * 1.25))}</span>
-                <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">You save {fmt(Math.round(result.landedCost * 0.25))} with Sologix</span>
+                <span className="text-green-700 font-bold">{t('Sologix: {amount}', { amount: fmt(result.landedCost) })}</span>
+                <span className="text-gray-600">{t('Market Avg: {amount}', { amount: fmt(Math.round(result.landedCost * 1.15)) })}</span>
+                <span className="text-red-600">{t('Premium: {amount}', { amount: fmt(Math.round(result.landedCost * 1.25)) })}</span>
+                <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-medium">{t('You save {amount} with Sologix', { amount: fmt(Math.round(result.landedCost * 0.25)) })}</span>
               </div>
             </div>
           </section>
 
           <section className="py-16 bg-gray-50">
             <div className="max-w-lg mx-auto px-6 text-center">
-              <h2 className="text-2xl font-bold mb-2">Download your full Quotation here</h2>
-              <p className="text-gray-500 text-sm mb-8">Fill in your details to get a detailed PDF quotation.</p>
+              <h2 className="text-2xl font-bold mb-2">{t('Download your full Quotation here')}</h2>
+              <p className="text-gray-500 text-sm mb-8">{t('Fill in your details to get a detailed PDF quotation.')}</p>
               {downloaded ? (
                 <div className="bg-green-50 rounded-2xl p-10 border border-green-200">
                   <div className="text-5xl mb-4">✅</div>
-                  <h3 className="text-xl font-bold text-green-700 mb-2">Request Received!</h3>
-                  <p className="text-gray-600 text-sm">Our team will send your quotation within 24 hours.</p>
+                  <h3 className="text-xl font-bold text-green-700 mb-2">{t('Request Received!')}</h3>
+                  <p className="text-gray-600 text-sm">{t('Our team will send your quotation within 24 hours.')}</p>
                 </div>
               ) : (
                 <div className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 space-y-4 text-left">
                   {[['Name','name','Your full name','text'],['Mobile','mobile','+91 XXXXX XXXXX','tel'],['Email','email','your@email.com','email'],['Pincode','pincode','834001','text']].map(([label, key, placeholder, type]) => (
                     <div key={key}>
-                      <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider block mb-1">{label}</label>
-                      <input type={type} value={form[key]} onChange={e => setForm({...form, [key]: e.target.value})} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948]" placeholder={placeholder} />
+                      <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider block mb-1">{t(label)}</label>
+                      <input type={type} value={form[key]} onChange={e => setForm({...form, [key]: e.target.value})} className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948]" placeholder={t(placeholder)} />
                     </div>
                   ))}
-                  <button onClick={() => { if (form.name && form.mobile) setDownloaded(true); }} className="w-full bg-[#006948] text-white py-4 rounded-xl font-semibold hover:bg-[#004d34] transition-colors mt-2">Download PDF</button>
+                  <button onClick={() => { if (form.name && form.mobile) setDownloaded(true); }} className="w-full bg-[#006948] text-white py-4 rounded-xl font-semibold hover:bg-[#004d34] transition-colors mt-2">{t('Download PDF')}</button>
                 </div>
               )}
             </div>
@@ -225,15 +227,15 @@ const SolarCalculator = () => {
       {!result && (
         <section className="py-20 bg-white">
           <div className="max-w-4xl mx-auto px-6 text-center">
-            <h2 className="text-3xl font-bold mb-4">How It Works</h2>
-            <p className="text-gray-500 mb-12">Select your state, bill range and service type above, then click Calculate</p>
+            <h2 className="text-3xl font-bold mb-4">{t('How It Works')}</h2>
+            <p className="text-gray-500 mb-12">{t('Select your state, bill range and service type above, then click Calculate')}</p>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               {[['1','🗺️','Select Location','Choose your state for accurate local tariff and sunshine data.'],['2','💡','Enter Bill Range','Select monthly electricity bill to estimate your ideal system size.'],['3','📊','Instant Results','See system size, cost, subsidy, savings, ROI and environmental impact.']].map(([step, icon, title, desc]) => (
                 <div key={step} className="text-center">
                   <div className="text-5xl mb-4">{icon}</div>
                   <div className="w-8 h-8 bg-[#006948] text-white rounded-full flex items-center justify-center font-bold text-sm mx-auto mb-3">{step}</div>
-                  <h3 className="font-bold text-lg mb-2">{title}</h3>
-                  <p className="text-gray-500 text-sm">{desc}</p>
+                  <h3 className="font-bold text-lg mb-2">{t(title)}</h3>
+                  <p className="text-gray-500 text-sm">{t(desc)}</p>
                 </div>
               ))}
             </div>

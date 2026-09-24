@@ -1,7 +1,10 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useT } from '../i18n';
 
-const Footer = () => (
+const Footer = () => {
+  const { t } = useT();
+  return (
   <footer className="bg-[#141b2b] text-gray-400 pt-20 pb-8">
     <div className="max-w-[1280px] mx-auto px-6 lg:px-16">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-6 gap-10 mb-16">
@@ -12,13 +15,13 @@ const Footer = () => (
             <img src="https://res.cloudinary.com/dsiratycd/image/upload/logo_yo5zg9.png" alt="Sologix Energy" className="h-20 w-auto rounded-full"
               onError={e => { e.target.src='https://res.cloudinary.com/dsiratycd/image/upload/logo_yo5zg9.png'; }} />
           </Link>
-          <p className="text-sm font-semibold text-[#34d399]">Energizing Naturally</p>
-          <p className="text-sm leading-relaxed">We are on a mission to make this planet a better place to live and we are committed to make clean energy available to all which is, Renewable, Reliable, and Affordable.</p>
+          <p className="text-sm font-semibold text-[#34d399]">{t('Energizing Naturally')}</p>
+          <p className="text-sm leading-relaxed">{t('We are on a mission to make this planet a better place to live and we are committed to make clean energy available to all which is, Renewable, Reliable, and Affordable.')}</p>
           <div>
             <p className="text-xs text-gray-500 mb-1">📍 STPI Building, Plot-8, Namkum Industrial Area, Ranchi, Jharkhand - 834010</p>
             <p className="text-xs text-gray-500"><a href="mailto:info@sologixenergy.in" className="hover:text-white">✉️ info@sologixenergy.in</a></p>
           </div>
-          <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">Follow Us On</p>
+          <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">{t('Follow Us On')}</p>
           <div className="flex gap-3 flex-wrap">
             {[
               { name:'Instagram', link:'https://www.instagram.com/sologixenergy/' },
@@ -34,7 +37,7 @@ const Footer = () => (
 
         {/* Company */}
         <div>
-          <h5 className="text-white font-semibold mb-5 text-sm">Company</h5>
+          <h5 className="text-white font-semibold mb-5 text-sm">{t('Company')}</h5>
           <ul className="space-y-2 text-sm">
             {[
               { to:'/about', label:'About Us' },
@@ -42,14 +45,14 @@ const Footer = () => (
               { to:'/gallery', label:'Gallery' },
               { to:'/become-partner', label:'Careers' },
             ].map(({ to, label }) => (
-              <li key={label}><Link to={to} className="hover:text-white transition-colors">{label}</Link></li>
+              <li key={label}><Link to={to} className="hover:text-white transition-colors">{t(label)}</Link></li>
             ))}
           </ul>
         </div>
 
         {/* Products */}
         <div>
-          <h5 className="text-white font-semibold mb-5 text-sm">Products Offered</h5>
+          <h5 className="text-white font-semibold mb-5 text-sm">{t('Products Offered')}</h5>
           <ul className="space-y-2 text-sm">
             {[
               { to:'/solutions', label:'Residential Solar Solutions' },
@@ -59,14 +62,14 @@ const Footer = () => (
               { to:'/products', label:'Solar Inverterters' },
               { to:'/products', label:'Solar Batteries' },
             ].map(({ to, label }) => (
-              <li key={label}><Link to={to} className="hover:text-white transition-colors">{label}</Link></li>
+              <li key={label}><Link to={to} className="hover:text-white transition-colors">{t(label)}</Link></li>
             ))}
           </ul>
         </div>
 
         {/* Services */}
         <div>
-          <h5 className="text-white font-semibold mb-5 text-sm">Services</h5>
+          <h5 className="text-white font-semibold mb-5 text-sm">{t('Services')}</h5>
           <ul className="space-y-2 text-sm">
             {[
               { to:'/services', label:'Solar Rooftop Installation' },
@@ -76,14 +79,14 @@ const Footer = () => (
               { to:'/solutions', label:'System Design' },
               { to:'/booking', label:'Project Installation' },
             ].map(({ to, label }) => (
-              <li key={label}><Link to={to} className="hover:text-white transition-colors">{label}</Link></li>
+              <li key={label}><Link to={to} className="hover:text-white transition-colors">{t(label)}</Link></li>
             ))}
           </ul>
         </div>
 
         {/* Resources + Get In Touch */}
         <div>
-          <h5 className="text-white font-semibold mb-5 text-sm">Resources</h5>
+          <h5 className="text-white font-semibold mb-5 text-sm">{t('Resources')}</h5>
           <ul className="space-y-2 text-sm mb-6">
             {[
               { to:'/faq', label:'FAQs' },
@@ -91,10 +94,10 @@ const Footer = () => (
               { to:'/subsidies', label:'Government Subsidy' },
               { to:'/faq', label:'Solar News & Updates' },
             ].map(({ to, label }) => (
-              <li key={label}><Link to={to} className="hover:text-white transition-colors">{label}</Link></li>
+              <li key={label}><Link to={to} className="hover:text-white transition-colors">{t(label)}</Link></li>
             ))}
           </ul>
-          <h5 className="text-white font-semibold mb-5 text-sm">Get In Touch</h5>
+          <h5 className="text-white font-semibold mb-5 text-sm">{t('Get In Touch')}</h5>
           <ul className="space-y-2 text-sm">
             {[
               { to:'/contact', label:'Contact Us' },
@@ -103,22 +106,23 @@ const Footer = () => (
               { to:'/booking', label:'Get Free Consultation' },
               { to:'/booking', label:'Request a Quote' },
             ].map(({ to, label }) => (
-              <li key={label}><Link to={to} className="hover:text-white transition-colors">{label}</Link></li>
+              <li key={label}><Link to={to} className="hover:text-white transition-colors">{t(label)}</Link></li>
             ))}
           </ul>
         </div>
       </div>
 
       <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-500">
-        <p>Copyright 2023 Sologix. All Rights Reserved.</p>
+        <p>{t('Copyright 2023 Sologix. All Rights Reserved.')}</p>
         <div className="flex gap-6">
-          <a href="#" className="hover:text-white">Privacy Policy</a>
-          <a href="#" className="hover:text-white">Terms & Conditions</a>
-          <a href="https://www.sologixenergy.in" target="_blank" rel="noreferrer" className="hover:text-white">Official Website</a>
+          <a href="#" className="hover:text-white">{t('Privacy Policy')}</a>
+          <a href="#" className="hover:text-white">{t('Terms & Conditions')}</a>
+          <a href="https://www.sologixenergy.in" target="_blank" rel="noreferrer" className="hover:text-white">{t('Official Website')}</a>
         </div>
       </div>
     </div>
   </footer>
-);
+  );
+};
 
 export default Footer;

@@ -3,9 +3,12 @@ import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { BRANDING } from '../utils/branding';
 import BrandLogo from '../components/BrandLogo';
+import { useT } from '../i18n';
+import LanguageToggle from '../i18n/LanguageToggle';
 
 const ForgotPassword = () => {
   const navigate = useNavigate();
+  const { t } = useT();
   const [email, setEmail] = useState('');
   const [loading, setLoading] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
@@ -16,7 +19,7 @@ const ForgotPassword = () => {
   const handleSendOtp = async (e) => {
     e.preventDefault();
     if (!email) {
-      toast.error('Please enter your email address');
+      toast.error(t('Please enter your email address'));
       return;
     }
 
@@ -31,12 +34,12 @@ const ForgotPassword = () => {
       
       if (data.success) {
         setOtpSent(true);
-        toast.success('OTP sent to your email!');
+        toast.success(t('OTP sent to your email!'));
       } else {
-        toast.error(data.message || 'Failed to send OTP');
+        toast.error(t(data.message || 'Failed to send OTP'));
       }
     } catch (error) {
-      toast.error('Something went wrong. Please try again.');
+      toast.error(t('Something went wrong. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -46,15 +49,15 @@ const ForgotPassword = () => {
     e.preventDefault();
     
     if (!otp || !newPassword || !confirmPassword) {
-      toast.error('Please fill all fields');
+      toast.error(t('Please fill all fields'));
       return;
     }
     if (newPassword.length < 6) {
-      toast.error('Password must be at least 6 characters');
+      toast.error(t('Password must be at least 6 characters'));
       return;
     }
     if (newPassword !== confirmPassword) {
-      toast.error('Passwords do not match');
+      toast.error(t('Passwords do not match'));
       return;
     }
 
@@ -68,13 +71,13 @@ const ForgotPassword = () => {
       const data = await response.json();
       
       if (data.success) {
-        toast.success('Password reset successfully! You can now login with your new password.');
+        toast.success(t('Password reset successfully! You can now login with your new password.'));
         navigate('/login');
       } else {
-        toast.error(data.message || 'Failed to reset password');
+        toast.error(t(data.message || 'Failed to reset password'));
       }
     } catch (error) {
-      toast.error('Something went wrong. Please try again.');
+      toast.error(t('Something went wrong. Please try again.'));
     } finally {
       setLoading(false);
     }
@@ -83,13 +86,16 @@ const ForgotPassword = () => {
   return (
     <div className="min-h-screen flex items-center justify-center py-12 px-4" style={{ background: `linear-gradient(to bottom right, ${BRANDING.colors.primary[700]}, ${BRANDING.colors.primary[900]})` }}>
       <div className="max-w-md w-full">
+        <div className="flex justify-end mb-3">
+          <LanguageToggle compact />
+        </div>
         <div className="text-center mb-6">
           <div className="flex items-center justify-center gap-2 mb-4">
             <BrandLogo size="md" />
           </div>
-          <h1 className="text-2xl font-bold text-white mt-2">Reset Password</h1>
+          <h1 className="text-2xl font-bold text-white mt-2">{t('Reset Password')}</h1>
           <p className="mt-2" style={{ color: BRANDING.colors.primary[200] }}>
-            {!otpSent ? 'Enter your email to receive OTP' : 'Enter the OTP and create new password'}
+            {!otpSent ? t('Enter your email to receive OTP') : t('Enter the OTP and create new password')}
           </p>
         </div>
 
@@ -97,7 +103,7 @@ const ForgotPassword = () => {
           {!otpSent ? (
             <form onSubmit={handleSendOtp} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Email Address</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('Email Address')}</label>
                 <input
                   type="email"
                   value={email}
@@ -114,45 +120,45 @@ const ForgotPassword = () => {
                 className="w-full py-3 px-4 rounded-lg font-semibold text-white transition-colors"
                 style={{ backgroundColor: BRANDING.colors.primary[600] }}
               >
-                {loading ? 'Sending OTP...' : 'Send OTP'}
+                {loading ? t('Sending OTP...') : t('Send OTP')}
               </button>
             </form>
           ) : (
             <form onSubmit={handleResetPassword} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Enter OTP (check your email)</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('Enter OTP (check your email)')}</label>
                 <input
                   type="text"
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
                   className="input-field"
-                  placeholder="Enter 6-digit OTP"
+                  placeholder={t('Enter 6-digit OTP')}
                   maxLength={6}
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">New Password</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('New Password')}</label>
                 <input
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   className="input-field"
-                  placeholder="Min 6 characters"
+                  placeholder={t('Min 6 characters')}
                   minLength={6}
                   required
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Confirm Password</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">{t('Confirm Password')}</label>
                 <input
                   type="password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className="input-field"
-                  placeholder="Confirm new password"
+                  placeholder={t('Confirm new password')}
                   required
                 />
               </div>
@@ -163,14 +169,14 @@ const ForgotPassword = () => {
                 className="w-full py-3 px-4 rounded-lg font-semibold text-white transition-colors"
                 style={{ backgroundColor: BRANDING.colors.primary[600] }}
               >
-                {loading ? 'Resetting...' : 'Reset Password'}
+                {loading ? t('Resetting...') : t('Reset Password')}
               </button>
             </form>
           )}
 
           <div className="mt-5 text-center">
             <Link to="/login" className="text-sm font-medium" style={{ color: BRANDING.colors.primary[600] }}>
-              Back to Login
+              {t('Back to Login')}
             </Link>
           </div>
         </div>

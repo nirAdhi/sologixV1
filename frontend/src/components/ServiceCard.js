@@ -1,10 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { BRANDING } from '../utils/branding';
+import { useT } from '../i18n';
 
 const API_URL = BRANDING.apiUrl.replace('/api', '');
 
 const ServiceCard = ({ service }) => {
+  const { t } = useT();
   const features = service.features ? 
     (typeof service.features === 'string' ? JSON.parse(service.features) : service.features) : [];
 
@@ -32,7 +34,7 @@ const ServiceCard = ({ service }) => {
         {imageUrl ? (
           <img 
             src={imageUrl} 
-            alt={service.name}
+            alt={t(service.name)}
             className="w-full h-full object-cover"
           />
         ) : (
@@ -50,15 +52,15 @@ const ServiceCard = ({ service }) => {
         )}
       </div>
       <div className="p-6">
-        <h3 className="text-xl font-bold text-gray-800 mb-2">{service.name}</h3>
-        <p className="text-gray-600 text-sm mb-4 line-clamp-2">{service.description}</p>
+        <h3 className="text-xl font-bold text-gray-800 mb-2">{t(service.name)}</h3>
+        <p className="text-gray-600 text-sm mb-4 line-clamp-2">{t(service.description)}</p>
         
         {features.length > 0 && (
           <ul className="mb-4 space-y-1">
             {features.slice(0, 3).map((feature, index) => (
               <li key={index} className="text-sm text-gray-500 flex items-center">
                 <span className="text-primary-500 mr-2">✓</span>
-                {feature}
+                {t(feature)}
               </li>
             ))}
           </ul>
@@ -66,14 +68,14 @@ const ServiceCard = ({ service }) => {
         
         <div className="flex items-center justify-between pt-4 border-t">
           <div>
-            <span className="text-sm text-gray-500">Booking</span>
-            <p className="text-xl font-bold text-green-600">Free Consultation — Book Now</p>
+            <span className="text-sm text-gray-500">{t('Booking')}</span>
+            <p className="text-xl font-bold text-green-600">{t('Free Consultation — Book Now')}</p>
           </div>
           <Link
             to={`/booking/${service.id}`}
             className="btn-primary text-sm"
           >
-            Book Now
+            {t('Book Now')}
           </Link>
         </div>
       </div>
