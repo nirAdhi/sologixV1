@@ -23,7 +23,9 @@ const AdminDashboard = () => {
         adminAPI.getBookings({ limit: 5, page: 1 })
       ]);
       setStats(statsRes.data.data);
-      setBookings(bookingsRes.data.data?.bookings || []);
+      // /admin/bookings returns the list itself in data (older code expected data.bookings)
+      const list = bookingsRes.data.data;
+      setBookings(Array.isArray(list) ? list : (list?.bookings || []));
     } catch (e) {
       console.error(e);
     } finally {

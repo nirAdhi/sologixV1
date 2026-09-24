@@ -77,7 +77,7 @@ function AppContent() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <ScrollToTop />
-      <ConsultationWidget />
+      {!isAdminPage && !isPortalPage && <ConsultationWidget />}
       <Toaster
         position="top-right"
         toastOptions={{
