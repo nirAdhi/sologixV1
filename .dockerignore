@@ -30,3 +30,6 @@ logs/
 Thumbs.db
 *.swp
 *.swo
+
+# local test kit
+local/

@@ -30,3 +30,6 @@ frontend.zip
 *.tgz
 *.bak
 *.bak.*
+
+# local test kit
+local/local.env
