@@ -41,6 +41,7 @@ const AdminSiteSettings = lazy(() => import('./pages/admin/AdminSiteSettings'));
 const AdminProjects = lazy(() => import('./pages/admin/AdminProjects'));
 const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'));
 const AdminCatalog = lazy(() => import('./pages/admin/AdminCatalog'));
+const AdminEmail = lazy(() => import('./pages/admin/AdminEmail'));
 const UnifiedLogin = lazy(() => import('./pages/UnifiedLogin'));
 const CustomerPortal = lazy(() => import('./pages/CustomerPortal'));
 const CustomerBookingDetail = lazy(() => import('./pages/CustomerBookingDetail'));
@@ -109,6 +110,7 @@ function AppContent() {
         <Route path="/admin/projects"       element={<AdminProjects />} />
         <Route path="/admin/orders"         element={<AdminOrders />} />
         <Route path="/admin/catalog"        element={<AdminCatalog />} />
+        <Route path="/admin/email"          element={<AdminEmail />} />
 
         {/* ── Customer portal (no navbar/footer) ── */}
         <Route path="/portal/login"               element={<UnifiedLogin />} />

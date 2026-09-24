@@ -24,6 +24,7 @@ const NAV_LINKS = [
   { to: '/admin/orders',         label: 'Product Orders',   perm: 'manage_bookings' },
   { to: '/admin/catalog',        label: 'Product Catalog',  perm: 'manage_services' },
   { to: '/admin/site-settings', label: 'Site Content',     perm: 'manage_settings' },
+  { to: '/admin/email',         label: 'Email',            perm: 'manage_settings' },
   { to: '/admin/subadmins',     label: 'Sub-Admins',       perm: 'manage_subadmins' },
 ];
 

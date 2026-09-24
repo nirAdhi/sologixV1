@@ -1,9 +1,12 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useT } from '../i18n';
+import { BRANDING } from '../utils/branding';
+import { getSiteConfig, whatsappHref, telHref } from '../utils/siteConfig';
 
 const Footer = () => {
   const { t } = useT();
+  const social = getSiteConfig().social || {};
   return (
   <footer className="bg-[#141b2b] text-gray-400 pt-20 pb-8">
     <div className="max-w-[1280px] mx-auto px-6 lg:px-16">
@@ -18,18 +21,20 @@ const Footer = () => {
           <p className="text-sm font-semibold text-[#34d399]">{t('Energizing Naturally')}</p>
           <p className="text-sm leading-relaxed">{t('We are on a mission to make this planet a better place to live and we are committed to make clean energy available to all which is, Renewable, Reliable, and Affordable.')}</p>
           <div>
-            <p className="text-xs text-gray-500 mb-1">📍 STPI Building, Plot-8, Namkum Industrial Area, Ranchi, Jharkhand - 834010</p>
-            <p className="text-xs text-gray-500"><a href="mailto:info@sologixenergy.in" className="hover:text-white">✉️ info@sologixenergy.in</a></p>
+            <p className="text-xs text-gray-500 mb-1">📍 {BRANDING.address}</p>
+            <p className="text-xs text-gray-500 mb-1"><a href={telHref(BRANDING.phone)} className="hover:text-white">📞 {BRANDING.phone}</a></p>
+            <p className="text-xs text-gray-500"><a href={`mailto:${BRANDING.email}`} className="hover:text-white">✉️ {BRANDING.email}</a></p>
           </div>
           <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">{t('Follow Us On')}</p>
           <div className="flex gap-3 flex-wrap">
             {[
-              { name:'Instagram', link:'https://www.instagram.com/sologixenergy/' },
-              { name:'Facebook', link:'https://www.facebook.com/sologix/' },
-              { name:'YouTube', link:'https://www.youtube.com/@sologixenergy' },
-              { name:'LinkedIn', link:'https://www.linkedin.com/company/m-s-sologix-energy/' },
-              { name:'WhatsApp', link:'https://wa.me/918287766474' },
-            ].map(({ name, link }) => (
+              { name:'WhatsApp', link: whatsappHref() },
+              { name:'Instagram', link: social.instagram },
+              { name:'Facebook', link: social.facebook },
+              { name:'YouTube', link: social.youtube },
+              { name:'LinkedIn', link: social.linkedin },
+              { name:'X', link: social.x },
+            ].filter(s => s.link).map(({ name, link }) => (
               <a key={name} href={link} target="_blank" rel="noreferrer" className="text-xs bg-white/10 hover:bg-[#006948] px-3 py-1 rounded-full transition-colors">{name}</a>
             ))}
           </div>

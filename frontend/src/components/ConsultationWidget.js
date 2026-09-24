@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useT } from '../i18n';
+import { getSiteConfig } from '../utils/siteConfig';
 
 const ConsultationWidget = () => {
   const { t } = useT();
@@ -25,7 +26,7 @@ const ConsultationWidget = () => {
     />
     <div>
       <p className="text-xs text-[#006948] font-bold uppercase tracking-wider whitespace-nowrap">{t('Free Consultation')}</p>
-      <p className="text-sm text-gray-800 font-semibold whitespace-nowrap">+91 9771419133</p>
+      <p className="text-sm text-gray-800 font-semibold whitespace-nowrap">{getSiteConfig().consultationPhone || getSiteConfig().phone}</p>
     </div>
   </Link>
   );

@@ -2,6 +2,7 @@ const { syncLead } = require('../services/hubspot');
 const express = require('express');
 const { leadValidators, formLimiter } = require('../middleware/security');
 const router = express.Router();
+const { notifyAdminNewLead, later } = require('../config/email');
 const db = require('../config/database');
 const { auth, requirePermission, requireSuperAdmin } = require('../middleware/auth');
 
@@ -32,6 +33,8 @@ router.post('/public', formLimiter, ...leadValidators, async (req, res) => {
       [lead.name, lead.email, lead.phone, lead.address, lead.service_interest, lead.message, lead.source, 'medium', 'new']
     );
     res.status(201).json({ success: true, message: 'Received!' });
+    // Booking requests already trigger a 'new booking' email, so skip those here.
+    if (lead.source !== 'booking_request') later(notifyAdminNewLead, lead);
     // Async HubSpot sync — fire and forget, never blocks the response
     syncLead(lead).catch(() => {});
   } catch (e) {

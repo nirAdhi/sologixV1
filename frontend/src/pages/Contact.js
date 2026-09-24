@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useT } from '../i18n';
+import { BRANDING } from '../utils/branding';
 
 const API_URL = process.env.REACT_APP_API_URL || '/api';
 
@@ -56,9 +57,9 @@ const Contact = () => {
               <h2 className="text-3xl font-bold mb-8">{t('Get In Touch')}</h2>
               <div className="space-y-6 mb-10">
                 {[
-                  { icon:'📍', label:'Office Address', value:'STPI Building, Plot-8, Namkum Industrial Area, Ranchi, Jharkhand - 834010' },
-                  { icon:'📞', label:'Phone', value:'+91 8287766474 | +91 9031018640' },
-                  { icon:'✉️', label:'Email', value:'info@sologixenergy.in' },
+                  { icon:'📍', label:'Office Address', value: BRANDING.address },
+                  { icon:'📞', label:'Phone', value: [BRANDING.phone, BRANDING.phoneAlt].filter(Boolean).join(' | ') },
+                  { icon:'✉️', label:'Email', value: BRANDING.email },
                   { icon:'⏰', label:'Working Hours', value:'Mon – Sat: 9:00 AM – 6:00 PM', translate:true },
                 ].map(({ icon, label, value, translate }) => (
                   <div key={label} className="flex gap-4">

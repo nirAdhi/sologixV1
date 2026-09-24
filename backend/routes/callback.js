@@ -1,6 +1,7 @@
 const { formLimiter, sanitizeStr } = require('../middleware/security');
 const express = require('express');
 const router = express.Router();
+const { notifyAdminNewLead, later } = require('../config/email');
 const { body, validationResult } = require('express-validator');
 const db = require('../config/database');
 const auth = require('../middleware/auth');
@@ -32,6 +33,7 @@ router.post('/', formLimiter, [
       message: 'Callback request submitted successfully. We will call you back soon!',
       data: { id: result.insertId }
     });
+    later(notifyAdminNewLead, { name, phone, message, source: 'callback request' });
   } catch (error) {
     console.error('Error submitting callback request:', error);
     res.status(500).json({ success: false, message: 'Failed to submit callback request' });

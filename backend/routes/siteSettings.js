@@ -34,6 +34,7 @@ router.put('/:key', auth, requirePermission('manage_settings'), async (req, res)
     if (value === undefined || value.length > 200000) return res.status(400).json({ success: false, message: 'Invalid value' });
     await db.query('INSERT INTO site_settings (`key`, `value`) VALUES (?,?) ON DUPLICATE KEY UPDATE `value`=?', [req.params.key, value, value]);
     cache = null;
+    try { require('./config').publicRouter.clearCache(); } catch (e) { /* ignore */ }
     res.json({ success: true });
   } catch (e) { res.status(500).json({ success: false, message: 'Failed' }); }
 });

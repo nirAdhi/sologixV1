@@ -167,6 +167,9 @@ app.get('/api/health', (req, res) => {
 app.use('/api/services', require('./routes/services'));
 app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/payments', require('./routes/payments'));
+const configRoutes = require('./routes/config');
+app.use('/api/config', configRoutes.publicRouter);
+app.use('/api/admin/email', configRoutes.adminRouter); // before /api/admin
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/customer', require('./routes/customer'));
 app.use('/api/callback', require('./routes/callback'));

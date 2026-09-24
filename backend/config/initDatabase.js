@@ -304,42 +304,9 @@ async function initDatabase() {
       console.log('Sample services inserted');
     }
 
-    const [admins] = await connection.query('SELECT COUNT(*) as count FROM admins');
-    if (admins[0].count === 0) {
-      // SECURITY: previously fell back to a password hard-coded in this file.
-      const pw = process.env.ADMIN_PASSWORD || '';
-      if (pw.length < 12 || /^admin/i.test(pw)) {
-        throw new Error('Refusing to create the first admin: set ADMIN_PASSWORD to a strong value (12+ chars, not starting with "admin").');
-      }
-      try {
-        const bcrypt = require('bcryptjs');
-        const hashedPassword = await bcrypt.hash(pw, 12);
-        const allPermissions = JSON.stringify({
-          manage_services: true,
-          manage_bookings: true,
-          manage_subadmins: true,
-          manage_customers: true,
-          manage_leads: true,
-          manage_whatsapp: true,
-          manage_testimonials: true,
-          manage_delivery: true,
-          view_reports: true,
-          manage_settings: true
-        });
-        await connection.query(`
-          INSERT INTO admins (email, password, name, role, permissions, is_active) VALUES (?, ?, 'Super Admin', 'super_admin', ?, true)
-        `, [process.env.ADMIN_EMAIL || 'admin@sologixenergy.in', hashedPassword, allPermissions]);
-        console.log('Default super admin created');
-      } catch (err) {
-        if (err.code !== 'ER_DUP_ENTRY') throw err;
-        console.log('Admin already exists');
-      }
-    }
-    
-    // SECURITY: a block here used to run on EVERY server start and reset the super
-    // admin's password to ADMIN_PASSWORD (falling back to "admin123"), force the
-    // role and re-enable the account, undoing any change made in the admin UI.
-    // ADMIN_PASSWORD now only seeds the first admin (above).
+    // Admin login is managed from .env (ADMIN_EMAIL / ADMIN_PASSWORD / ADMIN_NAME).
+    // See syncEnvAdmin() below for the rules.
+    await syncEnvAdmin(connection);
 
 
     // Testimonials table
@@ -495,6 +462,68 @@ async function initDatabase() {
   } finally {
     connection.release();
   }
+}
+
+
+// ---------------------------------------------------------------------------
+// Admin account from .env
+//   ADMIN_EMAIL, ADMIN_PASSWORD, ADMIN_NAME (optional), ADMIN_SYNC_FROM_ENV
+// With ADMIN_SYNC_FROM_ENV=true (default) the account in ADMIN_EMAIL is created
+// or updated on every start so it always matches .env: password, name, super
+// admin role, all permissions, active. Change .env + restart = new login.
+// With ADMIN_SYNC_FROM_ENV=false the values only create the very first admin.
+// A weak or placeholder password is never applied (the server refuses to start
+// only when there is no admin at all yet).
+// ---------------------------------------------------------------------------
+const ALL_PERMISSIONS = {
+  manage_services: true, manage_bookings: true, manage_subadmins: true, manage_customers: true,
+  manage_leads: true, manage_whatsapp: true, manage_testimonials: true, manage_delivery: true,
+  view_reports: true, manage_settings: true,
+};
+
+function envAdminProblem(email, pw) {
+  if (!/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(email)) return 'ADMIN_EMAIL is missing or not a valid email';
+  if (pw.length < 12) return 'ADMIN_PASSWORD must be at least 12 characters';
+  if (/^(admin|change|your|password)/i.test(pw)) return 'ADMIN_PASSWORD looks like a placeholder (starts with admin/change/your/password)';
+  return null;
+}
+
+async function syncEnvAdmin(connection) {
+  const bcrypt = require('bcryptjs');
+  const email = String(process.env.ADMIN_EMAIL || '').trim();
+  const pw = String(process.env.ADMIN_PASSWORD || '');
+  const name = String(process.env.ADMIN_NAME || 'Super Admin').trim().slice(0, 100) || 'Super Admin';
+  const sync = String(process.env.ADMIN_SYNC_FROM_ENV || 'true').toLowerCase() !== 'false';
+  const [[{ count }]] = await connection.query('SELECT COUNT(*) AS count FROM admins');
+  const problem = envAdminProblem(email, pw);
+
+  if (Number(count) === 0) {
+    if (problem) throw new Error(`Refusing to create the first admin: ${problem}.`);
+  } else if (!sync) {
+    return; // .env only seeds the first admin
+  } else if (problem) {
+    console.warn(`Admin login NOT synced from .env: ${problem}. Existing admin logins are unchanged.`);
+    return;
+  }
+
+  const [rows] = await connection.query('SELECT id, password, name, role, is_active FROM admins WHERE email = ? LIMIT 1', [email]);
+  if (!rows.length) {
+    const hash = await bcrypt.hash(pw, 12);
+    await connection.query(
+      "INSERT INTO admins (email, password, name, role, permissions, is_active) VALUES (?, ?, ?, 'super_admin', ?, true)",
+      [email, hash, name, JSON.stringify(ALL_PERMISSIONS)]
+    );
+    console.log(`Admin login created from .env (${email.replace(/(.).*(@.*)/, '$1***$2')})`);
+    return;
+  }
+  const a = rows[0];
+  const pwChanged = !(await bcrypt.compare(pw, a.password || ''));
+  const hash = pwChanged ? await bcrypt.hash(pw, 12) : a.password;
+  await connection.query(
+    "UPDATE admins SET password = ?, name = ?, role = 'super_admin', permissions = ?, is_active = 1 WHERE id = ?",
+    [hash, name, JSON.stringify(ALL_PERMISSIONS), a.id]
+  );
+  console.log(`Admin login synced from .env${pwChanged ? ' (password updated)' : ''}`);
 }
 
 module.exports = initDatabase;

@@ -30,8 +30,18 @@ Optional, only if you use them:
     WHATSAPP_APP_SECRET=...   # Meta App Dashboard > App settings > Basic > App secret (needed for the WhatsApp bot)
     HUBSPOT_TOKEN=...         # HubSpot private app token (never store it in the admin panel/DB)
 
-`ADMIN_PASSWORD` was already rotated on 2026-09-23. After this deploy it only seeds a brand-new
-database; the existing admin keeps the password it has now, and changes made in the admin UI stick.
+**Admin login is now managed from `.env.docker`.** On every start the account in `ADMIN_EMAIL` is
+set to `ADMIN_PASSWORD` / `ADMIN_NAME` with full super-admin rights (turn off with
+`ADMIN_SYNC_FROM_ENV=false`). Check those two lines are what you want before deploying — that is the
+login you will use afterwards. A weak value (under 12 characters or starting with admin/change/your/
+password) is ignored with a warning in the logs.
+
+### 1b. Add the new settings (email, contact details, social links)
+
+Open `.env.docker` in WinSCP and copy in the sections you need from `.env.docker.example`
+(full explanation in `docs/ENV-SETTINGS.md`). Anything you leave out keeps today's behaviour, except:
+booking emails need `SMTP_*`, and the YouTube button stays hidden until you set `SOCIAL_YOUTUBE`
+(both old YouTube links were dead).
 
 ## 2. Back up the current code
 
@@ -42,8 +52,8 @@ database; the existing admin keeps the password it has now, and changes made in 
 
 Upload `sologix-live-fixed.zip` to `/root` with WinSCP, then:
 
-    cd /root && rm -rf sologix-live-fixed && unzip -q sologix-live-fixed.zip
-    cp -r /root/sologix-live-fixed/. /root/sologix/sologix_up_2026-06-13/sologix-main/
+    cd /root && rm -rf sologix-live && unzip -q sologix-live-fixed.zip     # creates /root/sologix-live
+    cp -r /root/sologix-live/. /root/sologix/sologix_up_2026-06-13/sologix-main/
 
 This overwrites code files only. `.env.docker`, `backend/uploads/` and the database are not in the zip
 and are untouched. The zip also includes the `.git` folder, so the live folder becomes a git
@@ -53,7 +63,9 @@ repository from now on (see step 6).
 
     cd /root/sologix/sologix_up_2026-06-13/sologix-main
     docker compose up -d --build
-    docker compose logs --tail=40 backend      # expect "Server running on port 5000", no errors
+    docker compose logs --tail=40 backend      # expect "Admin login synced from .env" and "Server running on port 5000"
+
+Then log in to the admin panel and open **Email** (top menu) → "Send test email".
 
 ## 5. Check it
 

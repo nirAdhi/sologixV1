@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const QRCode = require('qrcode');
 const db = require('../config/database');
-const { sendBookingConfirmation } = require('../config/email');
+const { sendBookingConfirmation, notifyAdminNewOrder, later } = require('../config/email');
 const crypto = require('crypto');
 const auth = require('../middleware/auth');
 
@@ -814,6 +814,11 @@ router.post('/product-order/verify', async (req, res) => {
       [razorpay_payment_id, razorpay_order_id]
     );
     res.json({ success: true, message: 'Payment verified. Order confirmed!', payment_id: razorpay_payment_id, updated: r.affectedRows });
+    if (r.affectedRows) {
+      db.query('SELECT name, email, phone, address, items, amount FROM product_orders WHERE razorpay_order_id = ? LIMIT 1', [razorpay_order_id])
+        .then(([[o]]) => { if (o) later(notifyAdminNewOrder, { ...o, items: (() => { try { return JSON.parse(o.items); } catch (e) { return []; } })(), payment_method: 'Paid online' }); })
+        .catch(() => {});
+    }
   } catch (err) {
     console.error('Product payment verify error:', err.message);
     res.status(500).json({ success: false, message: 'Payment verification failed. If you were charged, contact us with your payment ID.' });

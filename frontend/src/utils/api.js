@@ -155,6 +155,13 @@ export const testimonialsAPI = {
   delete: (id) => api.delete('/testimonials/' + id),
 };
 
+export const emailAdminAPI = {
+  get: () => api.get('/admin/email'),
+  saveSettings: (settings) => api.put('/admin/email/settings', settings),
+  verify: () => api.post('/admin/email/verify'),
+  test: (to) => api.post('/admin/email/test', { to }),
+};
+
 export const siteSettingsAPI = {
   getAll: () => api.get('/site-settings'),
   update: (key, value) => api.put('/site-settings/' + key, { value }),

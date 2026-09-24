@@ -27,7 +27,7 @@ const PUBLIC_BOOKING_COLUMNS = `
   s.name as service_name, c.name as customer_name, c.email as customer_email, c.phone as customer_phone`;
 const { body, validationResult } = require('express-validator');
 const db = require('../config/database');
-const { sendBookingConfirmation, sendStatusUpdate } = require('../config/email');
+const { sendBookingConfirmation, sendStatusUpdate, notifyAdminNewBooking, later } = require('../config/email');
 const auth = require('../middleware/auth');
 const { requirePermission } = require('../middleware/auth');
 const canManage = requirePermission('manage_bookings');
@@ -237,6 +237,10 @@ router.post('/', publicBookingLimiter, [
         razorpay_order_id: null
       }
     });
+    // Emails are sent after the response so a slow mail server never delays the customer.
+    // (Previously no email was sent for free bookings at all.)
+    later(sendBookingConfirmation, newBooking[0]);
+    later(notifyAdminNewBooking, newBooking[0]);
   } catch (error) {
     console.error('Error creating booking:', error);
     res.status(500).json({ success: false, message: 'Failed to create booking' });
@@ -351,6 +355,7 @@ router.post('/quick', publicBookingLimiter, [
       message: 'Booking created successfully. We will contact you shortly.',
       data: newBooking[0]
     });
+    later(notifyAdminNewBooking, newBooking[0]); // quick bookings have no customer email
   } catch (error) {
     console.error('Error creating quick booking:', error);
     res.status(500).json({ success: false, message: 'Failed to create booking' });

@@ -1,6 +1,7 @@
 const express = require('express');
 const { orderValidators, formLimiter } = require('../middleware/security');
 const router = express.Router();
+const { notifyAdminNewOrder, later } = require('../config/email');
 const db = require('../config/database');
 const { auth, requirePermission } = require('../middleware/auth');
 
@@ -36,6 +37,7 @@ router.post('/', formLimiter, ...orderValidators, async (req, res) => {
        String(notes || '').slice(0, 2000), ctype, 'pending']
     );
     res.status(201).json({ success: true, message: 'Order received', data: { id: r.insertId } });
+    later(notifyAdminNewOrder, { name, email, phone, address, items: basket, payment_method: 'Pay on Delivery / quote' });
   } catch (e) {
     // Previously answered 201 "received" even when nothing was saved.
     console.error('Product order save failed:', e.code || e.message);

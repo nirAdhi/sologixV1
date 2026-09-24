@@ -3,6 +3,7 @@ import { SITE_THEMES, applyTheme, getTheme } from '../../components/ThemeProvide
 import React, { useState, useEffect } from 'react';
 import { siteSettingsAPI } from '../../utils/api';
 import toast from 'react-hot-toast';
+import { getSiteConfig, loadSiteConfig } from '../../utils/siteConfig';
 
 const DEFAULT_STATS = [
   { target:'7', suffix:'+', label:'Years of Experience' },
@@ -37,11 +38,11 @@ const DEFAULT_PROCESS = [
 ];
 
 const DEFAULT_SOCIAL = {
-  youtube: 'https://www.youtube.com/@sologixenergy',
-  whatsapp: 'https://wa.me/918287766474',
+  youtube: '',
   facebook: 'https://www.facebook.com/sologix/',
   instagram: 'https://www.instagram.com/sologixenergy/',
   linkedin: 'https://www.linkedin.com/company/m-s-sologix-energy/',
+  x: '',
 };
 
 const Section = ({ title, children, icon }) => (
@@ -58,7 +59,10 @@ export default function AdminSiteSettings() {
   const [settings, setSettings] = useState({});
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState({});
+  const [siteCfg, setSiteCfg] = useState(getSiteConfig());
   const [activeTheme, setActiveTheme] = React.useState(() => getTheme().id);
+
+  useEffect(() => { loadSiteConfig().then(setSiteCfg); }, []);
 
   useEffect(() => {
     siteSettingsAPI.getAll()
@@ -74,10 +78,6 @@ export default function AdminSiteSettings() {
     try {
       await siteSettingsAPI.update(key, value);
       setSettings(s => ({ ...s, [key]: value }));
-      // Cache social links in localStorage for immediate homepage effect
-      if (key === 'social_links') {
-        localStorage.setItem('sologix_social_links', JSON.stringify(value));
-      }
       toast.success('Saved!');
     } catch(e) { toast.error('Failed to save'); }
     finally { setSaving(s => ({ ...s, [key]: false })); }
@@ -230,20 +230,23 @@ export default function AdminSiteSettings() {
       <Section icon="📱" title="Social Media Links (Floating Icons on Homepage)">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {[
-            { key:'youtube',   label:'YouTube', icon:'▶️', placeholder:'https://www.youtube.com/@sologixenergy' },
-            { key:'whatsapp',  label:'WhatsApp', icon:'💬', placeholder:'https://wa.me/918287766474' },
+            { key:'youtube',   label:'YouTube', icon:'▶️', placeholder:'https://www.youtube.com/@yourchannel' },
             { key:'facebook',  label:'Facebook', icon:'📘', placeholder:'https://www.facebook.com/sologix/' },
-            { key:'instagram', label:'Instagram', icon:'📸', placeholder:'https://www.instagram.com/sologixenergy/' },
+            { key:'instagram', label:'Instagram', icon:'📸', placeholder:'https://www.instagram.com/yourpage/' },
             { key:'linkedin',  label:'LinkedIn',  icon:'💼', placeholder:'https://www.linkedin.com/company/m-s-sologix-energy/' },
+            { key:'x',         label:'X (Twitter)', icon:'𝕏', placeholder:'https://x.com/yourhandle' },
           ].map(({ key, label, icon, placeholder }) => {
             const socialLinks = get('social_links', DEFAULT_SOCIAL);
+            const fromEnv = siteCfg.socialFromEnv && siteCfg.socialFromEnv[key];
             return (
               <div key={key}>
                 <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">
                   {icon} {label}
+                  {fromEnv && <span className="ml-2 normal-case font-medium text-amber-600">set in .env (SOCIAL_{key.toUpperCase()}) — edit it there</span>}
                 </label>
                 <input
-                  value={socialLinks[key] || ''}
+                  disabled={!!fromEnv}
+                  value={fromEnv ? (siteCfg.social[key] || '(hidden)') : (socialLinks[key] || '')}
                   onChange={e => {
                     const updated = { ...get('social_links', DEFAULT_SOCIAL), [key]: e.target.value };
                     setSettings(s => ({ ...s, social_links: updated }));
@@ -255,7 +258,7 @@ export default function AdminSiteSettings() {
             );
           })}
         </div>
-        <p className="text-xs text-gray-400 mt-3">Leave a field empty to hide that social icon from the website.</p>
+        <p className="text-xs text-gray-400 mt-3">Leave a field empty to hide that icon. Links set in the server's .env file (SOCIAL_…) take priority and are shown greyed out here. The WhatsApp button uses WHATSAPP_NUMBER from .env.</p>
         <button onClick={() => save('social_links', get('social_links', DEFAULT_SOCIAL))} disabled={saving.social_links}
           className="mt-4 bg-[#006948] text-white px-6 py-2.5 rounded-xl text-sm font-semibold hover:bg-green-700 transition-colors">
           {saving.social_links ? 'Saving...' : 'Save Social Links'}

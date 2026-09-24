@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { avatarUrl } from '../utils/avatar';
 import { useT } from '../i18n';
+import { getSiteConfig, whatsappHref } from '../utils/siteConfig';
 
 // Renders a translated sentence that contains one bold part, marked {b}.
 const withBold = (sentence, bold) => {
@@ -162,15 +163,23 @@ const HomePage = () => {
 
       {/* ── Floating Social Icons (links from Admin → Site Content) ── */}
       {(() => {
-        const sl = typeof window !== 'undefined'
-          ? JSON.parse(localStorage.getItem('sologix_social_links') || 'null') || {
-              youtube:'https://youtube.com/@amitranjan77?si=vUV44DvPrmbHTZwz',
-              facebook:'https://www.facebook.com/profile.php?id=61590621923412',
-              instagram:'https://www.instagram.com/sologix_energy_ranchi?igsh=czdqcXI1dGMycHly',
-            }
-          : {};
+        // BUGFIX: links used to be read from the VISITOR's browser storage, which is only
+        // filled in the admin's own browser, so real visitors always got hard-coded links
+        // (and the YouTube one was dead). They now come from the server: .env first,
+        // then Admin > Site Content.
+        const sl = getSiteConfig().social || {};
+        const wa = whatsappHref(t('Hi Sologix, I would like to know more about solar for my home.'));
         return (
           <div className="social-float fixed right-4 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-50">
+            {wa && (
+              <a href={wa} target="_blank" rel="noreferrer" title={t('Chat on WhatsApp')} aria-label={t('Chat on WhatsApp')}
+                className="w-14 h-14 rounded-2xl flex items-center justify-center hover:scale-110 transition-all duration-200 shadow-lg"
+                style={{background:'#25D366'}}>
+                <svg viewBox="0 0 32 32" className="w-9 h-9" fill="white" aria-hidden="true">
+                  <path d="M16.04 3C9.4 3 4 8.36 4 14.97c0 2.64.87 5.08 2.35 7.06L4.8 28.6l6.8-1.52a12.1 12.1 0 0 0 4.44.84h.01C22.68 27.92 28 22.56 28 15.95 28 9.36 22.68 3 16.04 3zm0 22.9h-.01a10.1 10.1 0 0 1-4.1-.87l-.3-.13-4.03.9.93-3.83-.2-.32a9.8 9.8 0 0 1-1.6-5.4c0-5.5 4.5-9.97 10.03-9.97 5.52 0 10.02 4.47 10.02 9.97 0 5.5-4.5 9.97-10.03 9.97zm5.5-7.46c-.3-.15-1.78-.87-2.05-.97-.28-.1-.48-.15-.68.15-.2.3-.78.97-.96 1.17-.18.2-.35.22-.65.07-.3-.15-1.27-.46-2.42-1.48a9.1 9.1 0 0 1-1.67-2.07c-.18-.3-.02-.46.13-.61.14-.13.3-.35.45-.52.15-.18.2-.3.3-.5.1-.2.05-.38-.02-.53-.08-.15-.68-1.63-.93-2.23-.25-.58-.5-.5-.68-.51h-.58c-.2 0-.53.07-.8.37-.28.3-1.05 1.02-1.05 2.5s1.08 2.9 1.23 3.1c.15.2 2.12 3.22 5.13 4.52.72.3 1.28.49 1.71.63.72.23 1.37.2 1.89.12.58-.09 1.78-.72 2.03-1.42.25-.7.25-1.3.18-1.42-.08-.13-.28-.2-.58-.35z"/>
+                </svg>
+              </a>
+            )}
             {sl.youtube && (
               <a href={sl.youtube} target="_blank" rel="noreferrer" title="YouTube"
                 className="w-14 h-14 rounded-2xl flex items-center justify-center hover:scale-110 transition-all duration-200 shadow-lg"
