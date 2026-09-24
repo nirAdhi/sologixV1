@@ -4,16 +4,26 @@
 
 @layer base {
   body {
-    font-family: 'Work Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-family: 'Work Sans', 'Noto Sans Devanagari', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     color: #141b2b;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Manrope', 'Work Sans', sans-serif;
+    font-family: 'Manrope', 'Noto Sans Devanagari', 'Work Sans', sans-serif;
     font-weight: 700;
   }
+
+  /* Hindi: Devanagari needs a little more line height so the vowel signs
+     above/below the line are not clipped, and no letter-spacing/uppercase. */
+  html[lang="hi"] body { line-height: 1.6; }
+  html[lang="hi"] h1, html[lang="hi"] h2, html[lang="hi"] h3 { line-height: 1.35; }
+  html[lang="hi"] .uppercase { text-transform: none; }
+  html[lang="hi"] [class*="tracking-"] { letter-spacing: normal; }
+  /* some pages set the font inline without a Hindi fallback */
+  html[lang="hi"] [style*="Manrope"] { font-family: 'Manrope', 'Noto Sans Devanagari', sans-serif !important; letter-spacing: normal !important; }
+  html[lang="hi"] [style*="Work Sans"] { font-family: 'Work Sans', 'Noto Sans Devanagari', sans-serif !important; letter-spacing: normal !important; }
 }
 
 @layer components {

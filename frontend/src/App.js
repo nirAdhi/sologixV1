@@ -5,6 +5,7 @@ import { Toaster } from 'react-hot-toast';
 import Navbar from './components/Navbar';
 import ConsultationWidget from './components/ConsultationWidget';
 import ThemeProvider from './components/ThemeProvider';
+import { LanguageProvider } from './i18n';
 import Footer from './components/Footer';
 import HomePage from './pages/HomePage';
 import Services from './pages/Services';
@@ -151,11 +152,13 @@ function AppContent() {
 
 function App() {
   return (
+    <LanguageProvider>
     <ThemeProvider>
     <Router>
       <AppContent />
     </Router>
     </ThemeProvider>
+    </LanguageProvider>
   );
 }
 

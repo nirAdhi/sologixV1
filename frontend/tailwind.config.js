@@ -33,9 +33,9 @@ module.exports = {
         },
       },
       fontFamily: {
-        sans:     ['Work Sans', 'sans-serif'],
-        heading:  ['Manrope', 'sans-serif'],
-        body:     ['Work Sans', 'sans-serif'],
+        sans:     ['Work Sans', 'Noto Sans Devanagari', 'sans-serif'],
+        heading:  ['Manrope', 'Noto Sans Devanagari', 'sans-serif'],
+        body:     ['Work Sans', 'Noto Sans Devanagari', 'sans-serif'],
       },
     },
   },
