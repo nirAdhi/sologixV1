@@ -2,6 +2,7 @@ import AdminLayout from '../../components/AdminLayout';
 import React, { useState, useEffect } from 'react';
 import { testimonialsAPI } from '../../utils/api';
 import toast from 'react-hot-toast';
+import { avatarUrl } from '../../utils/avatar';
 
 const empty = { name:'', role:'', company:'', location:'', review:'', capacity:'', savings:'', rating:5, photo_url:'', installation_photo:'', is_active:true, sort_order:0 };
 
@@ -133,7 +134,7 @@ export default function AdminTestimonials() {
                   {/* Photo */}
                   <div className="flex-shrink-0">
                     {t.photo_url ? (
-                      <img src={t.photo_url} alt={t.name}
+                      <img src={avatarUrl(t.photo_url)} alt={t.name}
                         className={"w-14 h-14 rounded-full object-cover border-2 border-white shadow-md " + (t.installation_photo ? '-mt-8 relative z-10' : '')}
                         onError={e => { e.target.style.display='none'; e.target.nextSibling.style.display='flex'; }} />
                     ) : null}
@@ -198,7 +199,7 @@ export default function AdminTestimonials() {
                 <div className="flex items-start gap-4">
                   <div className="flex-shrink-0">
                     {form.photo_url ? (
-                      <img src={form.photo_url} alt="preview" className="w-20 h-20 rounded-full object-cover border-2 border-green-100" />
+                      <img src={avatarUrl(form.photo_url)} alt="preview" className="w-20 h-20 rounded-full object-cover border-2 border-green-100" />
                     ) : (
                       <div className="w-20 h-20 bg-gradient-to-br from-[#006948] to-green-400 rounded-full flex items-center justify-center text-white font-bold text-3xl">
                         {form.name?.charAt(0).toUpperCase() || '?'}
@@ -218,7 +219,7 @@ export default function AdminTestimonials() {
                     </div>
                     {photoMode === 'url' ? (
                       <input value={form.photo_url} onChange={e => setForm(f => ({...f, photo_url: e.target.value}))}
-                        placeholder="https://example.com/photo.jpg"
+                        placeholder="Paste the Cloudinary link, e.g. https://res.cloudinary.com/..."
                         className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500" />
                     ) : (
                       <div>

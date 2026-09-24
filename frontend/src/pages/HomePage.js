@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { Link } from 'react-router-dom';
+import { avatarUrl } from '../utils/avatar';
 
 const HomePage = () => {
   useEffect(() => {
@@ -584,7 +585,7 @@ const HomePage = () => {
                       {/* BUGFIX: photo_url was never rendered, so no testimonial photo ever showed. */}
                       {t.photo_url ? (
                         <img
-                          src={t.photo_url}
+                          src={avatarUrl(t.photo_url)}
                           alt={t.name}
                           loading="lazy"
                           className="w-14 h-14 rounded-full object-cover flex-shrink-0 shadow-lg bg-white"
