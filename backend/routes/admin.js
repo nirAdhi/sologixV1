@@ -534,6 +534,14 @@ router.get('/services', auth, async (req, res) => {
   }
 });
 
+// Service features are stored as a JSON array of short strings. Older admin code
+// could send a JSON string (or a double-encoded one), which broke the public page.
+function featureList(f) {
+  let v = f;
+  for (let i = 0; i < 2 && typeof v === 'string'; i++) { try { v = JSON.parse(v); } catch (e) { v = v.split(/\r?\n|,/); } }
+  return (Array.isArray(v) ? v : []).map(x => String(x === null || x === undefined ? '' : x).trim().slice(0, 200)).filter(Boolean).slice(0, 30);
+}
+
 router.post('/services', auth, requirePermission('manage_services'), [
   body('name').notEmpty().withMessage('Service name is required'),
   body('price').isFloat({ min: 0 }).withMessage('Valid price is required')
@@ -544,12 +552,12 @@ router.post('/services', auth, requirePermission('manage_services'), [
       return res.status(400).json({ success: false, errors: errors.array() });
     }
 
-    const { name, description, price, duration_hours, features, image_url } = req.body;
+    const { name, description, price, duration_hours, features, image_url, is_active } = req.body;
 
     const [result] = await db.query(`
-      INSERT INTO services (name, description, price, duration_hours, features, image_url)
-      VALUES (?, ?, ?, ?, ?, ?)
-    `, [name, description, price, duration_hours || 4, JSON.stringify(features || []), image_url]);
+      INSERT INTO services (name, description, price, duration_hours, features, image_url, is_active)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `, [name, description, Number(price) || 0, duration_hours || 4, JSON.stringify(featureList(features)), image_url || null, is_active === false || is_active === 0 || is_active === 'false' ? 0 : 1]);
 
     res.status(201).json({ 
       success: true, 
@@ -579,7 +587,7 @@ router.put('/services/:id', auth, requirePermission('manage_services'), async (r
       UPDATE services 
       SET name = ?, description = ?, price = ?, duration_hours = ?, features = ?, image_url = ?, is_active = ?
       WHERE id = ?
-    `, [name, description, price, duration_hours, JSON.stringify(features || []), image_url, is_active, req.params.id]);
+    `, [name, description, Number(price) || 0, duration_hours || 4, JSON.stringify(featureList(features)), image_url || null, is_active === false || is_active === 0 || is_active === 'false' ? 0 : 1, req.params.id]);
 
     res.json({ success: true, message: 'Service updated' });
   } catch (error) {
@@ -599,6 +607,9 @@ router.delete('/services/:id', auth, requireSuperAdmin, async (req, res) => {
 });
 
 // Update booking delivery and installation status
+// Empty or malformed dates from the form mean "leave unchanged" (MySQL strict mode rejects '').
+const toDate = (v) => { const s = String(v === undefined || v === null ? '' : v).slice(0, 10); return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : null; };
+
 router.put('/bookings/:id/progress', auth, requirePermission('manage_bookings'), async (req, res) => {
   try {
     const { 
@@ -610,6 +621,10 @@ router.put('/bookings/:id/progress', auth, requirePermission('manage_bookings'),
       installation_notes,
       work_progress 
     } = req.body;
+    const DELIVERY = ['pending', 'ordered', 'shipped', 'delivered', 'not_applicable'];
+    const PROGRESS = ['not_started', 'materials_ordered', 'site_preparation', 'installation', 'testing', 'completed'];
+    if (delivery_status && !DELIVERY.includes(delivery_status)) return res.status(400).json({ success: false, message: 'Unknown delivery status' });
+    if (work_progress && !PROGRESS.includes(work_progress)) return res.status(400).json({ success: false, message: 'Unknown work progress stage' });
 
     await db.query(`
       UPDATE bookings 
@@ -624,10 +639,10 @@ router.put('/bookings/:id/progress', auth, requirePermission('manage_bookings'),
       WHERE id = ? OR booking_id = ?
     `, [
       delivery_status, 
-      delivery_date, 
+      toDate(delivery_date), 
       delivery_notes,
-      installation_scheduled_date,
-      installation_completed_date,
+      toDate(installation_scheduled_date),
+      toDate(installation_completed_date),
       installation_notes,
       work_progress,
       req.params.id, 

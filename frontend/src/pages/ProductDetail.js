@@ -1,12 +1,18 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { catalogAPI } from '../utils/api';
 import toast from 'react-hot-toast';
 import { useT } from '../i18n';
+import { BRANDING } from '../utils/branding';
+import { whatsappHref, telHref } from '../utils/siteConfig';
 
 const API_URL = process.env.REACT_APP_API_URL || '/api';
+const DEFAULT_IMG = 'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=800&h=600&fit=crop';
+const onImgError = (e) => { if (!e.currentTarget.src.endsWith(DEFAULT_IMG)) e.currentTarget.src = DEFAULT_IMG; };
 
-const STATIC = [
+// OFFLINE FALLBACK ONLY: used when the catalog request fails. These ids do not
+// exist in the database, so ordering and the quote cart are disabled for them.
+const FALLBACK_PRODUCTS = [
   { id:1,  category:'Solar Panels',      brand:'Adani Solar',     model:'Mono PERC 580W',       unit:'per Wp',    specs:'580W · 21.5% efficiency · 25yr warranty · DCR certified', badge:'Best Seller', in_stock:1, image_url:'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=800&h=600&fit=crop', warranty:'25 Years', description:'The Adani Solar Mono PERC 580W is a premium DCR-certified solar panel designed for maximum energy yield in Indian conditions. Manufactured at Adani\'s Mundra facility, this panel features advanced PERC cell technology for superior performance even in low-light conditions.', specs_table:[['Power Output','580 Wp'],['Cell Type','Mono PERC'],['Efficiency','21.5%'],['Open Circuit Voltage (Voc)','49.5V'],['Short Circuit Current (Isc)','14.7A'],['Temperature Coefficient','−0.35%/°C'],['Dimensions','2278 × 1134 × 35mm'],['Weight','28.5 kg'],['Frame','Anodised Aluminium'],['Junction Box','IP68'],['Origin','DCR (India)'],['Warranty','25 Years Linear Output']] },
   { id:2,  category:'Solar Panels',      brand:'Tata Power Solar', model:'575W Mono',            unit:'per Wp',    specs:'575W · 21.8% efficiency · Tier-1', badge:'', in_stock:1, image_url:'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=800&h=600&fit=crop', warranty:'25 Years', description:'Tata Power Solar 575W Mono panel — Tier-1 manufacturer with world-class quality control. Suitable for residential and commercial rooftop installations across India.', specs_table:[['Power Output','575 Wp'],['Cell Type','Mono PERC'],['Efficiency','21.8%'],['Warranty','25 Years']] },
   { id:3,  category:'Solar Panels',      brand:'Rayzon Solar',    model:'545W PERC',             unit:'per Wp',    specs:'545W · high-efficiency', badge:'', in_stock:1, image_url:'https://images.unsplash.com/photo-1497440001374-f26997328c1b?w=800&h=600&fit=crop', warranty:'25 Years', description:'Rayzon Solar 545W PERC panels with high efficiency and strong build quality. Ideal for space-constrained installations.', specs_table:[['Power Output','545 Wp'],['Cell Type','Mono PERC'],['Warranty','25 Years']] },
@@ -24,7 +30,91 @@ const STATIC = [
   { id:15, category:'BOS & Accessories', brand:'Sologix',         model:'DC Junction Box',       unit:'per NOS',   specs:'IP67 · 6-string · anti-reverse', badge:'', in_stock:1, image_url:'https://images.unsplash.com/photo-1497440001374-f26997328c1b?w=800&h=600&fit=crop', warranty:'1 Year', description:'Sologix DC Junction Box — IP67 with 6-string input and anti-reverse diodes.', specs_table:[['Strings','6'],['Protection','IP67'],['Warranty','1 Year']] },
   { id:16, category:'BOS & Accessories', brand:'Sologix',         model:'Mounting Structure RCC', unit:'per NOS',  specs:'GI hot-dip galvanised · adjustable tilt', badge:'', in_stock:1, image_url:'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=800&h=600&fit=crop', warranty:'5 Years', description:'Sologix RCC rooftop mounting structure — GI hot-dip galvanised with adjustable tilt for optimal solar angle.', specs_table:[['Material','GI Hot-Dip Galvanised'],['Roof Type','RCC Flat Roof'],['Warranty','5 Years']] },
   { id:17, category:'BOS & Accessories', brand:'Sologix',         model:'Solar DC Cable 4mm',    unit:'per metre', specs:'TUV certified · UV resistant', badge:'', in_stock:1, image_url:'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=800&h=600&fit=crop', warranty:'1 Year', description:'Sologix 4mm2 TUV certified DC cable — UV resistant and double insulated for outdoor solar installations.', specs_table:[['Cross Section','4 mm2'],['Rating','TUV Certified'],['Insulation','Double (UV resistant)'],['Warranty','1 Year']] },
-];
+].map(p => ({ ...p, _fallback: true }));
+
+// ── Catalog helpers (same rules as pages/Products.js) ───────────────────────
+const toNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+const isOn = (v) => v === true || toNum(v) > 0;
+const inStock = (p) => (p && (p.in_stock === undefined || p.in_stock === null)) ? true : isOn(p && p.in_stock);
+const BARE_NUMBER = /^\s*(?:₹|rs\.?)?\s*[\d,]+(?:\.\d+)?\s*$/i;
+const fmtINR = (n) => '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+
+// Public pricing rule: a price is shown only when show_price is on AND price > 0.
+// Selling price = discount_price when 0 < discount_price < price.
+const getPriceInfo = (p) => {
+  const price = toNum(p && p.price);
+  if (p && isOn(p.show_price) && price > 0) {
+    const d = toNum(p.discount_price);
+    const discounted = d > 0 && d < price;
+    const pct = discounted ? Math.round((1 - d / price) * 100) : 0;
+    return { show: true, selling: discounted ? d : price, original: discounted ? price : null, pct };
+  }
+  const range = p && p.price_range !== undefined && p.price_range !== null ? String(p.price_range).trim() : '';
+  return { show: false, text: range && !BARE_NUMBER.test(range) ? range : 'Contact for pricing' };
+};
+
+const normalizeProducts = (rows) => rows
+  .filter(r => r && typeof r === 'object' && r.id !== undefined && r.id !== null)
+  .map(r => ({
+    ...r,
+    category: r.category ? String(r.category).trim() : '',
+    brand: r.brand ? String(r.brand) : '',
+    model: r.model ? String(r.model) : '',
+    specs: r.specs ? String(r.specs) : '',
+    unit: r.unit ? String(r.unit) : 'per NOS',
+  }));
+
+// Cart items stay small (uploaded images are ~1 MB data URLs and would fill localStorage).
+const safeImg = (u) => (typeof u === 'string' && u && !u.startsWith('data:')) ? u : '';
+const toCartItem = (p, qty) => ({
+  id: p.id, category: p.category, brand: p.brand, model: p.model, unit: p.unit,
+  price: p.price ?? null, discount_price: p.discount_price ?? null, show_price: p.show_price ?? 0,
+  price_range: p.price_range ?? '', in_stock: p.in_stock, image_url: safeImg(p.image_url),
+  qty: Math.max(1, parseInt(qty, 10) || 1),
+});
+const readCart = () => {
+  try {
+    const v = JSON.parse(localStorage.getItem('sologix_cart') || '[]');
+    return Array.isArray(v) ? v.filter(i => i && typeof i === 'object' && i.id !== undefined && i.id !== null) : [];
+  } catch { return []; }
+};
+const writeCart = (cart) => { try { localStorage.setItem('sologix_cart', JSON.stringify(cart)); } catch { /* storage full or blocked */ } };
+const syncCart = (cart, fresh) => {
+  const byId = new Map(fresh.map(p => [String(p.id), p]));
+  const next = [];
+  let removed = 0;
+  cart.forEach(item => {
+    const f = byId.get(String(item.id));
+    if (!f) { removed++; return; }
+    next.push(toCartItem(f, item.qty));
+  });
+  return { next, removed };
+};
+
+const NO_PRICE_SUFFIX = ' has no listed price. Please choose Pay on Delivery or request a quote.';
+const serverMessage = (t, msg, fallback) => {
+  if (typeof msg !== 'string' || !msg.trim()) return t(fallback);
+  if (msg.endsWith(NO_PRICE_SUFFIX)) return t('{product} has no listed price. Please choose Pay on Delivery or request a quote.', { product: msg.slice(0, -NO_PRICE_SUFFIX.length) });
+  return t(msg);
+};
+
+function ContactButtons({ t, text }) {
+  const wa = whatsappHref(text);
+  return (
+    <div className="flex flex-wrap gap-2 justify-center">
+      {BRANDING.phone && (
+        <a href={telHref(BRANDING.phone)} className="bg-[#006948] text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-[#004d34] transition-colors">
+          📞 {t('Call {phone}', { phone: BRANDING.phone })}
+        </a>
+      )}
+      {wa && (
+        <a href={wa} target="_blank" rel="noopener noreferrer" className="bg-[#25D366] text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity">
+          💬 {t('Chat on WhatsApp')}
+        </a>
+      )}
+    </div>
+  );
+}
 
 // Short spec lines ("580W · 21.5% efficiency · 25yr warranty" or the DB's comma form)
 // are translated piece by piece; numbers/models without a Hindi entry stay as they are.
@@ -46,8 +136,9 @@ export default function ProductDetail() {
   const { t } = useT();
   const { id } = useParams();
   const navigate = useNavigate();
-  const [allProducts, setAllProducts] = useState(STATIC);
-  const [cart, setCart] = useState(() => { try { return JSON.parse(localStorage.getItem('sologix_cart')||'[]'); } catch { return []; } });
+  const [allProducts, setAllProducts] = useState([]);
+  const [loadState, setLoadState] = useState('loading'); // loading | ok | error
+  const [cart, setCart] = useState(readCart);
   const [showQuote, setShowQuote] = useState(false);
   const [quoteForm, setQuoteForm] = useState({ name:'', phone:'', email:'', notes:'' });
   const [submitting, setSubmitting] = useState(false);
@@ -56,34 +147,86 @@ export default function ProductDetail() {
   const [orderForm, setOrderForm] = useState({ name:'', phone:'', email:'', address:'', qty:1, payment:'cod', notes:'' });
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [orderDone, setOrderDone] = useState(false);
+  const cartSynced = useRef(false);
+
+  const loadCatalog = useCallback(() => {
+    setLoadState('loading');
+    catalogAPI.getAll()
+      .then(r => {
+        const body = r && r.data;
+        if (!body || !body.success || !Array.isArray(body.data)) throw new Error('bad response');
+        const list = normalizeProducts(body.data);
+        if (body.fallback) { setAllProducts(list.map(p => ({ ...p, _fallback: true }))); setLoadState('error'); return; }
+        setAllProducts(list);
+        setLoadState('ok');
+      })
+      .catch(() => { setAllProducts(FALLBACK_PRODUCTS); setLoadState('error'); });
+  }, []);
+
+  useEffect(() => { loadCatalog(); }, [loadCatalog]);
 
   useEffect(() => {
-    catalogAPI.getAll().then(r => { if (r.data.success && r.data.data?.length) setAllProducts(r.data.data); }).catch(()=>{});
     window.scrollTo(0, 0);
+    setShowOrder(false); setShowQuote(false);
+    setOrderForm(f => ({ ...f, qty: 1 }));
   }, [id]);
 
-  useEffect(() => { localStorage.setItem('sologix_cart', JSON.stringify(cart)); }, [cart]);
+  useEffect(() => { writeCart(cart); }, [cart]);
+
+  // Once the live catalog is in, refresh the saved cart against it.
+  useEffect(() => {
+    if (loadState !== 'ok' || cartSynced.current) return;
+    cartSynced.current = true;
+    const { next, removed } = syncCart(cart, allProducts);
+    setCart(next);
+    if (removed === 1) toast(t('An item in your cart is no longer available and was removed.'));
+    else if (removed > 1) toast(t('{count} items in your cart are no longer available and were removed.', { count: removed }));
+  }, [loadState, allProducts, cart, t]);
 
   const product = allProducts.find(p => String(p.id) === String(id));
 
-  if (!product) return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
+  if (loadState === 'loading') return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50" aria-busy="true">
       <div className="text-center">
-        <p className="text-5xl mb-4">😕</p>
-        <p className="text-gray-500 mb-4">{t('Product not found')}</p>
-        <button onClick={() => navigate('/products')} className="bg-[#006948] text-white px-6 py-3 rounded-full font-semibold">{t('Back to Products')}</button>
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#006948] mx-auto mb-4"></div>
+        <p className="text-sm text-gray-500">{t('Loading product...')}</p>
       </div>
     </div>
   );
 
-  const related = allProducts.filter(p => p.category === product.category && p.id !== product.id).slice(0, 4);
-  const inCart = cart.find(i => i.id === product.id);
+  if (!product) return (
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 px-6">
+      <div className="text-center max-w-md">
+        <p className="text-5xl mb-4">{loadState === 'error' ? '📡' : '😕'}</p>
+        {loadState === 'error' ? (
+          <>
+            <p className="text-gray-800 font-semibold mb-2">{t('We could not load this product right now.')}</p>
+            <p className="text-gray-500 text-sm mb-5">{t('Call or WhatsApp us and we will help you choose and order.')}</p>
+            <ContactButtons t={t} text={t('Hi Sologix, I would like to know about your solar products.')} />
+            <button onClick={loadCatalog} className="block mx-auto mt-4 text-sm text-[#006948] font-semibold hover:underline">↻ {t('Try again')}</button>
+          </>
+        ) : (
+          <p className="text-gray-500 mb-4">{t('Product not found')}</p>
+        )}
+        <Link to="/products" className="inline-block mt-4 bg-[#006948] text-white px-6 py-3 rounded-full font-semibold">{t('Back to Products')}</Link>
+      </div>
+    </div>
+  );
+
+  const related = allProducts.filter(p => p.category === product.category && String(p.id) !== String(product.id)).slice(0, 4);
+  const inCart = cart.find(i => String(i.id) === String(product.id));
+  const canOrder = !product._fallback && inStock(product);
+  const priceInfo = getPriceInfo(product);
+  const specsTable = Array.isArray(product.specs_table)
+    ? product.specs_table.filter(row => Array.isArray(row) && row.length >= 2 && row[0] !== undefined && row[0] !== null && row[0] !== '')
+    : [];
 
   const addToCart = () => {
+    if (!canOrder) return;
     setCart(prev => {
-      const ex = prev.find(i => i.id === product.id);
-      if (ex) return prev.map(i => i.id === product.id ? {...i, qty: i.qty+1} : i);
-      return [...prev, {...product, qty: 1}];
+      const ex = prev.find(i => String(i.id) === String(product.id));
+      if (ex) return prev.map(i => String(i.id) === String(product.id) ? {...i, qty: (parseInt(i.qty, 10) || 0) + 1} : i);
+      return [...prev, toCartItem(product, 1)];
     });
     toast.success(t('{model} added to quote cart', { model: product.model }));
   };
@@ -110,10 +253,15 @@ export default function ProductDetail() {
 
 
   const launchRazorpay = async (orderData, customerDetails, items, onSuccess) => {
+    // The key comes from the server (never hard-coded here).
+    if (!orderData || !orderData.key_id || !orderData.order_id || typeof window.Razorpay !== 'function') {
+      toast.error(t('Online payment is not available right now. Please choose Pay on Delivery or call us.'));
+      return;
+    }
     const options = {
-      key: 'rzp_live_SfOIUbCXX39HyD',
+      key: orderData.key_id,
       amount: orderData.amount,
-      currency: 'INR',
+      currency: orderData.currency || 'INR',
       name: 'Sologix Energy',
       description: items.map(i => i.brand + ' ' + i.model).join(', '),
       image: 'https://res.cloudinary.com/dsiratycd/image/upload/logo_yo5zg9.png',
@@ -131,25 +279,22 @@ export default function ProductDetail() {
           });
           const result = await verify.json();
           if (result.success) { onSuccess(response.razorpay_payment_id); }
-          else { toast.error(t('Payment verification failed. Contact support.')); }
+          else { toast.error(serverMessage(t, result.message, 'Payment verification failed. Contact support.')); }
         } catch { toast.error(t('Verification error. Please contact us.')); }
       },
       prefill: { name: customerDetails.name, email: customerDetails.email || '', contact: customerDetails.phone },
       theme: { color: '#006948' },
       modal: { ondismiss: () => toast(t('Payment cancelled')) },
     };
-    const rzp = new window.Razorpay(options);
-    rzp.on('payment.failed', (r) => toast.error(t('Payment failed: {reason}', { reason: r.error?.description || t('Please try again') })));
-    rzp.open();
-  };
-
-  const getPrice = (p) => {
-    if (p.price && Number(p.price) > 0) return Number(p.price);
-    if (p.price_range && !isNaN(Number(p.price_range)) && Number(p.price_range) > 0) return Number(p.price_range);
-    return null;
+    try {
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', (r) => toast.error(t('Payment failed: {reason}', { reason: r.error?.description || t('Please try again') })));
+      rzp.open();
+    } catch { toast.error(t('Payment gateway error. Try COD.')); }
   };
 
   const submitOrder = async () => {
+    if (!canOrder) return;
     if (!orderForm.name || !orderForm.phone || !orderForm.address) { toast.error(t('Name, phone and address required')); return; }
     const items = [{ id: product.id, brand: product.brand, model: product.model, qty: orderForm.qty, unit: product.unit }];
     setOrderSubmitting(true);
@@ -158,10 +303,10 @@ export default function ProductDetail() {
         const rpRes = await fetch(API_URL + '/payments/product-order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: orderForm.name, phone: orderForm.phone, email: orderForm.email, address: orderForm.address, items, amount_paise: 100, notes: orderForm.notes || '' }),
+          body: JSON.stringify({ name: orderForm.name, phone: orderForm.phone, email: orderForm.email, address: orderForm.address, items, notes: orderForm.notes || '' }),
         });
-        const rpData = await rpRes.json();
-        if (!rpData.success) { toast.error(t('Payment gateway error. Try COD.')); setOrderSubmitting(false); return; }
+        const rpData = await rpRes.json().catch(() => ({}));
+        if (!rpRes.ok || !rpData.success || !rpData.data) { toast.error(serverMessage(t, rpData.message, 'Payment gateway error. Try COD.')); setOrderSubmitting(false); return; }
         setOrderSubmitting(false);
         launchRazorpay(rpData.data, { name: orderForm.name, phone: orderForm.phone, email: orderForm.email }, items,
           (paymentId) => { setOrderDone(true); toast.success(t('Payment confirmed! ID: {id}', { id: paymentId })); }
@@ -173,7 +318,10 @@ export default function ProductDetail() {
         body: JSON.stringify({ name: orderForm.name, phone: orderForm.phone, email: orderForm.email, address: orderForm.address, items, notes: 'Pay on Delivery. ' + (orderForm.notes||''), customer_type: 'direct_order', status: 'pending' }),
       });
       if (res.ok) { setOrderDone(true); toast.success(t('Order placed! Team confirms within 2 hours.')); }
-      else toast.error(t('Order failed. Please call us.'));
+      else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(serverMessage(t, data.message, 'Order failed. Please call us.'));
+      }
     } catch { toast.error(t('Network error.')); }
     finally { setOrderSubmitting(false); }
   };
@@ -182,24 +330,32 @@ export default function ProductDetail() {
     <div className="min-h-screen bg-gray-50">
       {/* Breadcrumb */}
       <div className="bg-white border-b border-gray-100">
-        <div className="max-w-[1280px] mx-auto px-6 lg:px-16 py-3 flex items-center gap-2 text-sm text-gray-500">
+        <div className="max-w-[1280px] mx-auto px-6 lg:px-16 py-3 flex items-center gap-2 text-sm text-gray-500 overflow-hidden whitespace-nowrap">
           <Link to="/" className="hover:text-[#006948]">{t('Home')}</Link>
           <span>/</span>
           <Link to="/products" className="hover:text-[#006948]">{t('Products')}</Link>
           <span>/</span>
           <Link to={'/products?category=' + encodeURIComponent(product.category)} className="hover:text-[#006948]">{t(product.category)}</Link>
           <span>/</span>
-          <span className="text-gray-800 font-medium">{product.model}</span>
+          <span className="text-gray-800 font-medium truncate min-w-0">{product.model}</span>
         </div>
       </div>
 
       <div className="max-w-[1280px] mx-auto px-6 lg:px-16 py-10">
+        {loadState === 'error' && (
+          <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-8 text-center">
+            <p className="font-semibold text-gray-800 mb-1">{t('We could not load the latest product details right now.')}</p>
+            <p className="text-sm text-gray-600 mb-4">{t('Details below may be out of date and online ordering is paused. Call or WhatsApp us to order.')}</p>
+            <ContactButtons t={t} text={t('Hi Sologix, I would like to know about {product}.', { product: product.brand + ' ' + product.model })} />
+            <button onClick={loadCatalog} className="mt-3 text-xs text-[#006948] font-semibold hover:underline">↻ {t('Try again')}</button>
+          </div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
           {/* Left: Image */}
           <div>
             <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden aspect-[4/3] shadow-sm">
-              <img src={product.image_url || 'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=800&h=600&fit=crop'}
-                alt={product.model} className="w-full h-full object-cover" loading="lazy" />
+              <img src={product.image_url || DEFAULT_IMG}
+                alt={product.model} className="w-full h-full object-cover" loading="lazy" onError={onImgError} />
             </div>
             {/* Trust badges */}
             <div className="flex gap-3 mt-4 flex-wrap">
@@ -219,7 +375,7 @@ export default function ProductDetail() {
               <span className="text-xs text-gray-400">{t(product.category)}</span>
               {product.badge && <span className="ml-auto bg-[#006948] text-white text-xs px-2.5 py-1 rounded-full font-bold">{t(product.badge)}</span>}
             </div>
-            <h1 className="text-3xl font-bold text-gray-900 mb-4">{product.model}</h1>
+            <h1 className="text-3xl font-bold text-gray-900 mb-4 break-words">{product.model}</h1>
 
             {/* Warranty badge */}
             {product.warranty && (
@@ -228,31 +384,44 @@ export default function ProductDetail() {
               </div>
             )}
 
-            <p className="text-gray-600 leading-relaxed mb-6">{product.description ? t(product.description) : translateSpecs(product.specs, t)}</p>
+            {(product.description || product.specs) && (
+              <p className="text-gray-600 leading-relaxed mb-6 whitespace-pre-line break-words">{product.description ? t(product.description) : translateSpecs(product.specs, t)}</p>
+            )}
 
             {/* Price section */}
             <div className="bg-gray-50 border border-gray-100 rounded-2xl p-5 mb-6">
               <div className="flex items-center justify-between mb-3">
-                <div>
-                  <p className="text-xs text-gray-400 mb-1">{t('Estimated Price ({unit})', { unit: t(product.unit || 'per NOS') })}</p>
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold text-gray-200 select-none" style={{filter:'blur(5px)'}}>Rs 99,999</span>
-                    <span className="text-xs text-gray-400">🔒 {t('Contact for price')}</span>
-                  </div>
+                <div className="min-w-0">
+                  {priceInfo.show ? (
+                    <>
+                      <p className="text-xs text-gray-400 mb-1">{t('Price')}</p>
+                      <div className="flex items-baseline gap-x-2 gap-y-1 flex-wrap">
+                        <span className="text-3xl font-bold text-[#006948]">{fmtINR(priceInfo.selling)}</span>
+                        <span className="text-sm text-gray-500">{t(product.unit || 'per NOS')}</span>
+                        {priceInfo.original && <span className="text-sm text-gray-400 line-through">{fmtINR(priceInfo.original)}</span>}
+                        {priceInfo.pct > 0 && <span className="text-xs bg-red-50 text-red-600 px-2 py-0.5 rounded-full font-bold">{t('{pct}% OFF', { pct: priceInfo.pct })}</span>}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-xs text-gray-400 mb-1">{t('Estimated Price ({unit})', { unit: t(product.unit || 'per NOS') })}</p>
+                      <p className="text-lg font-semibold text-gray-700 break-words">{t(priceInfo.text)}</p>
+                    </>
+                  )}
                 </div>
-                <div className="text-right">
-                  <p className="text-xs text-[#006948] font-semibold">{product.in_stock ? '✅ ' + t('In Stock') : '❌ ' + t('Out of Stock')}</p>
+                <div className="text-right flex-shrink-0 pl-3">
+                  <p className={'text-xs font-semibold ' + (inStock(product) ? 'text-[#006948]' : 'text-red-600')}>{inStock(product) ? '✅ ' + t('In Stock') : '❌ ' + t('Out of Stock')}</p>
                   <p className="text-xs text-gray-400">{t('Ships pan India')}</p>
                 </div>
               </div>
               <div className="flex gap-3 mb-2">
                 <button onClick={() => { setShowOrder(true); setOrderDone(false); }}
-                  className="flex-1 bg-[#006948] text-white py-3.5 rounded-xl font-bold hover:bg-[#004d34] transition-colors disabled:opacity-40" disabled={!product.in_stock}>
+                  className="flex-1 bg-[#006948] text-white py-3.5 rounded-xl font-bold hover:bg-[#004d34] transition-colors disabled:opacity-40" disabled={!canOrder}>
                   🛒 {t('Buy Now')}
                 </button>
               </div>
               <div className="flex gap-3">
-                <button onClick={addToCart} disabled={!product.in_stock}
+                <button onClick={addToCart} disabled={!canOrder}
                   className="flex-1 border-2 border-[#006948] text-[#006948] py-3.5 rounded-xl font-bold hover:bg-[#006948]/5 transition-colors disabled:opacity-40">
                   {inCart ? '✓ ' + t('In Quote Cart') : '+ ' + t('Add to Quote Cart')}
                 </button>
@@ -276,7 +445,7 @@ export default function ProductDetail() {
         </div>
 
         {/* Specs table */}
-        {product.specs_table && product.specs_table.length > 0 && (
+        {specsTable.length > 0 && (
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden mb-12 shadow-sm">
             <div className="bg-[#006948] px-6 py-4">
               <h2 className="text-white font-bold text-lg">{t('Technical Specifications')}</h2>
@@ -284,10 +453,10 @@ export default function ProductDetail() {
             <div className="overflow-x-auto">
               <table className="w-full">
                 <tbody>
-                  {product.specs_table.map(([label, value], i) => (
-                    <tr key={label} className={i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
-                      <td className="px-6 py-3 text-sm font-semibold text-gray-600 w-1/2">{t(label)}</td>
-                      <td className="px-6 py-3 text-sm text-gray-800 font-medium">{t(value)}</td>
+                  {specsTable.map(([label, value], i) => (
+                    <tr key={String(label) + i} className={i % 2 === 0 ? 'bg-gray-50' : 'bg-white'}>
+                      <td className="px-6 py-3 text-sm font-semibold text-gray-600 w-1/2">{t(String(label))}</td>
+                      <td className="px-6 py-3 text-sm text-gray-800 font-medium">{t(String(value ?? ''))}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -308,12 +477,20 @@ export default function ProductDetail() {
                 <div key={p.id} onClick={() => navigate('/products/'+p.id)}
                   className="bg-white rounded-xl border border-gray-100 hover:border-[#006948]/30 hover:shadow-md transition-all cursor-pointer overflow-hidden group">
                   <div className="h-36 overflow-hidden">
-                    <img src={p.image_url} alt={p.model} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                    <img src={p.image_url || DEFAULT_IMG} alt={p.model} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" onError={onImgError} />
                   </div>
                   <div className="p-3">
-                    <p className="text-xs text-[#006948] font-semibold">{p.brand}</p>
+                    <p className="text-xs text-[#006948] font-semibold truncate">{p.brand}</p>
                     <p className="text-sm font-bold text-gray-800 truncate">{p.model}</p>
                     <p className="text-xs text-gray-400 mt-1 truncate">{translateSpecs(p.specs, t)}</p>
+                    {(() => { const pi = getPriceInfo(p); return pi.show ? (
+                      <div className="flex items-baseline gap-1.5 flex-wrap mt-2">
+                        <span className="text-sm font-bold text-[#006948]">{fmtINR(pi.selling)}</span>
+                        <span className="text-xs text-gray-500">{t(p.unit || 'per NOS')}</span>
+                        {pi.original && <span className="text-xs text-gray-400 line-through">{fmtINR(pi.original)}</span>}
+                        {pi.pct > 0 && <span className="text-xs text-red-600 font-bold">{t('{pct}% OFF', { pct: pi.pct })}</span>}
+                      </div>
+                    ) : <p className="text-xs text-gray-500 mt-2 truncate">{t(pi.text)}</p>; })()}
                   </div>
                 </div>
               ))}
@@ -343,7 +520,7 @@ export default function ProductDetail() {
             ) : (
               <div className="p-6 space-y-4">
                 <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex items-center gap-3">
-                  <img src={product.image_url} alt={product.model} className="w-12 h-10 object-cover rounded-lg" />
+                  <img src={product.image_url || DEFAULT_IMG} alt={product.model} className="w-12 h-10 object-cover rounded-lg" onError={onImgError} />
                   <div><p className="text-xs text-[#006948] font-semibold">{product.brand}</p><p className="text-sm font-bold">{product.model}</p></div>
                 </div>
                 <input type="text" placeholder={t('Your Full Name *')} required value={quoteForm.name}
@@ -391,7 +568,7 @@ export default function ProductDetail() {
             ) : (
               <div className="p-6 space-y-4">
                 <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex items-center gap-3">
-                  <img src={product.image_url} alt={product.model} className="w-14 h-12 object-cover rounded-lg" />
+                  <img src={product.image_url || DEFAULT_IMG} alt={product.model} className="w-14 h-12 object-cover rounded-lg" onError={onImgError} />
                   <div className="flex-1">
                     <p className="text-xs text-[#006948] font-semibold">{product.brand}</p>
                     <p className="text-sm font-bold">{product.model}</p>
@@ -416,7 +593,7 @@ export default function ProductDetail() {
                       </button>
                     ))}
                   </div>
-                  {orderForm.payment === 'online' && <p className="text-xs text-orange-600 mt-2 bg-orange-50 rounded-lg px-3 py-2">⚡ {t('Razorpay coming soon — our team will share a payment link after confirmation.')}</p>}
+                  {orderForm.payment === 'online' && <p className="text-xs text-orange-600 mt-2 bg-orange-50 rounded-lg px-3 py-2">⚡ {t('Online payment opens secure Razorpay checkout. If it is not available, choose Pay on Delivery and our team will confirm by phone.')}</p>}
                 </div>
                 <div className="flex gap-3">
                   <button onClick={() => setShowOrder(false)} className="flex-1 border border-gray-200 text-gray-600 py-3 rounded-xl text-sm font-medium">{t('Cancel')}</button>

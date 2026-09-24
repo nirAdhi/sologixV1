@@ -38,8 +38,14 @@ password) is ignored with a warning in the logs.
 
 ### 1b. Add the new settings (email, contact details, social links)
 
-Open `.env.docker` in WinSCP and copy in the sections you need from `.env.docker.example`
-(full explanation in `docs/ENV-SETTINGS.md`). Anything you leave out keeps today's behaviour, except:
+After step 3 (new code copied), build the new settings file from your current one — secrets stay on the server:
+
+    cd /root/sologix/sologix_up_2026-06-13/sologix-main
+    bash scripts/update-env.sh            # preview: .env.docker.new + list of MISSING items (names only)
+    nano .env.docker.new                  # fill in SMTP_USER / SMTP_PASS etc.
+    bash scripts/update-env.sh --apply    # backs up .env.docker and installs the new one
+
+(What each setting is and where to get it: `docs/SECRETS-CHECKLIST.md`, `docs/ENV-SETTINGS.md`.) Anything you leave out keeps today's behaviour, except:
 booking emails need `SMTP_*`, and the YouTube button stays hidden until you set `SOCIAL_YOUTUBE`
 (both old YouTube links were dead).
 

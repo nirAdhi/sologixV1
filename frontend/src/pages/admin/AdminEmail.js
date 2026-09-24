@@ -10,7 +10,7 @@ import { emailAdminAPI } from '../../utils/api';
 
 const TOGGLES = [
   { key: 'customer_booking_confirmation', title: 'Booking confirmation to the customer', desc: 'Sent right after a customer books a consultation / site visit on the website.' },
-  { key: 'customer_status_updates', title: 'Booking status updates to the customer', desc: 'Sent when you confirm, reschedule, complete or cancel a booking in Admin → Bookings.' },
+  { key: 'customer_status_updates', title: 'Booking status updates to the customer', desc: 'Sent when you change a booking (Admin → Bookings) or a product order status (Admin → Product Orders).' },
   { key: 'admin_new_booking', title: 'Alert me about every new booking', desc: 'Sent to the notification address below.' },
   { key: 'admin_new_lead', title: 'Alert me about new enquiries', desc: 'Contact form, callback requests, quote requests and partner applications.' },
   { key: 'admin_new_order', title: 'Alert me about new product orders', desc: 'Pay-on-Delivery orders and quote-cart orders from the Products page.' },

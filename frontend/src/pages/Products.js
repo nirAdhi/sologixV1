@@ -1,12 +1,19 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { Link, useSearchParams, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { catalogAPI } from '../utils/api';
 import toast from 'react-hot-toast';
 import { useT } from '../i18n';
+import { BRANDING } from '../utils/branding';
+import { whatsappHref, telHref } from '../utils/siteConfig';
 
 const API_URL = process.env.REACT_APP_API_URL || '/api';
+const DEFAULT_IMG = 'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=400&h=300&fit=crop';
+const ALL = 'All Products';
 
-const STATIC = [
+// OFFLINE FALLBACK ONLY: shown when the catalog request fails, so the page is
+// never blank. These ids do not exist in the database, so ordering and the
+// quote cart are disabled for them (_fallback).
+const FALLBACK_PRODUCTS = [
   { id:1,  category:'Solar Panels',      brand:'Adani Solar',     model:'Mono PERC 580W',       unit:'per Wp',    specs:'580W · 21.5% efficiency · 25yr warranty · DCR', badge:'Best Seller', in_stock:1, image_url:'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=400&h=300&fit=crop' },
   { id:2,  category:'Solar Panels',      brand:'Tata Power Solar', model:'575W Mono',            unit:'per Wp',    specs:'575W · 21.8% efficiency · Tier-1 manufacturer', badge:'',           in_stock:1, image_url:'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=400&h=300&fit=crop' },
   { id:3,  category:'Solar Panels',      brand:'Rayzon Solar',    model:'545W PERC',             unit:'per Wp',    specs:'545W · high-efficiency · strong build quality',  badge:'',           in_stock:1, image_url:'https://images.unsplash.com/photo-1497440001374-f26997328c1b?w=400&h=300&fit=crop' },
@@ -24,11 +31,121 @@ const STATIC = [
   { id:15, category:'BOS & Accessories', brand:'Sologix',         model:'DC Junction Box',       unit:'per NOS',   specs:'IP67 · 6-string · anti-reverse protection',      badge:'',           in_stock:1, image_url:'https://images.unsplash.com/photo-1497440001374-f26997328c1b?w=400&h=300&fit=crop' },
   { id:16, category:'BOS & Accessories', brand:'Sologix',         model:'Mounting Structure RCC', unit:'per NOS',  specs:'GI hot-dip galvanised · adjustable tilt · RCC',  badge:'',           in_stock:1, image_url:'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=400&h=300&fit=crop' },
   { id:17, category:'BOS & Accessories', brand:'Sologix',         model:'Solar DC Cable 4mm',    unit:'per metre', specs:'TUV certified · UV resistant · sold per metre',   badge:'',           in_stock:1, image_url:'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=400&h=300&fit=crop' },
-];
+].map(p => ({ ...p, _fallback: true }));
 
-const CATEGORIES = ['All Products','Solar Panels','On-Grid Inverters','Hybrid Inverters','Lithium Batteries','BOS & Accessories'];
+// Used only when GET /api/catalog/categories fails and no live products are known.
+const FALLBACK_CATEGORIES = ['Solar Panels','On-Grid Inverters','Hybrid Inverters','Lithium Batteries','BOS & Accessories'];
+// Optional icons for known category names; new admin categories get the default.
 const CAT_ICONS = { 'All Products':'☀️','Solar Panels':'🔆','On-Grid Inverters':'⚡','Hybrid Inverters':'🔋','Lithium Batteries':'🔌','BOS & Accessories':'🛠️' };
+const catIcon = (c) => CAT_ICONS[c] || '☀️';
 const BADGE_STYLE = { 'Best Seller':'bg-[#006948] text-white','Popular':'bg-orange-500 text-white','New':'bg-purple-600 text-white' };
+
+// ── Catalog helpers ─────────────────────────────────────────────────────────
+const toNum = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+const isOn = (v) => v === true || toNum(v) > 0;
+const inStock = (p) => (p && (p.in_stock === undefined || p.in_stock === null)) ? true : isOn(p && p.in_stock);
+const BARE_NUMBER = /^\s*(?:₹|rs\.?)?\s*[\d,]+(?:\.\d+)?\s*$/i;
+const fmtINR = (n) => '₹' + Number(n).toLocaleString('en-IN', { maximumFractionDigits: 2 });
+const uniq = (list) => {
+  const seen = new Set();
+  const out = [];
+  list.forEach(c => { const k = typeof c === 'string' ? c.trim() : ''; if (k && !seen.has(k)) { seen.add(k); out.push(k); } });
+  return out;
+};
+
+// Public pricing rule: a price is shown only when show_price is on AND price > 0.
+// Selling price = discount_price when 0 < discount_price < price.
+const getPriceInfo = (p) => {
+  const price = toNum(p && p.price);
+  if (p && isOn(p.show_price) && price > 0) {
+    const d = toNum(p.discount_price);
+    const discounted = d > 0 && d < price;
+    const pct = discounted ? Math.round((1 - d / price) * 100) : 0;
+    return { show: true, selling: discounted ? d : price, original: discounted ? price : null, pct };
+  }
+  const range = p && p.price_range !== undefined && p.price_range !== null ? String(p.price_range).trim() : '';
+  return { show: false, text: range && !BARE_NUMBER.test(range) ? range : 'Contact for pricing' };
+};
+
+function PriceTag({ p, t, size = 'md' }) {
+  const info = getPriceInfo(p);
+  const big = size === 'md' ? 'text-lg' : 'text-sm';
+  if (!info.show) return <p className={(size === 'md' ? 'text-sm' : 'text-xs') + ' text-gray-500 line-clamp-2'}>{t(info.text)}</p>;
+  return (
+    <div className="flex items-baseline gap-x-2 gap-y-0.5 flex-wrap">
+      <span className={big + ' font-bold text-[#006948]'}>{fmtINR(info.selling)}</span>
+      <span className="text-xs text-gray-500">{t(p.unit || 'per NOS')}</span>
+      {info.original && <span className="text-xs text-gray-400 line-through">{fmtINR(info.original)}</span>}
+      {info.pct > 0 && <span className="text-xs bg-red-50 text-red-600 px-1.5 py-0.5 rounded-full font-bold">{t('{pct}% OFF', { pct: info.pct })}</span>}
+    </div>
+  );
+}
+
+const normalizeProducts = (rows) => rows
+  .filter(r => r && typeof r === 'object' && r.id !== undefined && r.id !== null)
+  .map(r => ({
+    ...r,
+    category: r.category ? String(r.category).trim() : '',
+    brand: r.brand ? String(r.brand) : '',
+    model: r.model ? String(r.model) : '',
+    specs: r.specs ? String(r.specs) : '',
+    unit: r.unit ? String(r.unit) : 'per NOS',
+  }));
+
+// Cart items are kept small: uploaded images are data URLs (up to ~1 MB) and
+// would quickly fill localStorage, so those are looked up from the catalog.
+const safeImg = (u) => (typeof u === 'string' && u && !u.startsWith('data:')) ? u : '';
+const toCartItem = (p, qty) => ({
+  id: p.id, category: p.category, brand: p.brand, model: p.model, unit: p.unit,
+  price: p.price ?? null, discount_price: p.discount_price ?? null, show_price: p.show_price ?? 0,
+  price_range: p.price_range ?? '', in_stock: p.in_stock, image_url: safeImg(p.image_url),
+  qty: Math.max(1, parseInt(qty, 10) || 1),
+});
+const readCart = () => {
+  try {
+    const v = JSON.parse(localStorage.getItem('sologix_cart') || '[]');
+    return Array.isArray(v) ? v.filter(i => i && typeof i === 'object' && i.id !== undefined && i.id !== null) : [];
+  } catch { return []; }
+};
+const writeCart = (cart) => { try { localStorage.setItem('sologix_cart', JSON.stringify(cart)); } catch { /* storage full or blocked */ } };
+// Refresh names/prices/stock from the live catalog and drop items that no longer exist.
+const syncCart = (cart, fresh) => {
+  const byId = new Map(fresh.map(p => [String(p.id), p]));
+  const next = [];
+  let removed = 0;
+  cart.forEach(item => {
+    const f = byId.get(String(item.id));
+    if (!f) { removed++; return; }
+    next.push(toCartItem(f, item.qty));
+  });
+  return { next, removed };
+};
+
+// Server replies are English; known ones have Hindi in the dictionary.
+const NO_PRICE_SUFFIX = ' has no listed price. Please choose Pay on Delivery or request a quote.';
+const serverMessage = (t, msg, fallback) => {
+  if (typeof msg !== 'string' || !msg.trim()) return t(fallback);
+  if (msg.endsWith(NO_PRICE_SUFFIX)) return t('{product} has no listed price. Please choose Pay on Delivery or request a quote.', { product: msg.slice(0, -NO_PRICE_SUFFIX.length) });
+  return t(msg);
+};
+
+function ContactButtons({ t, text }) {
+  const wa = whatsappHref(text);
+  return (
+    <div className="flex flex-wrap gap-2 justify-center">
+      {BRANDING.phone && (
+        <a href={telHref(BRANDING.phone)} className="bg-[#006948] text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:bg-[#004d34] transition-colors">
+          📞 {t('Call {phone}', { phone: BRANDING.phone })}
+        </a>
+      )}
+      {wa && (
+        <a href={wa} target="_blank" rel="noopener noreferrer" className="bg-[#25D366] text-white px-5 py-2.5 rounded-full text-sm font-semibold hover:opacity-90 transition-opacity">
+          💬 {t('Chat on WhatsApp')}
+        </a>
+      )}
+    </div>
+  );
+}
 
 // Short spec lines ("580W · 21.5% efficiency · 25yr warranty" or the DB's comma form)
 // are translated piece by piece; numbers/models without a Hindi entry stay as they are.
@@ -48,13 +165,15 @@ const translateSpecs = (specs, t) => {
 
 export default function Products() {
   const { t } = useT();
-  const [products, setProducts] = useState(STATIC);
+  const [products, setProducts] = useState([]);
+  const [loadState, setLoadState] = useState('loading'); // loading | ok | error
+  const [apiCategories, setApiCategories] = useState(undefined); // undefined = loading, null = failed
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
-  const [activeCategory, setActiveCategory] = useState(searchParams.get('category') || 'All Products');
+  const [activeCategory, setActiveCategory] = useState(searchParams.get('category') || ALL);
   const [brandFilter, setBrandFilter] = useState('');
   const [search, setSearch] = useState('');
-  const [cart, setCart] = useState(() => { try { return JSON.parse(localStorage.getItem('sologix_cart')||'[]'); } catch { return []; } });
+  const [cart, setCart] = useState(readCart);
   const [showCart, setShowCart] = useState(false);
   const [showQuoteModal, setShowQuoteModal] = useState(false);
   const [quoteForm, setQuoteForm] = useState({ name:'', phone:'', email:'', company:'', notes:'' });
@@ -65,43 +184,88 @@ export default function Products() {
   const [orderForm, setOrderForm] = useState({ name:'', phone:'', email:'', address:'', qty:1, payment:'cod', notes:'' });
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [orderDone, setOrderDone] = useState(false);
+  const cartSynced = useRef(false);
 
   useEffect(() => {
-    const cat = searchParams.get('category') || 'All Products';
+    const cat = searchParams.get('category') || ALL;
     setActiveCategory(cat);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }, [searchParams]);
 
-  useEffect(() => { localStorage.setItem('sologix_cart', JSON.stringify(cart)); }, [cart]);
+  useEffect(() => { writeCart(cart); }, [cart]);
 
-  useEffect(() => {
+  const loadCatalog = useCallback(() => {
+    setLoadState('loading');
     catalogAPI.getAll()
-      .then(r => { if (r.data.success && r.data.data?.length) setProducts(r.data.data); })
-      .catch(() => {});
+      .then(r => {
+        const body = r && r.data;
+        if (!body || !body.success || !Array.isArray(body.data)) throw new Error('bad response');
+        const list = normalizeProducts(body.data);
+        if (body.fallback) {
+          // Server could not reach the database and sent its seed list: show it, but don't allow orders.
+          setProducts(list.map(p => ({ ...p, _fallback: true })));
+          setLoadState('error');
+          return;
+        }
+        setProducts(list);
+        setLoadState('ok');
+      })
+      .catch(() => { setProducts(FALLBACK_PRODUCTS); setLoadState('error'); });
+    catalogAPI.getCategories()
+      .then(r => {
+        const data = r && r.data && r.data.data;
+        setApiCategories(Array.isArray(data) ? uniq(data) : null);
+      })
+      .catch(() => setApiCategories(null));
   }, []);
 
+  useEffect(() => { loadCatalog(); }, [loadCatalog]);
+
+  // Once the live catalog is in, refresh the saved cart against it.
+  useEffect(() => {
+    if (loadState !== 'ok' || cartSynced.current) return;
+    cartSynced.current = true;
+    const { next, removed } = syncCart(cart, products);
+    setCart(next);
+    if (removed === 1) toast(t('An item in your cart is no longer available and was removed.'));
+    else if (removed > 1) toast(t('{count} items in your cart are no longer available and were removed.', { count: removed }));
+  }, [loadState, products, cart, t]);
+
+  const productsById = useMemo(() => new Map(products.map(p => [String(p.id), p])), [products]);
+
+  // Categories: admin list from the API (display order) + any category a product uses.
+  const categories = useMemo(() => {
+    let base = [];
+    if (Array.isArray(apiCategories)) base = apiCategories;
+    else if (apiCategories === null && loadState !== 'ok') base = FALLBACK_CATEGORIES;
+    return [ALL, ...uniq([...base, ...products.map(p => p.category)]).filter(c => c !== ALL)];
+  }, [apiCategories, loadState, products]);
+
   const setCategory = useCallback((cat) => {
-    if (cat === 'All Products') setSearchParams({});
+    if (cat === ALL) setSearchParams({});
     else setSearchParams({ category: cat });
     setBrandFilter('');
   }, [setSearchParams]);
 
   const filtered = products.filter(p => {
-    const matchCat = activeCategory === 'All Products' || p.category === activeCategory;
+    const matchCat = activeCategory === ALL || p.category === activeCategory;
     const matchBrand = !brandFilter || p.brand === brandFilter;
-    const matchSearch = !search || (p.brand+p.model+p.category+(p.specs||'')).toLowerCase().includes(search.toLowerCase());
+    const matchSearch = !search || (p.brand+' '+p.model+' '+p.category+' '+(p.specs||'')).toLowerCase().includes(search.toLowerCase());
     return matchCat && matchBrand && matchSearch;
   });
 
-  const uniqueBrands = [...new Set(
-    products.filter(p => activeCategory === 'All Products' || p.category === activeCategory).map(p => p.brand)
-  )];
+  const uniqueBrands = uniq(
+    products.filter(p => activeCategory === ALL || p.category === activeCategory).map(p => p.brand)
+  );
+
+  const canOrder = (p) => !!p && !p._fallback && inStock(p);
 
   const addToCart = (product) => {
+    if (!canOrder(product)) return;
     setCart(prev => {
-      const ex = prev.find(i => i.id === product.id);
-      if (ex) return prev.map(i => i.id === product.id ? { ...i, qty: i.qty+1 } : i);
-      return [...prev, { ...product, qty: 1 }];
+      const ex = prev.find(i => String(i.id) === String(product.id));
+      if (ex) return prev.map(i => String(i.id) === String(product.id) ? { ...i, qty: (parseInt(i.qty, 10) || 0) + 1 } : i);
+      return [...prev, toCartItem(product, 1)];
     });
     toast.success(t('{model} added to quote cart', { model: product.model }));
   };
@@ -130,22 +294,15 @@ export default function Products() {
       });
       setSubmitted(true);
       setCart([]);
-      localStorage.removeItem('sologix_cart');
+      writeCart([]);
     } catch { toast.error(t('Failed to submit. Please call us directly.')); }
     finally { setSubmitting(false); }
   };
 
-
-  // Get actual price from either the price column or price_range (works with old and new DB schema)
-  const getPrice = (p) => {
-    if (p.price && Number(p.price) > 0) return Number(p.price);
-    if (p.price_range && !isNaN(Number(p.price_range)) && Number(p.price_range) > 0) return Number(p.price_range);
-    return null;
-  };
-
-  const totalItems = cart.reduce((s, i) => s + i.qty, 0);
+  const totalItems = cart.reduce((s, i) => s + (parseInt(i.qty, 10) || 0), 0);
 
   const openOrder = (product) => {
+    if (!canOrder(product)) return;
     setOrderProduct(product);
     setOrderForm({ name:'', phone:'', email:'', address:'', qty:1, payment:'cod', notes:'' });
     setOrderDone(false);
@@ -154,10 +311,15 @@ export default function Products() {
 
 
   const launchRazorpay = async (orderData, customerDetails, items, onSuccess) => {
+    // The key comes from the server (never hard-coded here).
+    if (!orderData || !orderData.key_id || !orderData.order_id || typeof window.Razorpay !== 'function') {
+      toast.error(t('Online payment is not available right now. Please choose Pay on Delivery or call us.'));
+      return;
+    }
     const options = {
-      key: 'rzp_live_SfOIUbCXX39HyD',
+      key: orderData.key_id,
       amount: orderData.amount,
-      currency: 'INR',
+      currency: orderData.currency || 'INR',
       name: 'Sologix Energy',
       description: items.map(i => i.brand + ' ' + i.model).join(', '),
       image: 'https://res.cloudinary.com/dsiratycd/image/upload/logo_yo5zg9.png',
@@ -175,37 +337,40 @@ export default function Products() {
           });
           const result = await verify.json();
           if (result.success) { onSuccess(response.razorpay_payment_id); }
-          else { toast.error(t('Payment verification failed. Contact support.')); }
+          else { toast.error(serverMessage(t, result.message, 'Payment verification failed. Contact support.')); }
         } catch { toast.error(t('Verification error. Please contact us.')); }
       },
       prefill: { name: customerDetails.name, email: customerDetails.email || '', contact: customerDetails.phone },
       theme: { color: '#006948' },
       modal: { ondismiss: () => toast(t('Payment cancelled')) },
     };
-    const rzp = new window.Razorpay(options);
-    rzp.on('payment.failed', (r) => toast.error(t('Payment failed: {reason}', { reason: r.error?.description || t('Please try again') })));
-    rzp.open();
+    try {
+      const rzp = new window.Razorpay(options);
+      rzp.on('payment.failed', (r) => toast.error(t('Payment failed: {reason}', { reason: r.error?.description || t('Please try again') })));
+      rzp.open();
+    } catch { toast.error(t('Payment gateway error. Try COD or call us.')); }
   };
 
   const submitOrder = async () => {
+    if (!canOrder(orderProduct)) return;
     if (!orderForm.name || !orderForm.phone || !orderForm.address) { toast.error(t('Name, phone and address required')); return; }
     const items = [{ id: orderProduct.id, brand: orderProduct.brand, model: orderProduct.model, qty: orderForm.qty, unit: orderProduct.unit }];
     setOrderSubmitting(true);
     try {
       if (orderForm.payment === 'online') {
-        // Razorpay flow - amount is ₹1 placeholder; admin confirms actual amount
+        // The server prices the basket from the catalog; it replies with a
+        // message (e.g. online payment disabled) when it can't take payment.
         const rpRes = await fetch(API_URL + '/payments/product-order', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name: orderForm.name, phone: orderForm.phone, email: orderForm.email,
             address: orderForm.address, items,
-            amount_paise: 100, // ₹1 placeholder - admin sets actual price
             notes: orderForm.notes || '',
           }),
         });
-        const rpData = await rpRes.json();
-        if (!rpData.success) { toast.error(t('Payment gateway error. Try COD or call us.')); setOrderSubmitting(false); return; }
+        const rpData = await rpRes.json().catch(() => ({}));
+        if (!rpRes.ok || !rpData.success || !rpData.data) { toast.error(serverMessage(t, rpData.message, 'Payment gateway error. Try COD or call us.')); setOrderSubmitting(false); return; }
         setOrderSubmitting(false);
         launchRazorpay(rpData.data, { name: orderForm.name, phone: orderForm.phone, email: orderForm.email }, items,
           (paymentId) => { setOrderDone(true); toast.success(t('Payment successful! Order confirmed. Payment ID: {id}', { id: paymentId })); }
@@ -224,10 +389,15 @@ export default function Products() {
         }),
       });
       if (res.ok) { setOrderDone(true); toast.success(t('Order placed! Team will confirm within 2 hours.')); }
-      else toast.error(t('Order failed. Please call us.'));
+      else {
+        const data = await res.json().catch(() => ({}));
+        toast.error(serverMessage(t, data.message, 'Order failed. Please call us.'));
+      }
     } catch { toast.error(t('Network error. Please call us.')); }
     finally { setOrderSubmitting(false); }
   };
+
+  const clearFilters = () => { setCategory(ALL); setBrandFilter(''); setSearch(''); };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -284,11 +454,11 @@ export default function Products() {
         <aside className="w-56 flex-shrink-0 hidden lg:block">
           <div className="bg-white rounded-2xl border border-gray-100 p-4 sticky top-20">
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">{t('Categories')}</p>
-            {CATEGORIES.map(cat => (
+            {categories.map(cat => (
               <button key={cat} onClick={() => setCategory(cat)}
                 className={"w-full text-left flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium transition-all mb-1 " +
                   (activeCategory === cat ? 'bg-[#006948] text-white' : 'text-gray-600 hover:bg-gray-50')}>
-                <span>{CAT_ICONS[cat]}</span>{t(cat)}
+                <span className="flex-shrink-0">{catIcon(cat)}</span><span className="min-w-0 break-words">{t(cat)}</span>
               </button>
             ))}
             <p className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3 mt-5">{t('Filter by Brand')}</p>
@@ -300,7 +470,7 @@ export default function Products() {
               <button key={b} onClick={() => setBrandFilter(brandFilter === b ? '' : b)}
                 className={"w-full text-left px-3 py-1.5 rounded-lg text-sm mb-1 transition-colors " +
                   (brandFilter === b ? 'bg-[#006948]/10 text-[#006948] font-semibold' : 'text-gray-500 hover:bg-gray-50')}>
-                {b}
+                <span className="line-clamp-1">{b}</span>
               </button>
             ))}
             <div className="mt-5 bg-[#006948]/5 border border-[#006948]/20 rounded-xl p-3">
@@ -318,17 +488,17 @@ export default function Products() {
         <div className="flex-1 min-w-0">
           {/* Mobile category pills */}
           <div className="flex gap-2 overflow-x-auto pb-2 mb-4 lg:hidden scrollbar-hide">
-            {CATEGORIES.map(cat => (
+            {categories.map(cat => (
               <button key={cat} onClick={() => setCategory(cat)}
                 className={"flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium border transition-all " +
                   (activeCategory === cat ? 'bg-[#006948] text-white border-[#006948]' : 'bg-white border-gray-200 text-gray-600')}>
-                {CAT_ICONS[cat]} {t(cat)}
+                {catIcon(cat)} {t(cat)}
               </button>
             ))}
           </div>
 
           {/* Brand carousel */}
-          <div className="flex gap-2 overflow-x-auto pb-2 mb-5 scrollbar-hide">
+          {uniqueBrands.length > 0 && <div className="flex gap-2 overflow-x-auto pb-2 mb-5 scrollbar-hide">
             {['All',...uniqueBrands].map(b => (
               <button key={b} onClick={() => setBrandFilter(b === 'All' ? '' : b)}
                 className={"flex-shrink-0 px-4 py-2 rounded-full border text-sm font-medium transition-all " +
@@ -338,21 +508,54 @@ export default function Products() {
                 {b === 'All' ? t('All') : b}
               </button>
             ))}
-          </div>
+          </div>}
 
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-gray-500"><span className="font-semibold text-gray-800">{filtered.length}</span> {t('products')}</p>
-            {(activeCategory !== 'All Products' || brandFilter || search) && (
-              <button onClick={() => { setCategory('All Products'); setBrandFilter(''); setSearch(''); }}
-                className="text-xs text-[#006948] hover:underline">{t('Clear all filters')}</button>
-            )}
-          </div>
+          {/* Catalog could not be loaded: friendly message + direct contact */}
+          {loadState === 'error' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 mb-5 text-center">
+              <p className="font-semibold text-gray-800 mb-1">{t('We could not load the latest products right now.')}</p>
+              <p className="text-sm text-gray-600 mb-4">{t('Call or WhatsApp us and we will help you choose and order. Sample products are shown below; online ordering is paused until the catalog loads.')}</p>
+              <ContactButtons t={t} text={t('Hi Sologix, I would like to know about your solar products.')} />
+              <button onClick={loadCatalog} className="mt-3 text-xs text-[#006948] font-semibold hover:underline">↻ {t('Try again')}</button>
+            </div>
+          )}
 
-          {filtered.length === 0 ? (
+          {loadState !== 'loading' && products.length > 0 && (
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm text-gray-500"><span className="font-semibold text-gray-800">{filtered.length}</span> {t('products')}</p>
+              {(activeCategory !== ALL || brandFilter || search) && (
+                <button onClick={clearFilters}
+                  className="text-xs text-[#006948] hover:underline">{t('Clear all filters')}</button>
+              )}
+            </div>
+          )}
+
+          {loadState === 'loading' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5" aria-busy="true" aria-label={t('Loading products...')}>
+              {[0,1,2,3,4,5].map(i => (
+                <div key={i} className="bg-white rounded-2xl border border-gray-100 overflow-hidden animate-pulse">
+                  <div className="h-48 bg-gray-100"></div>
+                  <div className="p-4 space-y-3">
+                    <div className="h-3 w-1/3 bg-gray-100 rounded"></div>
+                    <div className="h-4 w-2/3 bg-gray-200 rounded"></div>
+                    <div className="h-3 w-full bg-gray-100 rounded"></div>
+                    <div className="h-8 w-full bg-gray-100 rounded-xl mt-4"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : products.length === 0 ? (
+            <div className="text-center py-16 px-6 bg-white rounded-2xl border border-gray-100">
+              <p className="text-5xl mb-4">☀️</p>
+              <p className="text-xl font-bold text-gray-800 mb-2">{t('Products coming soon')}</p>
+              <p className="text-gray-500 text-sm mb-6">{t('We are updating our catalog. Call or WhatsApp us for prices and availability of any solar product.')}</p>
+              <ContactButtons t={t} text={t('Hi Sologix, I would like to know about your solar products.')} />
+            </div>
+          ) : filtered.length === 0 ? (
             <div className="text-center py-20 bg-white rounded-2xl border border-gray-100">
               <p className="text-5xl mb-4">🔍</p>
               <p className="text-gray-500 mb-4">{t('No products match your filters.')}</p>
-              <button onClick={() => { setCategory('All Products'); setBrandFilter(''); setSearch(''); }}
+              <button onClick={clearFilters}
                 className="bg-[#006948] text-white px-6 py-2.5 rounded-full text-sm font-semibold">{t('Show All Products')}</button>
             </div>
           ) : (
@@ -360,44 +563,32 @@ export default function Products() {
               {filtered.map(p => (
                 <div key={p.id} className="bg-white rounded-2xl border border-gray-100 hover:border-[#006948]/40 hover:shadow-lg transition-all group flex flex-col overflow-hidden">
                   <div className="relative h-48 overflow-hidden bg-gray-50 cursor-pointer" onClick={() => navigate('/products/'+p.id)}>
-                    <img src={p.image_url || 'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=400&h=300&fit=crop'}
-                      alt={p.model} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy" />
+                    <img src={p.image_url || DEFAULT_IMG}
+                      alt={p.model} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" loading="lazy"
+                      onError={e => { if (!e.currentTarget.src.endsWith(DEFAULT_IMG)) e.currentTarget.src = DEFAULT_IMG; }} />
                     {p.badge && <span className={"absolute top-3 left-3 text-xs px-2.5 py-1 rounded-full font-bold shadow " + (BADGE_STYLE[p.badge] || 'bg-gray-100 text-gray-600')}>{t(p.badge)}</span>}
-                    {!p.in_stock && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><span className="text-white font-bold text-sm bg-red-600 px-3 py-1 rounded-full">{t('Out of Stock')}</span></div>}
+                    {!inStock(p) && <div className="absolute inset-0 bg-black/50 flex items-center justify-center"><span className="text-white font-bold text-sm bg-red-600 px-3 py-1 rounded-full">{t('Out of Stock')}</span></div>}
                     <div className="absolute top-3 right-3 bg-white/90 backdrop-blur text-xs px-2 py-1 rounded-full text-gray-600 font-medium border border-gray-100">{t(p.unit || 'per NOS')}</div>
                   </div>
                   <div className="p-4 flex flex-col flex-1">
-                    <p className="text-xs text-[#006948] font-semibold uppercase tracking-wider mb-1">{p.brand}</p>
-                    <h3 className="font-bold text-gray-800 text-sm mb-1 cursor-pointer hover:text-[#006948]" onClick={() => navigate('/products/'+p.id)}>{p.model}</h3>
-                    <p className="text-xs text-gray-500 leading-relaxed mb-3 flex-1">{translateSpecs(p.specs, t)}</p>
+                    <p className="text-xs text-[#006948] font-semibold uppercase tracking-wider mb-1 line-clamp-1">{p.brand}</p>
+                    <h3 className="font-bold text-gray-800 text-sm mb-1 cursor-pointer hover:text-[#006948] line-clamp-2" onClick={() => navigate('/products/'+p.id)}>{p.model}</h3>
+                    <div className="flex-1 mb-3"><p className="text-xs text-gray-500 leading-relaxed line-clamp-3">{translateSpecs(p.specs, t)}</p></div>
                     <div className="flex flex-wrap gap-1 mb-3">
                       {['Authorised Seller','Pan India Delivery','Quality Assured'].map(b => (
                         <span key={b} className="text-xs bg-green-50 text-[#006948] border border-green-100 px-2 py-0.5 rounded-full">{t(b)}</span>
                       ))}
                     </div>
                     <div className="border-t border-gray-50 pt-3">
-                      <div className="flex items-center justify-between mb-3">
-                        {(() => { const pr = getPrice(p); return pr ? (
-                          <div className="flex-1">
-                            <p className="text-xs text-gray-400">{t(p.unit || 'per NOS')}</p>
-                            <div className="flex items-baseline gap-2 flex-wrap">
-                              <p className="text-lg font-bold text-[#006948]">₹{pr.toLocaleString('en-IN')}</p>
-                              {p.discount_price && Number(p.discount_price) > 0 && <p className="text-xs text-gray-400 line-through">₹{Number(p.discount_price).toLocaleString('en-IN')}</p>}
-                              {p.discount_price && Number(p.discount_price) > 0 && <span className="text-xs bg-red-50 text-red-600 px-1.5 py-0.5 rounded-full font-bold">{t('{pct}% OFF', { pct: Math.round((1-pr/p.discount_price)*100) })}</span>}
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="flex-1">
-                            <p className="text-xs text-gray-500 text-sm">{t('Contact for pricing')}</p>
-                          </div>
-                        ); })()}
+                      <div className="mb-3 min-h-[1.75rem]">
+                        <PriceTag p={p} t={t} />
                       </div>
-                      <div className="flex gap-2">
-                        <button onClick={() => addToCart(p)} disabled={!p.in_stock}
+                      <div className="flex gap-2" title={p._fallback ? t('Online ordering is paused right now. Please call or WhatsApp us.') : undefined}>
+                        <button onClick={() => addToCart(p)} disabled={!canOrder(p)}
                           className="flex-1 border border-[#006948] text-[#006948] py-2 rounded-xl text-xs font-semibold hover:bg-[#006948]/5 transition-colors disabled:opacity-40">
                           + {t('Quote')}
                         </button>
-                        <button onClick={() => openOrder(p)} disabled={!p.in_stock}
+                        <button onClick={() => openOrder(p)} disabled={!canOrder(p)}
                           className="flex-1 bg-[#006948] text-white py-2 rounded-xl text-xs font-bold hover:bg-[#004d34] transition-colors disabled:opacity-40">
                           {t('Buy Now')}
                         </button>
@@ -439,12 +630,15 @@ export default function Products() {
             ) : (
               <>
                 <div className="flex-1 p-4 space-y-3">
-                  {cart.map(item => (
+                  {cart.map(item => { const live = productsById.get(String(item.id)); return (
                     <div key={item.id} className="bg-gray-50 rounded-xl p-3 flex gap-3 items-start border border-gray-100">
-                      <img src={item.image_url} alt={item.model} className="w-16 h-14 object-cover rounded-lg flex-shrink-0" />
+                      <img src={(live && live.image_url) || item.image_url || DEFAULT_IMG} alt={item.model} className="w-16 h-14 object-cover rounded-lg flex-shrink-0"
+                        onError={e => { if (!e.currentTarget.src.endsWith(DEFAULT_IMG)) e.currentTarget.src = DEFAULT_IMG; }} />
                       <div className="flex-1 min-w-0">
-                        <p className="text-xs text-[#006948] font-semibold">{item.brand}</p>
+                        <p className="text-xs text-[#006948] font-semibold truncate">{item.brand}</p>
                         <p className="text-sm font-bold text-gray-800 truncate">{item.model}</p>
+                        <div className="mt-1"><PriceTag p={live || item} t={t} size="sm" /></div>
+                        {!inStock(live || item) && <p className="text-xs text-red-600 font-semibold mt-1">{t('Out of Stock')}</p>}
                         <div className="flex items-center gap-2 mt-2">
                           <button onClick={() => updateQty(item.id, item.qty-1)} className="w-6 h-6 rounded-full border border-gray-300 flex items-center justify-center text-sm hover:bg-gray-100">-</button>
                           <span className="text-sm font-semibold w-8 text-center">{item.qty}</span>
@@ -454,7 +648,7 @@ export default function Products() {
                       </div>
                       <button onClick={() => removeFromCart(item.id)} className="text-gray-300 hover:text-red-500 text-lg">x</button>
                     </div>
-                  ))}
+                  ); })}
                 </div>
                 <div className="p-4 border-t border-gray-100 sticky bottom-0 bg-white">
                   <button onClick={() => { setShowCart(false); setShowQuoteModal(true); setSubmitted(false); }}
@@ -547,11 +741,11 @@ export default function Products() {
               <div className="p-6 space-y-4">
                 {/* Product summary */}
                 <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex items-center gap-3">
-                  <img src={orderProduct.image_url} alt={orderProduct.model} className="w-14 h-12 object-cover rounded-lg flex-shrink-0" />
+                  <img src={orderProduct.image_url || DEFAULT_IMG} alt={orderProduct.model} className="w-14 h-12 object-cover rounded-lg flex-shrink-0" />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-[#006948] font-semibold">{orderProduct.brand}</p>
                     <p className="text-sm font-bold text-gray-800 truncate">{orderProduct.model}</p>
-                    <p className="text-xs text-gray-400">{t(orderProduct.unit)}</p>
+                    <PriceTag p={orderProduct} t={t} size="sm" />
                   </div>
                   <div className="flex items-center gap-2 flex-shrink-0">
                     <button onClick={() => setOrderForm(f => ({...f, qty: Math.max(1, f.qty-1)}))} className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 font-bold">-</button>
@@ -587,7 +781,7 @@ export default function Products() {
                   </div>
                   {orderForm.payment === 'online' && (
                     <p className="text-xs text-orange-600 mt-2 bg-orange-50 rounded-lg px-3 py-2">
-                      ⚡ {t('Razorpay online payment coming soon. Our team will share a payment link after confirming your order.')}
+                      ⚡ {t('Online payment opens secure Razorpay checkout. If it is not available, choose Pay on Delivery and our team will confirm by phone.')}
                     </p>
                   )}
                 </div>

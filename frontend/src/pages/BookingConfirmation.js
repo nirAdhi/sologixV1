@@ -4,6 +4,35 @@ import { bookingsAPI } from '../utils/api';
 import { useT } from '../i18n';
 import { BRANDING } from '../utils/branding';
 
+// How the page looks for each booking status. Unknown statuses fall back to "pending".
+const STATUS_VIEW = {
+  confirmed: {
+    icon: '🎉', title: 'Booking Confirmed!',
+    text: 'Your solar installation appointment has been successfully booked.',
+    badge: '✓ ', badgeText: 'Confirmed — Free Booking', badgeClass: 'bg-green-100 text-green-800', next: true,
+  },
+  pending: {
+    icon: '🎉', title: 'Booking Received!',
+    text: 'We have received your booking request. Our team will confirm it shortly.',
+    badge: '⏳ ', badgeText: 'Pending — Free Booking', badgeClass: 'bg-yellow-100 text-yellow-800', next: true,
+  },
+  rescheduled: {
+    icon: '📅', title: 'Booking Rescheduled',
+    text: 'Your appointment has been moved to a new date. Please see the details below.',
+    badge: '↻ ', badgeText: 'Rescheduled', badgeClass: 'bg-blue-100 text-blue-800', next: true,
+  },
+  completed: {
+    icon: '✅', title: 'Booking Completed',
+    text: 'This booking has been completed. Thank you for choosing us!',
+    badge: '✓ ', badgeText: 'Completed', badgeClass: 'bg-green-100 text-green-800', next: false,
+  },
+  cancelled: {
+    icon: '✕', title: 'Booking Cancelled',
+    text: 'This booking has been cancelled. Please contact us if you have any questions.',
+    badge: '✕ ', badgeText: 'Cancelled', badgeClass: 'bg-red-100 text-red-800', next: false, cancelled: true,
+  },
+};
+
 const BookingConfirmation = () => {
   const { bookingId } = useParams();
   const { t, locale } = useT();
@@ -46,14 +75,21 @@ const BookingConfirmation = () => {
     );
   }
 
+  const statusKey = String(booking.status || '').toLowerCase().trim();
+  const view = STATUS_VIEW[statusKey] || STATUS_VIEW.pending;
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-2xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="card p-8 text-center mb-6">
-          <div className="text-6xl mb-4">🎉</div>
-          <h1 className="text-2xl font-bold text-gray-800 mb-2">{t('Booking Confirmed!')}</h1>
+        <div className={'card p-8 text-center mb-6' + (view.cancelled ? ' border border-red-200 bg-red-50' : '')}>
+          {view.cancelled ? (
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-red-100 text-red-600 flex items-center justify-center text-3xl font-bold">{view.icon}</div>
+          ) : (
+            <div className="text-6xl mb-4">{view.icon}</div>
+          )}
+          <h1 className={'text-2xl font-bold mb-2 ' + (view.cancelled ? 'text-red-700' : 'text-gray-800')}>{t(view.title)}</h1>
           <p className="text-gray-600">
-            {t('Your solar installation appointment has been successfully booked.')}
+            {t(view.text)}
           </p>
         </div>
 
@@ -91,13 +127,14 @@ const BookingConfirmation = () => {
 
             <div>
               <h3 className="font-semibold text-gray-700 mb-2">{t('Status')}</h3>
-              <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
-                ✓ {t('Confirmed — Free Booking')}
+              <span className={'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ' + view.badgeClass}>
+                {view.badge}{t(view.badgeText)}
               </span>
             </div>
           </div>
         </div>
 
+        {view.next && (
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-6">
           <h3 className="font-semibold text-blue-800 mb-2">{t("What's Next?")}</h3>
           <ul className="text-blue-700 text-sm space-y-2">
@@ -119,6 +156,7 @@ const BookingConfirmation = () => {
             </li>
           </ul>
         </div>
+        )}
 
         <div className="card p-6 mb-6">
           <h3 className="font-semibold text-gray-700 mb-4">{t('Need Help?')}</h3>

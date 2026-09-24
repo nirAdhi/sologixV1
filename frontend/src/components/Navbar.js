@@ -1,16 +1,42 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { useT } from '../i18n';
 import LanguageToggle from '../i18n/LanguageToggle';
+import { catalogAPI } from '../utils/api';
 
-const PRODUCT_CATEGORIES = [
-  { label: 'All Products',        to: '/products',                                    icon: '☀️', desc: 'Browse full catalog' },
-  { label: 'Solar Panels',        to: '/products?category=Solar+Panels',              icon: '🔆', desc: 'Adani, Tata, Rayzon, ZEN' },
-  { label: 'On-Grid Inverters',   to: '/products?category=On-Grid+Inverters',         icon: '⚡', desc: 'Deye, Growatt, Microtek' },
-  { label: 'Hybrid Inverters',    to: '/products?category=Hybrid+Inverters',          icon: '🔋', desc: 'LuxPower, Deye Hybrid' },
-  { label: 'Lithium Batteries',   to: '/products?category=Lithium+Batteries',         icon: '🔌', desc: 'Bi-Tech, Solis — LiFePO4' },
-  { label: 'BOS & Accessories',   to: '/products?category=BOS+%26+Accessories',       icon: '🛠️', desc: 'Cables, boxes, mounting' },
-];
+// Product categories come from GET /api/catalog/categories (admin-managed).
+// Known names keep their icon/description; new categories get the default icon.
+const CATEGORY_META = {
+  'Solar Panels':      { icon: '🔆', desc: 'Adani, Tata, Rayzon, ZEN' },
+  'On-Grid Inverters': { icon: '⚡', desc: 'Deye, Growatt, Microtek' },
+  'Hybrid Inverters':  { icon: '🔋', desc: 'LuxPower, Deye Hybrid' },
+  'Lithium Batteries': { icon: '🔌', desc: 'Bi-Tech, Solis — LiFePO4' },
+  'BOS & Accessories': { icon: '🛠️', desc: 'Cables, boxes, mounting' },
+};
+const FALLBACK_CATEGORIES = Object.keys(CATEGORY_META); // used if the request fails
+const ALL_PRODUCTS_ITEM = { label: 'All Products', to: '/products', icon: '☀️', desc: 'Browse full catalog' };
+const categoryItem = (name) => ({
+  label: name,
+  to: '/products?' + new URLSearchParams({ category: name }).toString(), // e.g. /products?category=BOS+%26+Accessories
+  icon: (CATEGORY_META[name] && CATEGORY_META[name].icon) || '☀️',
+  desc: (CATEGORY_META[name] && CATEGORY_META[name].desc) || '',
+});
+
+// One request per page load, shared by every Navbar mount.
+let categoriesPromise = null;
+const loadCategories = () => {
+  if (!categoriesPromise) {
+    categoriesPromise = catalogAPI.getCategories()
+      .then(r => {
+        const data = r && r.data && r.data.data;
+        if (!Array.isArray(data)) throw new Error('bad response');
+        const seen = new Set();
+        return data.map(c => (typeof c === 'string' ? c.trim() : '')).filter(c => c && c !== 'All Products' && !seen.has(c) && seen.add(c));
+      })
+      .catch(() => { categoriesPromise = null; return FALLBACK_CATEGORIES; });
+  }
+  return categoriesPromise;
+};
 
 const Navbar = () => {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -20,6 +46,15 @@ const Navbar = () => {
   const closeDropdown = () => { closeTimer.current = setTimeout(() => setProductOpen(false), 300); };
   const location = useLocation();
   const { t } = useT();
+  const [categoryNames, setCategoryNames] = useState(FALLBACK_CATEGORIES);
+
+  useEffect(() => {
+    let alive = true;
+    loadCategories().then(list => { if (alive) setCategoryNames(list); });
+    return () => { alive = false; };
+  }, []);
+
+  const PRODUCT_CATEGORIES = [ALL_PRODUCTS_ITEM, ...categoryNames.map(categoryItem)];
 
   const links = [
     { to: '/subsidies', label: 'Subsidies' },
@@ -64,7 +99,7 @@ const Navbar = () => {
             </Link>
 
             {productOpen && (
-              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50">
+              <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-72 bg-white rounded-2xl shadow-2xl border border-gray-100 py-2 z-50 max-h-[75vh] overflow-y-auto">
                 <div className="px-4 py-2 border-b border-gray-50 mb-1">
                   <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">{t('Shop by Category')}</p>
                 </div>
@@ -72,9 +107,9 @@ const Navbar = () => {
                   <Link key={label} to={to} onClick={() => setProductOpen(false)}
                     className="flex items-center gap-3 px-4 py-2.5 hover:bg-green-50 transition-colors group">
                     <span className="text-xl w-8 text-center flex-shrink-0">{icon}</span>
-                    <div>
-                      <p className="text-sm font-medium text-gray-800 group-hover:text-[#006948]">{t(label)}</p>
-                      <p className="text-xs text-gray-400">{t(desc)}</p>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium text-gray-800 group-hover:text-[#006948] line-clamp-2">{t(label)}</p>
+                      {desc && <p className="text-xs text-gray-400 line-clamp-1">{t(desc)}</p>}
                     </div>
                   </Link>
                 ))}

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { useT } from '../i18n';
+import { useSiteContent, DEFAULT_STATS, toText } from '../utils/siteContent';
 
 // Renders a translated sentence that contains one bold phrase, e.g. 'such as {bold}, ...'.
 // The placeholder lets Hindi put the bold part wherever its word order needs it.
@@ -11,6 +12,13 @@ const withBold = (sentence, bold) => {
 
 const About = () => {
   const { t } = useT();
+  // Same "stats" list as the homepage badges (Admin > Site Content).
+  // Request failed / never saved -> defaults; admin saved an empty list -> block hidden.
+  const { pick } = useSiteContent();
+  const stats = pick('stats', DEFAULT_STATS)
+    .filter(s => s && typeof s === 'object')
+    .map(s => ({ num: toText(s.target).trim() + toText(s.suffix), label: toText(s.label) }))
+    .filter(s => s.num || s.label);
   return (
   <div className="min-h-screen">
     {/* Hero */}
@@ -57,19 +65,16 @@ const About = () => {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
-          {[
-            { num:'7+', label:'Years of Experience' },
-            { num:'100+', label:'Satisfied Customers' },
-            { num:'50+', label:'Projects Completed' },
-            { num:'300 MWh', label:'Power Generated' },
-          ].map(({ num, label }) => (
-            <div key={label} className="text-center bg-[#006948] text-white rounded-2xl p-8">
-              <div className="text-4xl font-bold mb-2">{num}</div>
-              <div className="text-sm text-white/80">{t(label)}</div>
-            </div>
-          ))}
-        </div>
+        {stats.length > 0 && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-16">
+            {stats.map(({ num, label }, i) => (
+              <div key={i} className="text-center bg-[#006948] text-white rounded-2xl p-8 min-w-0">
+                <div className="text-4xl font-bold mb-2 break-words">{num}</div>
+                <div className="text-sm text-white/80 line-clamp-2">{t(label)}</div>
+              </div>
+            ))}
+          </div>
+        )}
 
         {/* Team */}
         <div className="text-center mb-8">

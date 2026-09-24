@@ -27,6 +27,12 @@ function clean(body, partial) {
   }
   if (out.photo_url !== undefined && !validImage(out.photo_url)) throw Object.assign(new Error('photo_url must be an https URL, /uploads/ path or an image (max ~1MB)'), { status: 400 });
   if (out.installation_photo !== undefined && !validImage(out.installation_photo)) throw Object.assign(new Error('installation_photo must be an https URL, /uploads/ path or an image (max ~1MB)'), { status: 400 });
+  const LIMITS = { name: 100, role: 120, company: 150, location: 120, review: 1200, capacity: 50, savings: 50 };
+  for (const [k, max] of Object.entries(LIMITS)) {
+    if (out[k] === undefined || out[k] === null) continue;
+    out[k] = String(out[k]).trim();
+    if (out[k].length > max) throw Object.assign(new Error(`${k === 'review' ? 'Review' : k[0].toUpperCase() + k.slice(1)} is too long (max ${max} characters)`), { status: 400 });
+  }
   if (out.rating !== undefined) {
     const r = parseInt(out.rating, 10);
     if (!(r >= 1 && r <= 5)) throw Object.assign(new Error('Rating must be 1-5'), { status: 400 });

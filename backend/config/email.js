@@ -258,6 +258,33 @@ async function sendStatusUpdate(booking, { force = false } = {}) {
   });
 }
 
+const ORDER_STATUS_TEXT = {
+  pending: 'has been received and is waiting for our team',
+  contacted: 'is being processed — our team has contacted you',
+  confirmed: 'has been confirmed',
+  dispatched: 'has been dispatched',
+  delivered: 'has been delivered',
+  completed: 'is complete',
+  cancelled: 'has been cancelled',
+};
+async function sendOrderStatusUpdate(order, { force = false } = {}) {
+  const s = await getSettings();
+  if (!force && !s.customer_status_updates) return { ok: false, disabled: true };
+  if (!order || !order.email || !EMAIL_RE.test(String(order.email).trim()) || isTempEmail(order.email)) return { ok: false, skipped: true };
+  const pc = publicConfig();
+  const st = String(order.status || '').toLowerCase();
+  let items = order.items;
+  if (typeof items === 'string') { try { items = JSON.parse(items); } catch (e) { items = []; } }
+  const itemText = Array.isArray(items) ? items.map(i => `${i.qty || i.quantity || 1} × ${[i.brand, i.model].filter(Boolean).join(' ')}`).join(', ') : '';
+  const body = `
+    <p style="margin:0 0 12px;">Dear ${escapeHtml(order.name || 'Customer')},</p>
+    <p style="margin:0 0 12px;">Your order <b>#${escapeHtml(order.id)}</b> ${escapeHtml(ORDER_STATUS_TEXT[st] || 'has been updated')}.</p>
+    ${detailsTable([row('Items', itemText), row('Status', st ? st[0].toUpperCase() + st.slice(1) : '')])}
+    <p style="margin:0 0 12px;">Questions? Call or WhatsApp us on <b>${escapeHtml(pc.phone)}</b>.</p>
+    <p style="margin:18px 0 0;">Warm regards,<br>Team ${escapeHtml(pc.name)}</p>`;
+  return send('order_status', { to: String(order.email).trim(), subject: `Your order #${order.id} ${st || 'update'} | ${pc.name}`, html: layout('Order update', body), text: `Your order #${order.id} ${ORDER_STATUS_TEXT[st] || 'has been updated'}. ${pc.phone}` });
+}
+
 async function sendCustomEmail(to, subject, message, customerName = 'Customer') {
   const pc = publicConfig();
   const body = `<p style="margin:0 0 12px;">Dear ${escapeHtml(customerName)},</p>
@@ -332,7 +359,7 @@ function status() {
 }
 
 module.exports = {
-  sendBookingConfirmation, sendStatusUpdate, sendCustomEmail,
+  sendBookingConfirmation, sendStatusUpdate, sendCustomEmail, sendOrderStatusUpdate,
   notifyAdminNewBooking, notifyAdminNewLead, notifyAdminNewOrder, later,
   getSettings, saveSettings, sendTestEmail, verifyConnection, status,
   // exported for tests

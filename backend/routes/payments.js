@@ -712,8 +712,13 @@ const formLimiterPay = require('express-rate-limit')({
   windowMs: 10 * 60 * 1000, max: 10, standardHeaders: true, legacyHeaders: false,
   message: { success: false, message: 'Too many attempts, please try again later.' }
 });
+// Same rule as the product pages: a price is only charged when it is shown to
+// customers; a sale price below the normal price wins.
 const catalogPrice = (row) => {
+  if (row.show_price !== undefined && row.show_price !== null && !Number(row.show_price)) return null;
   const p = Number(row.price);
+  const d = Number(row.discount_price);
+  if (p > 0 && d > 0 && d < p) return d;
   if (p > 0) return p;
   const pr = Number(String(row.price_range || '').replace(/[^0-9.]/g, ''));
   return pr > 0 && /^[\s₹Rs.,0-9]+$/i.test(String(row.price_range || '')) ? pr : null;
@@ -735,7 +740,7 @@ router.post('/product-order', formLimiterPay, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Invalid items' });
     }
     const [rows] = await db.query(
-      'SELECT id, brand, model, unit, price, price_range FROM product_catalog WHERE id IN (?)',
+      'SELECT id, brand, model, unit, price, price_range, discount_price, show_price, in_stock FROM product_catalog WHERE id IN (?)',
       [[...new Set(wanted.map(i => i.id))]]
     );
     const byId = new Map(rows.map(r => [r.id, r]));
@@ -744,6 +749,9 @@ router.post('/product-order', formLimiterPay, async (req, res) => {
     for (const w of wanted) {
       const row = byId.get(w.id);
       if (!row) return res.status(400).json({ success: false, message: 'One of the products is no longer available' });
+      if (row.in_stock !== undefined && row.in_stock !== null && !Number(row.in_stock)) {
+        return res.status(400).json({ success: false, message: `${row.brand} ${row.model} is out of stock right now. Please call us.` });
+      }
       const unitPrice = catalogPrice(row);
       if (!unitPrice) {
         return res.status(400).json({ success: false, message: `${row.brand} ${row.model} has no listed price. Please choose Pay on Delivery or request a quote.` });

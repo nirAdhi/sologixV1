@@ -1,7 +1,7 @@
 const express = require('express');
 const { orderValidators, formLimiter } = require('../middleware/security');
 const router = express.Router();
-const { notifyAdminNewOrder, later } = require('../config/email');
+const { notifyAdminNewOrder, sendOrderStatusUpdate, later } = require('../config/email');
 const db = require('../config/database');
 const { auth, requirePermission } = require('../middleware/auth');
 
@@ -64,6 +64,9 @@ router.put('/:id/status', auth, requirePermission('manage_bookings'), async (req
     const [r] = await db.query('UPDATE product_orders SET status=? WHERE id=?', [req.body.status, req.params.id]);
     if (!r.affectedRows) return res.status(404).json({ success: false, message: 'Order not found' });
     res.json({ success: true });
+    // Let the customer know (Admin > Email > "status updates to the customer").
+    db.query('SELECT id, name, email, items, status FROM product_orders WHERE id = ?', [req.params.id])
+      .then(([[o]]) => { if (o) later(sendOrderStatusUpdate, o); }).catch(() => {});
   } catch (e) {
     res.status(500).json({ success: false, message: 'Update failed' });
   }

@@ -15,7 +15,7 @@ const DEFAULTS = {
   address: BRANDING.address,
   siteUrl: 'https://sologixenergy.com',
   social: {
-    youtube: '',
+    youtube: 'https://www.youtube.com/@Solar_by_Sologix',
     facebook: 'https://www.facebook.com/sologix/',
     instagram: 'https://www.instagram.com/sologixenergy/',
     linkedin: 'https://www.linkedin.com/company/m-s-sologix-energy/',

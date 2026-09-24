@@ -4,6 +4,7 @@ import { useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Navbar from './components/Navbar';
 import ConsultationWidget from './components/ConsultationWidget';
+import VisitorTools from './components/VisitorTools';
 import ThemeProvider from './components/ThemeProvider';
 import { LanguageProvider } from './i18n';
 import Footer from './components/Footer';
@@ -80,6 +81,7 @@ function AppContent() {
     <div className="min-h-screen flex flex-col bg-gray-50">
       <ScrollToTop />
       {!isAdminPage && !isPortalPage && <ConsultationWidget />}
+      {!isAdminPage && !isPortalPage && <VisitorTools />}
       <Toaster
         position="top-right"
         toastOptions={{

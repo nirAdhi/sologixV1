@@ -165,6 +165,34 @@ router.post('/cloudinary/upload-from-drive', auth, canManage, async (req, res) =
   }
 });
 
+// Generic image upload for any admin content (offerings, projects, catalog,
+// testimonials...). Uses Cloudinary when it is set up in .env, otherwise saves
+// the file in backend/uploads (a persistent Docker volume) and returns /uploads/<file>.
+const CLOUDINARY_READY = !!(process.env.CLOUDINARY_CLOUD_NAME && process.env.CLOUDINARY_API_KEY && process.env.CLOUDINARY_API_SECRET
+  && !/^your[_-]/i.test(process.env.CLOUDINARY_CLOUD_NAME) && !/^your[_-]/i.test(process.env.CLOUDINARY_API_KEY));
+const CONTENT_PERMS = ['manage_services', 'manage_settings', 'manage_testimonials'];
+const canEditContent = (req, res, next) => (req.admin?.role === 'super_admin' || CONTENT_PERMS.some(p => req.admin?.permissions?.[p] === true))
+  ? next() : res.status(403).json({ success: false, message: 'You do not have permission to upload images' });
+router.post('/image', auth, canEditContent, async (req, res) => {
+  try {
+    const m = /^data:image\/(png|jpe?g|gif|webp);base64,([A-Za-z0-9+/=]+)$/.exec(typeof req.body.image === 'string' ? req.body.image : '');
+    if (!m) return res.status(400).json({ success: false, message: 'Send a PNG, JPEG, GIF or WebP image' });
+    if (m[2].length > 8 * 1024 * 1024) return res.status(413).json({ success: false, message: 'Image too large (max ~6 MB)' });
+    const folder = /^[a-z_-]{1,30}$/.test(req.body.folder || '') ? req.body.folder : 'content';
+    if (CLOUDINARY_READY) {
+      const r = await cloudinary.uploader.upload(req.body.image, { folder: `sologix/${folder}`, transformation: [{ width: 1600, height: 1600, crop: 'limit' }, { quality: 'auto' }, { fetch_format: 'auto' }] });
+      return res.json({ success: true, imageUrl: r.secure_url, storage: 'cloudinary' });
+    }
+    const ext = m[1] === 'jpeg' ? 'jpg' : m[1];
+    const filename = `${folder}-${Date.now()}-${require('crypto').randomBytes(4).toString('hex')}.${ext}`;
+    fs.writeFileSync(path.join(uploadDir, filename), Buffer.from(m[2], 'base64'));
+    res.json({ success: true, imageUrl: `/uploads/${filename}`, storage: 'server' });
+  } catch (e) {
+    console.error('Image upload failed:', e.message);
+    res.status(500).json({ success: false, message: 'Upload failed. Please try a smaller image or paste an image link.' });
+  }
+});
+
 // Upload image to Cloudinary from base64 (admin only)
 router.post('/cloudinary/upload-base64', auth, canManage, async (req, res) => {
   try {

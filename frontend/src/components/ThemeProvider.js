@@ -1,4 +1,11 @@
 import { useEffect } from 'react';
+import { useSiteContent } from '../utils/siteContent';
+
+const STORAGE_KEY = 'sologix_site_theme';
+// Theme chosen in this page load (server value or admin click); used when
+// localStorage is blocked so the theme still applies.
+let sessionThemeId = null;
+let adminPicked = false;
 
 export const SITE_THEMES = [
   {
@@ -40,11 +47,11 @@ export const SITE_THEMES = [
 ];
 
 export const getTheme = () => {
-  try {
-    const saved = localStorage.getItem('sologix_site_theme');
-    const found = SITE_THEMES.find(t => t.id === saved);
-    return found || SITE_THEMES[0];
-  } catch { return SITE_THEMES[0]; }
+  let saved = sessionThemeId;
+  if (!saved) {
+    try { saved = localStorage.getItem(STORAGE_KEY); } catch (e) { saved = null; }
+  }
+  return SITE_THEMES.find(t => t.id === saved) || SITE_THEMES[0];
 };
 
 const buildCSS = (t) => `
@@ -122,44 +129,56 @@ const buildCSS = (t) => `
 
 `;
 
-const ThemeProvider = ({ children }) => {
-  useEffect(() => {
-    const applyCSS = () => {
-      const t = getTheme();
-      let style = document.getElementById('sologix-site-theme');
-      if (!style) {
-        style = document.createElement('style');
-        style.id = 'sologix-site-theme';
-        document.head.appendChild(style);
-      }
-      style.textContent = buildCSS(t);
-    };
-    applyCSS();
-    // Sync from DB max once per hour to avoid slowing every page load
-    const lastSync = localStorage.getItem('sologix_theme_sync');
-    const oneHour = 60 * 60 * 1000;
-    if (!lastSync || Date.now() - parseInt(lastSync) > oneHour) {
-      fetch('/api/site-settings')
-        .then(r => r.json())
-        .then(d => {
-          const saved = d.data && d.data.site_theme;
-          if (saved && saved !== localStorage.getItem('sologix_site_theme')) {
-            localStorage.setItem('sologix_site_theme', saved);
-            applyCSS();
-          }
-          localStorage.setItem('sologix_theme_sync', Date.now().toString());
-        })
-        .catch(() => {});
+// Applies a theme's CSS right away (creates the <style> tag once).
+const writeCSS = (t) => {
+  try {
+    let style = document.getElementById('sologix-site-theme');
+    if (!style) {
+      style = document.createElement('style');
+      style.id = 'sologix-site-theme';
+      document.head.appendChild(style);
     }
+    style.textContent = buildCSS(t);
+  } catch (e) { /* no DOM */ }
+};
+
+// Visitors get the admin's theme on EVERY page load: the theme comes from
+// /api/site-settings (shared request, see utils/siteContent.js) and is applied
+// as soon as it arrives. localStorage is only a first-paint cache so returning
+// visitors don't see a colour flash while the request is in flight.
+// (Previously the server was asked at most once an hour, so visitors kept the
+// old colours for up to an hour after the admin changed them.)
+const ThemeProvider = ({ children }) => {
+  const { data } = useSiteContent();
+  const serverTheme = data && typeof data.site_theme === 'string' ? data.site_theme : null;
+
+  useEffect(() => {
+    const applyCSS = () => writeCSS(getTheme());
+    applyCSS();
+    try { localStorage.removeItem('sologix_theme_sync'); } catch (e) { /* ignore */ }   // old 1-hour throttle
     window.addEventListener('sologix-theme-change', applyCSS);
     return () => window.removeEventListener('sologix-theme-change', applyCSS);
   }, []);
 
+  useEffect(() => {
+    // If the admin just clicked a theme in this tab, their click wins over the
+    // (possibly older) value that was loaded with the page.
+    if (!serverTheme || adminPicked) return;
+    const found = SITE_THEMES.find(t => t.id === serverTheme);
+    if (!found) return;
+    sessionThemeId = found.id;
+    try { if (localStorage.getItem(STORAGE_KEY) !== found.id) localStorage.setItem(STORAGE_KEY, found.id); } catch (e) { /* storage blocked */ }
+    writeCSS(found);
+  }, [serverTheme]);
+
   return children;
 };
 
+// Admin preview: applies instantly in this tab (the admin page also saves it).
 export const applyTheme = (themeId) => {
-  localStorage.setItem('sologix_site_theme', themeId);
+  adminPicked = true;
+  sessionThemeId = themeId;
+  try { localStorage.setItem(STORAGE_KEY, themeId); } catch (e) { /* storage blocked */ }
   window.dispatchEvent(new Event('sologix-theme-change'));
 };
 

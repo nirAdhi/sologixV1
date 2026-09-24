@@ -1,8 +1,12 @@
-import React, { useEffect, useState, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { avatarUrl } from '../utils/avatar';
 import { useT } from '../i18n';
 import { getSiteConfig, whatsappHref } from '../utils/siteConfig';
+import {
+  useSiteContent, DEFAULT_STATS, DEFAULT_OFFERINGS, DEFAULT_WHY, DEFAULT_PROCESS,
+  DEFAULT_OFFERING_IMG, toText, padNum,
+} from '../utils/siteContent';
 
 // Renders a translated sentence that contains one bold part, marked {b}.
 const withBold = (sentence, bold) => {
@@ -10,58 +14,373 @@ const withBold = (sentence, bold) => {
   return <>{before}<strong>{bold}</strong>{after}</>;
 };
 
+// ── Data helpers (every admin/API value is treated as untrusted) ──────────
+const isObj = (v) => !!v && typeof v === 'object' && !Array.isArray(v);
+
+// Strings where arrays are expected (JSON text from MariaDB) are parsed safely.
+const asArray = (v) => {
+  if (Array.isArray(v)) return v;
+  if (typeof v === 'string') {
+    try { const p = JSON.parse(v); return Array.isArray(p) ? p : null; } catch (e) { return null; }
+  }
+  return null;
+};
+
+// fetch + timeout. Resolves with json.data, rejects on network error / non-2xx /
+// success:false, so callers can tell "request failed" from "empty list".
+const fetchJSON = async (url, timeoutMs = 8000) => {
+  const ctrl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer = setTimeout(() => ctrl && ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, ctrl ? { signal: ctrl.signal } : undefined);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    if (!json || json.success === false) throw new Error('request failed');
+    return json.data;
+  } finally { clearTimeout(timer); }
+};
+
+// onError handler: swap to a fallback image once (no infinite loop if that fails too).
+const imgFallback = (fallback) => (e) => {
+  const img = e.currentTarget;
+  if (img.dataset.fallback) { img.style.visibility = 'hidden'; return; }
+  img.dataset.fallback = '1';
+  img.src = fallback;
+};
+
+// Internal links go through the router, full URLs open in a new tab, anything else -> default.
+const SmartLink = ({ to, className, children, fallback = '/solutions' }) => {
+  const href = toText(to).trim();
+  if (/^https?:\/\//i.test(href)) return <a href={href} target="_blank" rel="noreferrer" className={className}>{children}</a>;
+  return <Link to={href.startsWith('/') && !href.startsWith('//') ? href : fallback} className={className}>{children}</Link>;
+};
+
+// "1,000" / "4.5" / "7" count up; anything else ("24x7", "ISO") is shown as typed.
+const parseStatTarget = (target, decimals) => {
+  const raw = toText(target).trim();
+  const cleaned = raw.replace(/,/g, '');
+  if (!/^\d+(\.\d+)?$/.test(cleaned) || !Number.isFinite(parseFloat(cleaned))) return { numeric: false, raw };
+  const dec = Math.min(3, Math.max(parseInt(decimals, 10) || 0, (cleaned.split('.')[1] || '').length));
+  return { numeric: true, value: parseFloat(cleaned), decimals: dec, raw };
+};
+const fmtCount = (n, decimals) => (decimals > 0 ? n.toFixed(decimals) : Math.floor(n).toLocaleString('en-IN'));
+
+const CountUp = ({ target, suffix = '', decimals, className }) => {
+  const ref = useRef(null);
+  const p = parseStatTarget(target, decimals);
+  const { numeric, value } = p;
+  const dec = p.decimals || 0;
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !numeric) return undefined;
+    let raf = 0;
+    const done = () => { el.textContent = fmtCount(value, dec) + suffix; };
+    if (typeof IntersectionObserver === 'undefined' || typeof requestAnimationFrame === 'undefined') { done(); return undefined; }
+    const run = () => {
+      const start = performance.now();
+      const step = (now) => {
+        const progress = Math.min((now - start) / 2000, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        el.textContent = fmtCount(eased * value, dec) + suffix;
+        if (progress < 1) raf = requestAnimationFrame(step); else done();
+      };
+      raf = requestAnimationFrame(step);
+    };
+    const obs = new IntersectionObserver((entries) => {
+      if (entries.some(en => en.isIntersecting)) { obs.disconnect(); run(); }
+    }, { threshold: 0.5 });
+    obs.observe(el);
+    return () => { obs.disconnect(); if (raf) cancelAnimationFrame(raf); };
+  }, [numeric, value, dec, suffix]);
+  return (
+    <div ref={ref} className={className} data-target={p.raw}>
+      {numeric ? fmtCount(0, dec) + suffix : p.raw + suffix}
+    </div>
+  );
+};
+
+const SOLAR_IMGS = [
+  'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=600&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1559302504-64aae6ca6b6d?w=600&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?w=600&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1497440001374-f26997328c1b?w=600&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1624397640148-949b1732bb0a?w=600&h=400&fit=crop',
+  'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=600&h=400&fit=crop',
+];
+
+// Built-in projects: shown when /api/projects can't be reached.
+const STATIC_PROJECTS = [
+  { title:'Ranchi Gymkhana Club', location:'Ranchi, Jharkhand', capacity:'40 kW', type:'Commercial', savings:'Rs 3,36,000/yr', img:'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=600&h=400&fit=crop' },
+  { title:'DBMS English School', location:'Jamshedpur, Jharkhand', capacity:'100 kW', type:'Institutional', savings:'Rs 8,40,000/yr', img:'https://images.unsplash.com/photo-1559302504-64aae6ca6b6d?w=600&h=400&fit=crop' },
+  { title:'Raj Ceramics', location:'Hardag, Ranchi', capacity:'55 kW', type:'Industrial', savings:'Rs 4,20,000/yr', img:'https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?w=600&h=400&fit=crop' },
+  { title:'CMS Kerala Bhavan', location:'Pune, Maharashtra', capacity:'30 kW', type:'Commercial', savings:'Rs 6,30,000/yr', img:'https://images.unsplash.com/photo-1497440001374-f26997328c1b?w=600&h=400&fit=crop' },
+  { title:'Dayanand Public School', location:'Jamshedpur, Jharkhand', capacity:'40 kW', type:'Institutional', savings:'Rs 3,36,000/yr', img:'https://images.unsplash.com/photo-1624397640148-949b1732bb0a?w=600&h=400&fit=crop' },
+  { title:'Solar Mini Grid', location:'Chatra, Jharkhand', capacity:'25 kW', type:'Industrial', savings:'Rs 2,10,000/yr', img:'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=600&h=400&fit=crop' },
+].map((p, i) => ({ ...p, key: 's' + i }));
+
+// Built-in product cards: shown when /api/catalog can't be reached or is empty.
+const STATIC_PRODUCTS = [
+  { name:'Deye Inverters', spec:'3 kW – 200 kW | On-Grid', img:'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop' },
+  { name:'Growatt Inverters', spec:'Residential & Commercial', img:'https://images.unsplash.com/photo-1466611653911-95081537e5b7?w=300&h=200&fit=crop' },
+  { name:'LuxPower Hybrid', spec:'3–30 kW | Battery Ready', img:'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=300&h=200&fit=crop' },
+  { name:'Adani Solar Panels', spec:'580 W – 620 W | DCR', img:'https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?w=300&h=200&fit=crop' },
+  { name:'Tata Power Solar', spec:'570 W – 600 W', img:'https://images.unsplash.com/photo-1497440001374-f26997328c1b?w=300&h=200&fit=crop' },
+  { name:'Rayzon Solar', spec:'545 W – 550 W', img:'https://images.unsplash.com/photo-1559302504-64aae6ca6b6d?w=300&h=200&fit=crop' },
+  { name:'ZEN Energy Panels', spec:'580 W – 600 W', img:'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=300&h=200&fit=crop' },
+  { name:'Bi-Tech Li-Ion Battery', spec:'5 kWh | Long Cycle Life', img:'https://images.unsplash.com/photo-1624397640148-949b1732bb0a?w=300&h=200&fit=crop' },
+  { name:'Solis Storage', spec:'5 kWh | Smart BMS', img:'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=300&h=200&fit=crop' },
+  { name:'Microtek Solar', spec:'Home & Small Business', img:'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=300&h=200&fit=crop' },
+].map((p, i) => ({ ...p, key: 's' + i, link: '/products', badge: '' }));
+
+// ── YouTube section ────────────────────────────────────────────────────────
+const YT_ID = /^[A-Za-z0-9_-]{6,20}$/;
+const YT_DEFAULT_TITLE = 'Watch Sologix in Action';
+const YT_DEFAULT_SUBTITLE = 'Real installations, customer stories and solar tips from our YouTube channel';
+
+const VideoModal = ({ video, onClose }) => {
+  const { t } = useT();
+  const dialogRef = useRef(null);
+  const closeRef = useRef(null);
+  useEffect(() => {
+    const prevFocus = document.activeElement;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    if (closeRef.current) closeRef.current.focus();
+    const onKey = (e) => {
+      if (e.key === 'Escape') { e.preventDefault(); onClose(); return; }
+      if (e.key !== 'Tab' || !dialogRef.current) return;
+      // keep keyboard focus inside the dialog
+      const items = Array.from(dialogRef.current.querySelectorAll('button, iframe, a[href]'));
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+      else if (!dialogRef.current.contains(document.activeElement)) { e.preventDefault(); first.focus(); }
+    };
+    document.addEventListener('keydown', onKey);
+    return () => {
+      document.removeEventListener('keydown', onKey);
+      document.body.style.overflow = prevOverflow;
+      if (prevFocus && typeof prevFocus.focus === 'function') prevFocus.focus();
+    };
+  }, [onClose]);
+
+  const label = video.title || t('YouTube video');
+  return (
+    <div className="fixed inset-0 z-[100] bg-black/85 flex items-center justify-center p-4" onClick={onClose} role="presentation">
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={label}
+        className="relative w-full"
+        style={{ maxWidth: video.isShort ? 'min(420px, calc(85vh * 9 / 16))' : 'min(64rem, calc(85vh * 16 / 9))' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <button
+          ref={closeRef}
+          type="button"
+          onClick={onClose}
+          aria-label={t('Close video')}
+          className="absolute -top-12 right-0 w-10 h-10 rounded-full bg-white/15 hover:bg-white/30 text-white text-xl flex items-center justify-center focus:outline-none focus:ring-2 focus:ring-white"
+        >
+          ✕
+        </button>
+        <div className={(video.isShort ? 'aspect-[9/16]' : 'aspect-video') + ' w-full bg-black rounded-xl overflow-hidden shadow-2xl'}>
+          <iframe
+            src={`https://www.youtube-nocookie.com/embed/${video.id}?autoplay=1&rel=0`}
+            title={label}
+            className="w-full h-full border-0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            referrerPolicy="strict-origin-when-cross-origin"
+            allowFullScreen
+          />
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const VideoCard = ({ video, onPlay, dateText }) => {
+  const { t } = useT();
+  return (
+    <button
+      type="button"
+      onClick={() => onPlay(video)}
+      aria-label={t('Play video: {title}', { title: video.title || t('YouTube video') })}
+      className={'group text-left snap-start shrink-0 md:w-auto bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm hover:shadow-md hover:border-green-300 transition-all focus:outline-none focus:ring-2 focus:ring-[#006948] '
+        + (video.isShort ? 'w-[44%] sm:w-[30%]' : 'w-[82%] sm:w-[46%]')}
+    >
+      <div className={'relative overflow-hidden bg-gray-900 ' + (video.isShort ? 'aspect-[9/16]' : 'aspect-video')}>
+        <img
+          src={video.thumbnail}
+          alt=""
+          loading="lazy"
+          decoding="async"
+          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+          onError={imgFallback(`https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`)}
+        />
+        <span className="absolute inset-0 flex items-center justify-center" aria-hidden="true">
+          <span className="w-14 h-10 rounded-xl bg-[#FF0000]/90 group-hover:bg-[#FF0000] flex items-center justify-center shadow-lg transition-colors">
+            <svg viewBox="0 0 24 24" className="w-6 h-6" fill="white"><path d="M8 5v14l11-7z" /></svg>
+          </span>
+        </span>
+        {video.isShort && (
+          <span className="absolute top-2 left-2 bg-black/70 text-white text-[10px] font-semibold px-2 py-0.5 rounded-full">{t('Short')}</span>
+        )}
+      </div>
+      <div className="p-3">
+        <p className="text-sm font-semibold text-gray-800 leading-snug line-clamp-2">{video.title}</p>
+        {dateText && <p className="text-xs text-gray-400 mt-1">{dateText}</p>}
+      </div>
+    </button>
+  );
+};
+
+const YouTubeSection = () => {
+  const { t, locale } = useT();
+  const [yt, setYt] = useState(null);          // null = loading / failed -> section hidden
+  const [playing, setPlaying] = useState(null);
+  const closeModal = useCallback(() => setPlaying(null), []);
+
+  useEffect(() => {
+    let alive = true;
+    fetchJSON('/api/youtube')
+      .then(d => { if (alive && isObj(d)) setYt(d); })
+      .catch(() => { /* hidden */ });
+    return () => { alive = false; };
+  }, []);
+
+  const videos = useMemo(() => {
+    const list = asArray(yt && yt.videos) || [];
+    return list.filter(isObj).map(v => {
+      const id = toText(v.id).trim();
+      const thumb = toText(v.thumbnail).trim();
+      return {
+        id,
+        title: toText(v.title).trim(),
+        published: toText(v.published),
+        thumbnail: /^https:\/\//i.test(thumb) ? thumb : `https://i.ytimg.com/vi/${id}/hqdefault.jpg`,
+        isShort: v.is_short === true || v.is_short === 1 || v.is_short === '1' || v.is_short === 'true',
+      };
+    }).filter(v => YT_ID.test(v.id));
+  }, [yt]);
+
+  if (!yt || yt.enabled === false || !videos.length) return null;
+
+  const regular = videos.filter(v => !v.isShort);
+  const shorts = videos.filter(v => v.isShort);
+  const fmtDate = (iso) => {
+    if (!iso) return '';
+    try {
+      const d = new Date(iso);
+      return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(locale, { day: 'numeric', month: 'short', year: 'numeric' });
+    } catch (e) { return ''; }
+  };
+  const chRaw = isObj(yt.channel) ? toText(yt.channel.url).trim() : '';
+  const channelUrl = /^https:\/\//i.test(chRaw) ? chRaw : ((getSiteConfig().social || {}).youtube || '');
+  const subscribeUrl = /youtube\.com\/(channel\/|@|c\/|user\/)/i.test(channelUrl)
+    ? channelUrl + (channelUrl.includes('?') ? '&' : '?') + 'sub_confirmation=1'
+    : '';
+  const title = toText(yt.title).trim() || YT_DEFAULT_TITLE;
+  const subtitle = toText(yt.subtitle).trim() || YT_DEFAULT_SUBTITLE;
+  // Mobile: one horizontal row with snap; tablet/desktop: a grid.
+  const rowCls = 'flex gap-4 overflow-x-auto snap-x snap-mandatory pb-3 -mx-6 px-6 md:mx-0 md:px-0 md:pb-0 md:overflow-visible md:grid md:gap-6';
+
+  return (
+    <section className="py-24 bg-gray-50 border-t border-gray-100" aria-labelledby="yt-section-heading">
+      <div className="max-w-[1280px] mx-auto px-6 lg:px-16">
+        <div className="text-center mb-10">
+          <span className="text-[#006948] font-medium uppercase tracking-[0.2em] block mb-4 text-sm">{t('Our Videos')}</span>
+          <h2 id="yt-section-heading" className="text-4xl font-bold break-words">{t(title)}</h2>
+          <p className="text-gray-500 mt-3 text-sm max-w-2xl mx-auto line-clamp-3">{t(subtitle)}</p>
+        </div>
+        {regular.length > 0 && (
+          <div className={rowCls + ' md:grid-cols-2 lg:grid-cols-4'}>
+            {regular.map(v => <VideoCard key={v.id} video={v} onPlay={setPlaying} dateText={fmtDate(v.published)} />)}
+          </div>
+        )}
+        {shorts.length > 0 && (
+          <>
+            {regular.length > 0 && <h3 className="text-lg font-semibold text-gray-800 mt-12 mb-4">{t('Shorts')}</h3>}
+            <div className={rowCls + ' md:grid-cols-4 lg:grid-cols-6'}>
+              {shorts.map(v => <VideoCard key={v.id} video={v} onPlay={setPlaying} dateText={fmtDate(v.published)} />)}
+            </div>
+          </>
+        )}
+        {channelUrl && (
+          <div className="flex flex-wrap justify-center gap-3 mt-10">
+            <a href={channelUrl} target="_blank" rel="noreferrer"
+              className="inline-flex items-center gap-2 bg-white border border-gray-200 text-gray-800 px-6 py-3 rounded-full font-medium hover:border-gray-400 transition-all">
+              <svg viewBox="0 0 48 48" className="w-6 h-6" aria-hidden="true"><path d="M44 12.7a5.5 5.5 0 0 0-3.9-3.9C36.6 8 24 8 24 8S11.4 8 7.9 8.8A5.5 5.5 0 0 0 4 12.7C3.2 16.2 3.2 24 3.2 24s0 7.8.8 11.3A5.5 5.5 0 0 0 7.9 39.2C11.4 40 24 40 24 40s12.6 0 16.1-.8a5.5 5.5 0 0 0 3.9-3.9c.8-3.5.8-11.3.8-11.3s0-7.8-.8-11.3z" fill="#FF0000"/><path d="M19.6 30.5v-13L31.2 24l-11.6 6.5z" fill="white"/></svg>
+              {t('Visit our YouTube channel')}
+            </a>
+            {subscribeUrl && (
+              <a href={subscribeUrl} target="_blank" rel="noreferrer"
+                className="inline-flex items-center gap-2 bg-[#FF0000] text-white px-6 py-3 rounded-full font-semibold hover:opacity-90 transition-all">
+                {t('Subscribe')}
+              </a>
+            )}
+          </div>
+        )}
+      </div>
+      {playing && <VideoModal video={playing} onClose={closeModal} />}
+    </section>
+  );
+};
+
+const HERO_VIDEOS = [
+  'https://res.cloudinary.com/dsiratycd/video/upload/v1780431091/gemini_generated_video_70213f58_wjemga.mp4',
+  'https://res.cloudinary.com/dsiratycd/video/upload/v1780431090/Create_a_second_ultra_re_1_sgawv9.mp4',
+  'https://res.cloudinary.com/dsiratycd/video/upload/v1780431090/Create_a_second_ultra_re_ddarqt.mp4',
+];
+
 const HomePage = () => {
   const { t } = useT();
   // "Rs 3,36,000/yr" -> translate only the "per year" word, keep the amount as is.
   const fmtSavings = (s) => (typeof s === 'string'
     ? s.replace(/\s*(\/\s*yr|\/\s*year|per\s+year|p\.a\.)\s*$/i, t('/yr'))
     : s);
+  // ── Admin-editable content (Admin > Site Content), with built-in defaults ──
+  const { pick } = useSiteContent();
+  const rawStats = pick('stats', DEFAULT_STATS);
+  const rawOfferings = pick('offerings', DEFAULT_OFFERINGS);
+  const rawWhy = pick('why_us', DEFAULT_WHY);
+  const rawProcess = pick('work_process', DEFAULT_PROCESS);
+
+  const statsList = useMemo(() => rawStats.filter(isObj)
+    .map(s => ({ target: toText(s.target), suffix: toText(s.suffix), decimals: s.decimals, label: toText(s.label) }))
+    .filter(s => s.target.trim() || s.label.trim()), [rawStats]);
+  const offeringsList = useMemo(() => rawOfferings.filter(isObj)
+    .map(o => ({ label: toText(o.label), desc: toText(o.desc), img: toText(o.img).trim() || DEFAULT_OFFERING_IMG, link: toText(o.link).trim() || '/solutions' }))
+    .filter(o => o.label.trim() || o.desc.trim()), [rawOfferings]);
+  const whyList = useMemo(() => rawWhy.filter(isObj)
+    .map(w => ({ icon: toText(w.icon), title: toText(w.title), desc: toText(w.desc) }))
+    .filter(w => w.title.trim() || w.desc.trim()), [rawWhy]);
+  // ONE list feeds the step row, the step details box and the step carousel.
+  const processList = useMemo(() => rawProcess.filter(isObj)
+    .map(p => ({ num: toText(p.num), title: toText(p.title), desc: toText(p.desc), icon: toText(p.icon) }))
+    .filter(p => p.title.trim() || p.desc.trim())
+    .map((p, i) => {
+      const num = p.num.trim() || padNum(i + 1);
+      // "01" -> "1" in the step circle / "Step 1:" heading (as before); other text kept as typed.
+      return { ...p, num, short: /^\d+$/.test(num) ? String(parseInt(num, 10)) : num };
+    }), [rawProcess]);
+
   useEffect(() => {
-    // Counter animation
-    const animateCounter = (el) => {
-      const target = parseFloat(el.getAttribute('data-target'));
-      const suffix = el.getAttribute('data-suffix') || '';
-      const decimals = parseInt(el.getAttribute('data-decimals')) || 0;
-      const duration = 2000;
-      const startTime = performance.now();
-      const update = (currentTime) => {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        const eased = 1 - Math.pow(1 - progress, 3);
-        const current = eased * target;
-        el.textContent = decimals > 0 ? current.toFixed(decimals) + suffix : Math.floor(current).toLocaleString('en-IN') + suffix;
-        if (progress < 1) requestAnimationFrame(update);
-      };
-      requestAnimationFrame(update);
-    };
-    const counterObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting && !entry.target.classList.contains('counted')) {
-          entry.target.classList.add('counted');
-          animateCounter(entry.target);
-        }
-      });
-    }, { threshold: 0.5 });
-    document.querySelectorAll('[data-target]').forEach(el => counterObserver.observe(el));
-
-    // Scroll animations
+    // Scroll-in animation. Re-run when the lists change (admin content arrives
+    // after the first paint) so newly rendered cards are observed too.
+    const els = document.querySelectorAll('.reason-card, .process-step');
+    const reveal = (el) => { el.style.transform = 'translateY(0)'; el.style.opacity = '1'; };
+    if (typeof IntersectionObserver === 'undefined') { els.forEach(reveal); return undefined; }
     const scrollObserver = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.style.transform = 'translateY(0)';
-          entry.target.style.opacity = '1';
-        }
-      });
+      entries.forEach(entry => { if (entry.isIntersecting) reveal(entry.target); });
     }, { threshold: 0.1 });
-    document.querySelectorAll('.reason-card, .process-step').forEach(el => scrollObserver.observe(el));
+    els.forEach(el => { if (el.style.opacity !== '1') scrollObserver.observe(el); });
+    return () => scrollObserver.disconnect();
+  }, [whyList, processList]);
 
-    return () => { counterObserver.disconnect(); scrollObserver.disconnect(); };
-  }, []);
-  const HERO_VIDEOS = [
-    'https://res.cloudinary.com/dsiratycd/video/upload/v1780431091/gemini_generated_video_70213f58_wjemga.mp4',
-    'https://res.cloudinary.com/dsiratycd/video/upload/v1780431090/Create_a_second_ultra_re_1_sgawv9.mp4',
-    'https://res.cloudinary.com/dsiratycd/video/upload/v1780431090/Create_a_second_ultra_re_ddarqt.mp4',
-  ];
   const videoRef = useRef(null);
   const videoIndexRef = useRef(0);
 
@@ -76,16 +395,23 @@ const HomePage = () => {
 
 
 
-  const moveCarousel = (id, direction) => {
-    const container = document.getElementById(id);
-    if (!container) return;
-    const items = container.querySelectorAll('.carousel-item');
-    let activeIndex = Array.from(items).findIndex(item => item.classList.contains('active'));
-    items[activeIndex].classList.remove('active');
-    activeIndex = direction === 'next' ? (activeIndex + 1) % items.length : (activeIndex - 1 + items.length) % items.length;
-    items[activeIndex].classList.add('active');
-    const activeItem = items[activeIndex];
-    container.scrollTo({ left: activeItem.offsetLeft - container.clientWidth / 2 + activeItem.clientWidth / 2, behavior: 'smooth' });
+  // Carousel position is React state (the old version toggled classes by hand and
+  // crashed on items[-1] when a list had no active item / was empty).
+  const [offerIdx, setOfferIdx] = useState(null);   // null = middle card
+  const [procIdx, setProcIdx] = useState(0);
+  const activeOffer = offeringsList.length ? Math.min(offerIdx === null ? Math.floor((offeringsList.length - 1) / 2) : offerIdx, offeringsList.length - 1) : -1;
+  const activeProc = processList.length ? Math.min(procIdx, processList.length - 1) : -1;
+  const moveCarousel = (id, direction, count, current, setIdx) => {
+    if (!count) return;
+    const cur = Math.min(Math.max(current, 0), count - 1);
+    const next = direction === 'next' ? (cur + 1) % count : (cur - 1 + count) % count;
+    setIdx(next);
+    requestAnimationFrame(() => {
+      const container = document.getElementById(id);
+      const item = container && container.querySelectorAll('.carousel-item')[next];
+      if (!item) return;
+      container.scrollTo({ left: item.offsetLeft - container.clientWidth / 2 + item.clientWidth / 2, behavior: 'smooth' });
+    });
   };
 
   const partners = [
@@ -94,14 +420,61 @@ const HomePage = () => {
     'manipal','metafin','panasonic','prfi','raj','rgc'
   ];
 
-  // Testimonials from API
-  const [testimonials, setTestimonials] = useState([]);
+  // Testimonials from API. null = not loaded / request failed -> built-in ones;
+  // [] = admin hid them all -> section hidden.
+  const [testimonials, setTestimonials] = useState(null);
+  // Projects: null -> built-in 6; [] -> grid hidden (button stays).
+  const [projects, setProjects] = useState(null);
+  // Catalog products: null or [] -> built-in cards.
+  const [catalog, setCatalog] = useState(null);
   useEffect(() => {
-    fetch('/api/testimonials')
-      .then(r => r.json())
-      .then(d => { if (d.success && d.data?.length) setTestimonials(d.data); })
+    let alive = true;
+    fetchJSON('/api/testimonials')
+      .then(d => { const list = asArray(d); if (alive && list) setTestimonials(list.filter(isObj)); })
       .catch(() => {});
+    (async () => {
+      try {
+        let list = asArray(await fetchJSON('/api/projects?featured=true'));
+        if (!list) return;                               // malformed -> keep built-in
+        list = list.filter(isObj);
+        if (!list.length) {                              // nothing featured -> latest projects
+          const all = asArray(await fetchJSON('/api/projects'));
+          if (!all) return;
+          list = all.filter(isObj);
+        }
+        if (alive) setProjects(list.slice(0, 6));
+      } catch (e) { /* keep built-in */ }
+    })();
+    fetchJSON('/api/catalog')
+      .then(d => { const list = asArray(d); if (alive && list) setCatalog(list.filter(isObj)); })
+      .catch(() => {});
+    return () => { alive = false; };
   }, []);
+
+  const projectCards = projects === null ? STATIC_PROJECTS : projects.map((p, i) => ({
+    key: p.id !== undefined && p.id !== null ? 'p' + p.id : 'i' + i,
+    title: toText(p.title),
+    location: toText(p.location),
+    capacity: toText(p.capacity),
+    type: toText(p.type),
+    savings: toText(p.savings),
+    img: toText(p.image_url).trim() || SOLAR_IMGS[i % SOLAR_IMGS.length],
+    fallback: SOLAR_IMGS[i % SOLAR_IMGS.length],
+  }));
+
+  const productCards = useMemo(() => {
+    const real = (catalog || []).map((p, i) => ({
+      key: 'c' + (p.id ?? i),
+      name: [toText(p.brand).trim(), toText(p.model).trim()].filter(Boolean).join(' '),
+      spec: toText(p.category),
+      badge: toText(p.badge).trim(),
+      img: toText(p.image_url).trim() || SOLAR_IMGS[i % SOLAR_IMGS.length],
+      link: p.id !== undefined && p.id !== null && p.id !== '' ? '/products/' + encodeURIComponent(p.id) : '/products',
+    })).filter(c => c.name).slice(0, 16);
+    return real.length ? real : STATIC_PRODUCTS;
+  }, [catalog]);
+  // Duplicate the list only when there are enough cards for a seamless loop.
+  const productsLoop = productCards.length >= 4;
 
   const solarImgs = [
     'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=600&h=300&fit=crop',
@@ -119,7 +492,8 @@ const HomePage = () => {
     { id:'s5', name:'S. Chandrashekar', role:'Chairman', company:'D.B.M.S English School', location:'Jamshedpur, Jharkhand', capacity:'100 kW', savings:'Rs 8,40,000/yr', rating:5, photo_url:'', installation_photo: solarImgs[4], review:'Technically best solar team in Jharkhand. Very professional, courteous, and respectful. I recommend Sologix Energy.' },
     { id:'s6', name:'Sandesh Narvane', role:'Manager', company:'CMS Kerala Bhavan', location:'Pune, Maharashtra', capacity:'30 kW', savings:'Rs 6,30,000/yr', rating:5, photo_url:'', installation_photo: solarImgs[5], review:'Sologix Energy did a marvellous job. We are enjoying almost zero electric bills after solar installation.' },
   ];
-  const displayTestimonials = testimonials.length > 0 ? testimonials : staticTestimonials;
+  const displayTestimonials = testimonials === null ? staticTestimonials : testimonials;
+  const testimonialsLoop = displayTestimonials.length >= 3;
 
   // Mini calculator state
   const [calcBill, setCalcBill] = useState('Rs 2,001 - 5,000');
@@ -148,7 +522,8 @@ const HomePage = () => {
       <style>{`
         .carousel-item{transition:all 0.5s cubic-bezier(0.4,0,0.2,1);flex-shrink:0;width:300px;opacity:0.6;transform:scale(0.85)}
         .carousel-item.active{opacity:1;transform:scale(1.1);width:450px;z-index:10}
-        .focused-carousel-container{display:flex;align-items:center;justify-content:center;gap:2rem;overflow-x:hidden;padding:2rem 0}
+        .focused-carousel-container{position:relative;display:flex;align-items:center;justify-content:flex-start;gap:2rem;overflow-x:hidden;padding:2rem 0}
+        .focused-carousel-container>:first-child{margin-left:auto}.focused-carousel-container>:last-child{margin-right:auto}
         @media(max-width:768px){.carousel-item{width:240px}.carousel-item.active{width:300px}}
         .reason-card,.process-step{transition:transform 0.6s ease,opacity 0.6s ease}
         .social-float a{transition:transform 0.2s ease}
@@ -254,26 +629,24 @@ const HomePage = () => {
 
       </section>
 
-      {/* ── Stats Badges ── */}
-      <section className="py-12 bg-white border-y border-gray-100">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-            {[
-              { target:'7', suffix:'+', label:'Years of Experience' },
-              { target:'100', suffix:'+', label:'Satisfied Customers' },
-              { target:'50', suffix:'+', label:'Projects Completed' },
-              { target:'300', suffix:' MWh', label:'Power Generated' },
-            ].map(({ target, suffix, decimals, label }) => (
-              <div key={label} className="bg-gray-50 rounded-2xl p-6 text-center border border-gray-100 hover:border-green-300 hover:shadow-md transition-all">
-                <div className="text-3xl md:text-4xl font-bold text-[#006948]" data-target={target} data-suffix={suffix} data-decimals={decimals}>0{suffix}</div>
-                <div className="text-sm text-gray-500 mt-2 font-medium">{t(label)}</div>
-              </div>
-            ))}
+      {/* ── Stats Badges (Admin > Site Content > Statistics) ── */}
+      {statsList.length > 0 && (
+        <section className="py-12 bg-white border-y border-gray-100">
+          <div className="max-w-5xl mx-auto px-6">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              {statsList.map(({ target, suffix, decimals, label }, i) => (
+                <div key={i + '|' + target + '|' + suffix} className="bg-gray-50 rounded-2xl p-6 text-center border border-gray-100 hover:border-green-300 hover:shadow-md transition-all min-w-0">
+                  <CountUp target={target} suffix={suffix} decimals={decimals} className="text-3xl md:text-4xl font-bold text-[#006948] break-words" />
+                  <div className="text-sm text-gray-500 mt-2 font-medium line-clamp-2">{t(label)}</div>
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
-      {/* ── Our Offerings ── */}
+      {/* ── Our Offerings (Admin > Site Content > Offerings) ── */}
+      {offeringsList.length > 0 && (
       <section className="py-24 bg-gray-50 overflow-hidden">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-16 text-center mb-4">
           <p className="text-gray-500 text-sm mb-2">{t("Jharkhand's Leading Solar Panel Installation Company")}</p>
@@ -281,28 +654,27 @@ const HomePage = () => {
           <p className="text-gray-400 text-xs italic">{t('Click to explore details about each offering')}</p>
         </div>
         <div className="focused-carousel-container" id="offerings-carousel">
-          {[
-            { label:'Residential', desc:'Smart solar solutions for homes & villas.', img:'https://res.cloudinary.com/dsiratycd/image/upload/v1775250334/Gemini_Generated_Image_gqdagugqdagugqda_pbwa73.png', link:'/solutions', active:false },
-            { label:'Commercial', desc:'Powering offices, malls & businesses.', img:'https://res.cloudinary.com/dsiratycd/image/upload/v1774797121/comercial_fie2wd.png', link:'/solutions', active:true },
-            { label:'Industrial', desc:'High-capacity solar for factories & industries.', img:'https://res.cloudinary.com/dsiratycd/image/upload/v1774797121/Maintanance_mdwhei.png', link:'/solutions', active:false },
-          ].map(({ label, desc, img, link, active }) => (
-            <Link key={label} to={link} className={`carousel-item${active ? ' active' : ''}`}>
-              <div className="relative rounded-[2rem] overflow-hidden aspect-[4/3]">
-                <img src={img} alt={t(label)} className="w-full h-full object-cover" loading="lazy" />
+          {offeringsList.map(({ label, desc, img, link }, i) => (
+            <SmartLink key={i} to={link} className={`carousel-item${i === activeOffer ? ' active' : ''}`}>
+              <div className="relative rounded-[2rem] overflow-hidden aspect-[4/3] bg-gray-200">
+                <img src={img} alt={t(label)} className="w-full h-full object-cover" loading="lazy" onError={imgFallback(DEFAULT_OFFERING_IMG)} />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-8 text-left">
-                  <h3 className="text-white text-3xl font-bold mb-3">{t(label)}</h3>
-                  <p className="text-white/80 text-base">{t(desc)}</p>
+                  <h3 className="text-white text-3xl font-bold mb-3 line-clamp-2 break-words">{t(label)}</h3>
+                  <p className="text-white/80 text-base line-clamp-3">{t(desc)}</p>
                   <span className="text-[#68dba9] text-sm mt-3 font-semibold">{t('Click to learn more')} →</span>
                 </div>
               </div>
-            </Link>
+            </SmartLink>
           ))}
         </div>
-        <div className="flex justify-center gap-4 mt-4">
-          <button onClick={() => moveCarousel('offerings-carousel','prev')} className="w-12 h-12 rounded-full border border-[#006948] text-[#006948] flex items-center justify-center hover:bg-[#006948] hover:text-white transition-all text-2xl">‹</button>
-          <button onClick={() => moveCarousel('offerings-carousel','next')} className="w-12 h-12 rounded-full border border-[#006948] text-[#006948] flex items-center justify-center hover:bg-[#006948] hover:text-white transition-all text-2xl">›</button>
-        </div>
+        {offeringsList.length > 1 && (
+          <div className="flex justify-center gap-4 mt-4">
+            <button type="button" aria-label={t('Previous')} onClick={() => moveCarousel('offerings-carousel', 'prev', offeringsList.length, activeOffer, setOfferIdx)} className="w-12 h-12 rounded-full border border-[#006948] text-[#006948] flex items-center justify-center hover:bg-[#006948] hover:text-white transition-all text-2xl">‹</button>
+            <button type="button" aria-label={t('Next')} onClick={() => moveCarousel('offerings-carousel', 'next', offeringsList.length, activeOffer, setOfferIdx)} className="w-12 h-12 rounded-full border border-[#006948] text-[#006948] flex items-center justify-center hover:bg-[#006948] hover:text-white transition-all text-2xl">›</button>
+          </div>
+        )}
       </section>
+      )}
 
 
       {/* ── Our Projects ── */}
@@ -312,33 +684,31 @@ const HomePage = () => {
             <span className="text-[#006948] font-medium uppercase tracking-[0.2em] block mb-4 text-sm">{t('Portfolio')}</span>
             <h2 className="text-4xl font-bold">{t('Our Projects')}</h2>
           </div>
+          {/* Featured projects from Admin > Projects (built-in 6 if the API can't be reached) */}
+          {projectCards.length > 0 && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[
-              { title:'Ranchi Gymkhana Club', location:'Ranchi, Jharkhand', capacity:'40 kW', type:'Commercial', savings:'Rs 3,36,000/yr', img:'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=600&h=400&fit=crop' },
-              { title:'DBMS English School', location:'Jamshedpur, Jharkhand', capacity:'100 kW', type:'Institutional', savings:'Rs 8,40,000/yr', img:'https://images.unsplash.com/photo-1559302504-64aae6ca6b6d?w=600&h=400&fit=crop' },
-              { title:'Raj Ceramics', location:'Hardag, Ranchi', capacity:'55 kW', type:'Industrial', savings:'Rs 4,20,000/yr', img:'https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?w=600&h=400&fit=crop' },
-              { title:'CMS Kerala Bhavan', location:'Pune, Maharashtra', capacity:'30 kW', type:'Commercial', savings:'Rs 6,30,000/yr', img:'https://images.unsplash.com/photo-1497440001374-f26997328c1b?w=600&h=400&fit=crop' },
-              { title:'Dayanand Public School', location:'Jamshedpur, Jharkhand', capacity:'40 kW', type:'Institutional', savings:'Rs 3,36,000/yr', img:'https://images.unsplash.com/photo-1624397640148-949b1732bb0a?w=600&h=400&fit=crop' },
-              { title:'Solar Mini Grid', location:'Chatra, Jharkhand', capacity:'25 kW', type:'Industrial', savings:'Rs 2,10,000/yr', img:'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=600&h=400&fit=crop' },
-            ].map(({ title, location, capacity, type, savings, img }) => (
-              <div key={title} className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-gray-100 group">
-                <div className="relative h-52 overflow-hidden">
-                  <img src={img} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" />
-                  <div className="absolute top-4 left-4 bg-white/90 px-3 py-1 rounded-full border border-gray-100">
-                    <span className="text-xs font-medium text-[#006948]">{t(type)}</span>
-                  </div>
+            {projectCards.map(({ key, title, location, capacity, type, savings, img, fallback }) => (
+              <div key={key} className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-gray-100 group">
+                <div className="relative h-52 overflow-hidden bg-gray-100">
+                  <img src={img} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" onError={imgFallback(fallback || SOLAR_IMGS[0])} />
+                  {type && (
+                    <div className="absolute top-4 left-4 bg-white/90 px-3 py-1 rounded-full border border-gray-100 max-w-[80%]">
+                      <span className="text-xs font-medium text-[#006948] block truncate">{t(type)}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="p-5">
-                  <h3 className="text-base font-semibold text-gray-800 mb-1">{title}</h3>
-                  <p className="text-gray-500 text-sm mb-3">📍 {location}</p>
-                  <div className="flex justify-between items-center border-t border-gray-100 pt-3">
-                    <span className="text-xs font-semibold text-[#006948]">{capacity}</span>
-                    <span className="text-xs text-green-600 font-medium">{fmtSavings(savings)}</span>
+                  <h3 className="text-base font-semibold text-gray-800 mb-1 line-clamp-2">{title}</h3>
+                  {location && <p className="text-gray-500 text-sm mb-3 truncate">📍 {location}</p>}
+                  <div className="flex justify-between items-center gap-3 border-t border-gray-100 pt-3">
+                    <span className="text-xs font-semibold text-[#006948] truncate">{capacity}</span>
+                    {savings && <span className="text-xs text-green-600 font-medium truncate">{fmtSavings(savings)}</span>}
                   </div>
                 </div>
               </div>
             ))}
           </div>
+          )}
           <div className="text-center mt-10">
             <Link to="/projects-gallery" className="inline-flex items-center gap-2 bg-[#006948] text-white px-8 py-3 rounded-full font-medium hover:bg-green-700 transition-all">{t('View All Projects')}</Link>
           </div>
@@ -352,31 +722,22 @@ const HomePage = () => {
           <h2 className="text-3xl font-bold">{t('Our Products')}</h2>
           <p className="text-gray-400 text-xs mt-2 italic">{t('Click any product to view full details')}</p>
         </div>
+        {/* Real products from Admin > Product Catalog (built-in cards if unavailable) */}
         <div className="relative flex overflow-x-hidden">
-          <div className="partners-track">
-            {[
-              { name:'Deye Inverters', spec:'3 kW – 200 kW | On-Grid', img:'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop' },
-              { name:'Growatt Inverters', spec:'Residential & Commercial', img:'https://images.unsplash.com/photo-1466611653911-95081537e5b7?w=300&h=200&fit=crop' },
-              { name:'LuxPower Hybrid', spec:'3–30 kW | Battery Ready', img:'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=300&h=200&fit=crop' },
-              { name:'Adani Solar Panels', spec:'580 W – 620 W | DCR', img:'https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?w=300&h=200&fit=crop' },
-              { name:'Tata Power Solar', spec:'570 W – 600 W', img:'https://images.unsplash.com/photo-1497440001374-f26997328c1b?w=300&h=200&fit=crop' },
-              { name:'Rayzon Solar', spec:'545 W – 550 W', img:'https://images.unsplash.com/photo-1559302504-64aae6ca6b6d?w=300&h=200&fit=crop' },
-              { name:'ZEN Energy Panels', spec:'580 W – 600 W', img:'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=300&h=200&fit=crop' },
-              { name:'Bi-Tech Li-Ion Battery', spec:'5 kWh | Long Cycle Life', img:'https://images.unsplash.com/photo-1624397640148-949b1732bb0a?w=300&h=200&fit=crop' },
-              { name:'Solis Storage', spec:'5 kWh | Smart BMS', img:'https://images.unsplash.com/photo-1620641788421-7a1c342ea42e?w=300&h=200&fit=crop' },
-              { name:'Microtek Solar', spec:'Home & Small Business', img:'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=300&h=200&fit=crop' },
-              // Duplicate for seamless loop
-              { name:'Deye Inverters', spec:'3 kW – 200 kW | On-Grid', img:'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=300&h=200&fit=crop' },
-              { name:'Growatt Inverters', spec:'Residential & Commercial', img:'https://images.unsplash.com/photo-1466611653911-95081537e5b7?w=300&h=200&fit=crop' },
-              { name:'LuxPower Hybrid', spec:'3–30 kW | Battery Ready', img:'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=300&h=200&fit=crop' },
-              { name:'Adani Solar Panels', spec:'580 W – 620 W | DCR', img:'https://images.unsplash.com/photo-1508514177221-188b1cf16e9d?w=300&h=200&fit=crop' },
-              { name:'Tata Power Solar', spec:'570 W – 600 W', img:'https://images.unsplash.com/photo-1497440001374-f26997328c1b?w=300&h=200&fit=crop' },
-            ].map(({ name, spec, img }, i) => (
-              <Link to="/products" key={i} className="inline-flex flex-col items-center bg-white border border-gray-100 rounded-2xl shadow-sm min-w-[240px] overflow-hidden hover:shadow-md transition-all hover:border-green-200">
-                <img src={img} alt={t(name)} className="w-full h-36 object-cover" loading="lazy" />
-                <div className="p-4 text-center">
-                  <h4 className="font-bold text-sm text-gray-800">{t(name)}</h4>
-                  <p className="text-xs text-gray-500 mt-1">{t(spec)}</p>
+          <div
+            className={productsLoop ? 'partners-track' : 'flex flex-wrap justify-center gap-3 w-full px-6'}
+            style={productsLoop ? { animationDuration: Math.max(30, productCards.length * 3) + 's' } : undefined}
+          >
+            {(productsLoop ? [...productCards, ...productCards] : productCards).map(({ key, name, spec, img, link, badge }, i) => (
+              <Link to={link} key={key + '-' + i} aria-hidden={productsLoop && i >= productCards.length ? 'true' : undefined} tabIndex={productsLoop && i >= productCards.length ? -1 : undefined}
+                className="inline-flex flex-col items-center bg-white border border-gray-100 rounded-2xl shadow-sm min-w-[240px] w-[240px] overflow-hidden hover:shadow-md transition-all hover:border-green-200">
+                <div className="relative w-full h-36 bg-gray-100">
+                  <img src={img} alt={t(name)} className="w-full h-36 object-cover" loading="lazy" onError={imgFallback(SOLAR_IMGS[i % SOLAR_IMGS.length])} />
+                  {badge && <span className="absolute top-2 left-2 bg-[#006948] text-white text-[10px] font-semibold px-2 py-0.5 rounded-full max-w-[85%] truncate">{t(badge)}</span>}
+                </div>
+                <div className="p-4 text-center w-full">
+                  <h4 className="font-bold text-sm text-gray-800 line-clamp-2">{t(name)}</h4>
+                  {spec && <p className="text-xs text-gray-500 mt-1 truncate">{t(spec)}</p>}
                 </div>
               </Link>
             ))}
@@ -419,104 +780,80 @@ const HomePage = () => {
         </div>
       </section>
 
-      {/* ── Why Choose Us ── */}
+      {/* ── Why Choose Us (Admin > Site Content > Why Customers Choose Us) ── */}
+      {whyList.length > 0 && (
       <section className="py-24 bg-white">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-16 text-center">
           <span className="text-[#006948] font-medium uppercase tracking-[0.2em] block mb-4 text-sm">{t('The Sologix Advantage')}</span>
           <h2 className="text-4xl font-bold mb-16">{t('Why Customers Choose Us?')}</h2>
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {[
-              { icon:'🏅', title:'Certification', desc:'ISO certified operations meeting global standards of quality and safety.' },
-              { icon:'💳', title:'Easy Finance / EMI', desc:'Flexible EMI options from as low as ₹1,000/month. No heavy upfront cost.' },
-              { icon:'🏛️', title:'Assistance in Availing Subsidy', desc:'Empanelled with JBVNL & TSUISL. We handle the entire subsidy process for you.' },
-              { icon:'💰', title:'Value for Money', desc:'Best ROI with payback in 3–5 years and 20+ years of savings thereafter.' },
-              { icon:'🏢', title:'Brand Identity Since 2018', desc:'Jharkhand\'s trusted solar brand founded by IIT, NIT & DTU engineers.' },
-              { icon:'🔧', title:'Operation & Maintenance', desc:'5-year comprehensive O&M. Issues resolved within 24 working hours.' },
-              { icon:'⭐', title:'Best Quality Equipment', desc:'Premium panels and inverters sourced directly from top manufacturers.' },
-              { icon:'📋', title:'Government Subsidy', desc:'PM Surya Ghar Yojana — get up to ₹78,000 subsidy with our guidance.' },
-            ].map(({ icon, title, desc }, i) => (
-              <div key={title} className="reason-card p-6 rounded-3xl bg-gray-50 border border-gray-100 hover:border-[#006948] transition-all opacity-0 translate-y-10 text-left" style={{ transitionDelay:`${i*80}ms` }}>
-                <div className="text-3xl mb-4">{icon}</div>
-                <h3 className="font-semibold text-base mb-2">{t(title)}</h3>
-                <p className="text-gray-500 text-xs leading-relaxed">{t(desc)}</p>
+            {whyList.map(({ icon, title, desc }, i) => (
+              <div key={i} className="reason-card p-6 rounded-3xl bg-gray-50 border border-gray-100 hover:border-[#006948] transition-all opacity-0 translate-y-10 text-left min-w-0" style={{ transitionDelay:`${Math.min(i, 12) * 80}ms` }}>
+                {icon && <div className="text-3xl mb-4">{icon}</div>}
+                <h3 className="font-semibold text-base mb-2 line-clamp-2 break-words">{t(title)}</h3>
+                <p className="text-gray-500 text-xs leading-relaxed line-clamp-5">{t(desc)}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
+      )}
 
-      {/* ── Work Process ── */}
+      {/* ── Work Process (Admin > Site Content > Work Process) ──
+           One list feeds the step row, the details box and the carousel. */}
+      {processList.length > 0 && (
       <section className="py-24 bg-gray-50 overflow-hidden">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-16 text-center mb-12">
           <h2 className="text-4xl font-bold">{t('Our Work Process')}</h2>
           <p className="text-gray-500 mt-3">{t('From first survey to final installation')}</p>
         </div>
         <div className="max-w-4xl mx-auto px-6 mb-12">
-          <div className="flex items-center justify-between relative">
+          <div className="flex items-start justify-between gap-2 relative">
             <div className="absolute top-6 left-0 right-0 h-0.5 bg-gray-200 z-0"></div>
-            {[
-              { num:'1', label:'On Site Survey', icon:'🔍' },
-              { num:'2', label:'Financial Modeling', icon:'📊' },
-              { num:'3', label:'System Design', icon:'📐' },
-              { num:'4', label:'Project Installation', icon:'🔧' },
-              { num:'5', label:'Operations & Maintenance', icon:'📡' },
-            ].map(({ num, label, icon }, i) => (
-              <div key={num}
-                className="process-step flex flex-col items-center z-10 opacity-0 translate-y-10 cursor-pointer group"
-                style={{ transitionDelay:`${i*150}ms` }}
-                onClick={() => setActiveStep(activeStep === num ? null : num)}
-              >
-                <div className={"w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold mb-3 shadow-lg transition-all duration-300 " + (activeStep === num ? "bg-white text-[#006948] scale-125 ring-4 ring-[#006948]" : "bg-[#006948] text-white group-hover:scale-110 group-hover:ring-4 group-hover:ring-[#006948]/30")}>
-                  {activeStep === num ? icon : num}
-                </div>
-                <p className={"text-xs font-semibold text-center max-w-[80px] transition-colors " + (activeStep === num ? "text-[#006948]" : "text-gray-600")}>{t(label)}</p>
-              </div>
-            ))}
+            {processList.map(({ short, title, icon }, i) => {
+              const isActive = activeStep === i;
+              return (
+                <button type="button" key={i}
+                  className="process-step flex flex-col items-center z-10 opacity-0 translate-y-10 cursor-pointer group min-w-0 flex-1"
+                  style={{ transitionDelay:`${Math.min(i, 10) * 150}ms` }}
+                  aria-expanded={isActive}
+                  onClick={() => setActiveStep(isActive ? null : i)}
+                >
+                  <div className={"w-14 h-14 rounded-full flex items-center justify-center text-lg font-bold mb-3 shadow-lg transition-all duration-300 " + (isActive ? "bg-white text-[#006948] scale-125 ring-4 ring-[#006948]" : "bg-[#006948] text-white group-hover:scale-110 group-hover:ring-4 group-hover:ring-[#006948]/30")}>
+                    {isActive && icon ? icon : <span className="truncate max-w-[3rem]">{short}</span>}
+                  </div>
+                  <p className={"text-xs font-semibold text-center max-w-[80px] line-clamp-3 break-words transition-colors " + (isActive ? "text-[#006948]" : "text-gray-600")}>{t(title)}</p>
+                </button>
+              );
+            })}
           </div>
-          {activeStep && (
+          {activeStep !== null && processList[activeStep] && (
             <div className="mt-8 bg-white rounded-2xl p-6 shadow-md border border-green-100 animate-fade-in text-center max-w-xl mx-auto">
-              {[
-                { num:'1', title:'On-Site Survey', desc:'Our experts visit your rooftop to assess space, sunlight, shadow patterns, and energy consumption to design the perfect system.' },
-                { num:'2', title:'Financial Modeling', desc:'We calculate your ROI, payback period, savings projections, and applicable PM Surya Ghar subsidies to give you the complete financial picture.' },
-                { num:'3', title:'System Design', desc:'Custom engineering of your solar system including panel layout, inverter sizing, cable routing, and structural mounting requirements.' },
-                { num:'4', title:'Project Installation', desc:'Our certified technicians install your system safely and efficiently, typically completing the job within 2–7 working days.' },
-                { num:'5', title:'Operations & Maintenance', desc:'5-year comprehensive O&M support with IoT monitoring, periodic cleaning, and 24-hour issue resolution guarantee.' },
-              ].find(s => s.num === activeStep) && (() => {
-                const s = [
-                  { num:'1', title:'On-Site Survey', desc:'Our experts visit your rooftop to assess space, sunlight, shadow patterns, and energy consumption to design the perfect system.' },
-                  { num:'2', title:'Financial Modeling', desc:'We calculate your ROI, payback period, savings projections, and applicable PM Surya Ghar subsidies to give you the complete financial picture.' },
-                  { num:'3', title:'System Design', desc:'Custom engineering of your solar system including panel layout, inverter sizing, cable routing, and structural mounting requirements.' },
-                  { num:'4', title:'Project Installation', desc:'Our certified technicians install your system safely and efficiently, typically completing the job within 2–7 working days.' },
-                  { num:'5', title:'Operations & Maintenance', desc:'5-year comprehensive O&M support with IoT monitoring, periodic cleaning, and 24-hour issue resolution guarantee.' },
-                ].find(x => x.num === activeStep);
-                return (<><h4 className="font-bold text-lg text-[#006948] mb-2">{t('Step {num}: {title}', { num: s.num, title: t(s.title) })}</h4><p className="text-gray-600 text-sm leading-relaxed">{t(s.desc)}</p></>);
-              })()}
+              <h4 className="font-bold text-lg text-[#006948] mb-2">{t('Step {num}: {title}', { num: processList[activeStep].short, title: t(processList[activeStep].title) })}</h4>
+              <p className="text-gray-600 text-sm leading-relaxed">{t(processList[activeStep].desc)}</p>
             </div>
           )}
         </div>
         <div className="focused-carousel-container" id="process-carousel">
-          {[
-            { num:'01', title:'On-Site Survey', desc:'Our experts visit your rooftop to assess space, sunlight, shadow patterns, and energy consumption to design the perfect system.', icon:'🔍' },
-            { num:'02', title:'Financial Modeling', desc:'We calculate your ROI, payback period, savings projections, and applicable subsidies to give you a complete financial picture.', icon:'📊' },
-            { num:'03', title:'System Design', desc:'Custom engineering of your solar system including panel layout, inverter sizing, cable routing, and structural requirements.', icon:'📐' },
-            { num:'04', title:'Project Installation', desc:'Our certified technicians install your system safely and efficiently, typically completing the job in 2–7 days.', icon:'🔧' },
-            { num:'05', title:'Operations & Maintenance', desc:'5-year comprehensive O&M support with IoT monitoring, periodic cleaning, and 24-hour issue resolution.', icon:'📡' },
-          ].map(({ num, title, desc, icon }, i) => (
-            <div key={num} className={`carousel-item${i === 0 ? ' active' : ''}`}>
-              <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-gray-100 h-[320px] flex flex-col justify-center text-center">
-                <div className="text-5xl mb-4">{icon}</div>
+          {processList.map(({ num, title, desc, icon }, i) => (
+            <div key={i} className={`carousel-item${i === activeProc ? ' active' : ''}`}>
+              <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-gray-100 h-[320px] flex flex-col justify-center text-center overflow-hidden">
+                {icon && <div className="text-5xl mb-4">{icon}</div>}
                 <div className="text-sm text-[#006948] font-bold mb-2">{num}</div>
-                <h4 className="text-xl font-bold mb-3">{t(title)}</h4>
-                <p className="text-sm text-gray-500 leading-relaxed">{t(desc)}</p>
+                <h4 className="text-xl font-bold mb-3 line-clamp-2 break-words">{t(title)}</h4>
+                <p className="text-sm text-gray-500 leading-relaxed line-clamp-5">{t(desc)}</p>
               </div>
             </div>
           ))}
         </div>
-        <div className="flex justify-center gap-4 mt-6">
-          <button onClick={() => moveCarousel('process-carousel','prev')} className="w-12 h-12 rounded-full border border-[#006948] text-[#006948] flex items-center justify-center hover:bg-[#006948] hover:text-white transition-all text-2xl">&#8249;</button>
-          <button onClick={() => moveCarousel('process-carousel','next')} className="w-12 h-12 rounded-full border border-[#006948] text-[#006948] flex items-center justify-center hover:bg-[#006948] hover:text-white transition-all text-2xl">&#8250;</button>
-        </div>
+        {processList.length > 1 && (
+          <div className="flex justify-center gap-4 mt-6">
+            <button type="button" aria-label={t('Previous')} onClick={() => moveCarousel('process-carousel', 'prev', processList.length, activeProc, setProcIdx)} className="w-12 h-12 rounded-full border border-[#006948] text-[#006948] flex items-center justify-center hover:bg-[#006948] hover:text-white transition-all text-2xl">&#8249;</button>
+            <button type="button" aria-label={t('Next')} onClick={() => moveCarousel('process-carousel', 'next', processList.length, activeProc, setProcIdx)} className="w-12 h-12 rounded-full border border-[#006948] text-[#006948] flex items-center justify-center hover:bg-[#006948] hover:text-white transition-all text-2xl">&#8250;</button>
+          </div>
+        )}
       </section>
+      )}
 
       {/* ── Mini Calculator ── */}
       <section className="py-20 bg-white">
@@ -574,7 +911,9 @@ const HomePage = () => {
 
 
 
-      {/* ── Testimonials — auto-sliding carousel ── */}
+      {/* ── Testimonials — auto-sliding carousel ──
+           API down -> built-in reviews; admin hid every review -> section hidden. */}
+      {displayTestimonials.length > 0 && (
       <section className="py-24 bg-white overflow-hidden">
         <div className="max-w-[1280px] mx-auto px-6 lg:px-16">
           <div className="text-center mb-12">
@@ -585,14 +924,14 @@ const HomePage = () => {
         </div>
         {/* Infinite sliding track */}
         <div className="relative">
-          <div className="testimonial-track">
-            {[...displayTestimonials, ...displayTestimonials].map((tm, idx) => {
+          <div className={testimonialsLoop ? 'testimonial-track' : 'flex flex-wrap justify-center gap-y-6 px-4 py-4'}>
+            {(testimonialsLoop ? [...displayTestimonials, ...displayTestimonials] : displayTestimonials).map((tm, idx) => {
               const fallbackImg = solarImgs[idx % solarImgs.length];
-              const installImg = tm.installation_photo || fallbackImg;
+              const installImg = toText(tm.installation_photo).trim() || fallbackImg;
               return (
                 <div key={idx} className="testimonial-card bg-white rounded-2xl overflow-hidden border border-gray-100 shadow-sm flex flex-col flex-shrink-0" style={{width:'340px', margin:'0 12px'}}>
                   <div className="relative h-44 overflow-hidden">
-                    <img src={installImg} alt={t('Solar installation')} className="w-full h-full object-cover" loading="lazy" />
+                    <img src={installImg} alt={t('Solar installation')} className="w-full h-full object-cover" loading="lazy" onError={imgFallback(fallbackImg)} />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/10 to-transparent"></div>
                     <div className="absolute bottom-3 left-4 flex gap-0.5">
                       {[1,2,3,4,5].map(s => <span key={s} className={"text-base drop-shadow " + (s <= (tm.rating||5) ? 'text-yellow-400' : 'text-white/30')}>★</span>)}
@@ -619,14 +958,14 @@ const HomePage = () => {
                         />
                       ) : null}
                       <div className="w-14 h-14 bg-gradient-to-br from-[#006948] to-green-400 rounded-full items-center justify-center text-white font-bold text-xl flex-shrink-0 shadow-lg" style={{border:'3px solid white', display: tm.photo_url ? 'none' : 'flex'}}>
-                        {tm.name?.charAt(0).toUpperCase()}
+                        {toText(tm.name).charAt(0).toUpperCase()}
                       </div>
                       <div className="min-w-0 pt-8">
-                        <p className="font-bold text-gray-800 text-sm leading-tight">{tm.name}</p>
+                        <p className="font-bold text-gray-800 text-sm leading-tight truncate">{toText(tm.name)}</p>
                         <p className="text-xs text-gray-500 truncate">{[tm.role, tm.company].filter(Boolean).join(', ')}</p>
                       </div>
                     </div>
-                    <p className="text-gray-600 text-sm leading-relaxed italic flex-1">"{tm.review}"</p>
+                    <p className="text-gray-600 text-sm leading-relaxed italic flex-1 line-clamp-5 break-words" title={toText(tm.review)}>"{toText(tm.review)}"</p>
                     <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-50">
                       {tm.location && <p className="text-xs text-gray-400 flex items-center gap-1"><span>📍</span>{tm.location}</p>}
                       {tm.savings && <span className="text-xs bg-green-50 text-[#006948] px-2.5 py-1 rounded-full font-semibold">{fmtSavings(tm.savings)}</span>}
@@ -638,6 +977,10 @@ const HomePage = () => {
           </div>
         </div>
       </section>
+      )}
+
+      {/* ── YouTube videos (Admin > Site Content > YouTube videos) ── */}
+      <YouTubeSection />
 
       {/* ── Partners & Clients ── */}
       <section className="py-20 bg-gray-50 overflow-hidden border-t border-gray-100">

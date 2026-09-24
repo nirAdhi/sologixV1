@@ -6,6 +6,7 @@ import { BRANDING } from '../utils/branding';
 import BrandLogo from '../components/BrandLogo';
 import { useT } from '../i18n';
 import LanguageToggle from '../i18n/LanguageToggle';
+import { parseFeatures } from '../components/ServiceCard';
 
 const CustomerBookingDetail = () => {
   const navigate = useNavigate();
@@ -179,6 +180,16 @@ const CustomerBookingDetail = () => {
             </span>
           </div>
         </div>
+
+        {/* Admin's note to the customer */}
+        {typeof booking.admin_notes === 'string' && booking.admin_notes.trim() !== '' && (
+          <div className="bg-green-50 border-l-4 border-[#006948] rounded-r-xl shadow p-6 mb-6" role="note">
+            <h2 className="text-lg font-semibold text-[#006948] mb-2 flex items-center">
+              <span className="mr-2">💬</span> {t('Message from Sologix')}
+            </h2>
+            <p className="text-gray-700 whitespace-pre-line break-words">{booking.admin_notes.trim()}</p>
+          </div>
+        )}
 
         <div className="bg-white rounded-xl shadow p-6 mb-6">
           <div className="flex justify-between items-center mb-6">
@@ -359,14 +370,11 @@ const CustomerBookingDetail = () => {
             </div>
           )}
 
-          {booking.service_features && (
+          {parseFeatures(booking.service_features).length > 0 && (
             <div className="mt-4">
               <p className="text-sm text-gray-500 mb-2">{t('Features Included')}</p>
               <div className="flex flex-wrap gap-2">
-                {(typeof booking.service_features === 'string' 
-                  ? JSON.parse(booking.service_features) 
-                  : booking.service_features || []
-                ).map((feature, index) => (
+                {parseFeatures(booking.service_features).map((feature, index) => (
                   <span key={index} className="bg-green-50 text-green-700 px-3 py-1 rounded-full text-sm">
                     {t(feature)}
                   </span>

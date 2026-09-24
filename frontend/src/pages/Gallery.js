@@ -1,17 +1,50 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useT } from '../i18n';
+import { fetchProjects, buildTypes, FALLBACK_PROJECT_IMAGE } from './ProjectsPage';
 
-const projects = [
-  { id: 1, category: 'Industrial', title: 'MegaTech Manufacturing Plant', location: 'Pune, Maharashtra', capacity: '500 kWp', savings: '₹45 Lakhs', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB4iLxwEu-WUr5Cb4TxzrCnr3YJwlJaJZf7dHvxtUjvnXwJ6PHkIPn_MlQQmSjnnOJE5Z_MdVqT4NUBKPQ25TCioskU404xLu9n4mmyAhjsF84rrgWDhs-DGlbWX9155vWM0wfLCtQcoJZTRBTce1s3q1X9tByfk1Un9OzzVccWklRJJRXDgnQVyzOF4q1F_jo56Opk7bDINGU3r5LCvvnLvnShtI_NgAjk2AzQYbAWHy423SvrPmWq_XZTbLmD-lz2nJ_9Ifv9vXY', tag: 'Industrial' },
-  { id: 2, category: 'Commercial', title: 'Apex Business Hub', location: 'Bengaluru, Karnataka', capacity: '150 kWp', savings: '₹12 Lakhs', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCQa_HRntdpQDr8mf22ifPjZUaROEYrjeDNu21olD-U2oYWjbfDQKtAW2400xO0o_p6CTyRH3FM1ngFPmq0TqFl_LGFm3EU5YJwjCfjhAtIHo_XUg-Eqb7u6Bf5EHdptbtPVMQ0Hgv_mfAZQFYvIyyxxUX2FM_-dX1UEIIYJ21XNVwZdD-pgQdSAEDVTD9To2PF3hj9hyiLjcoLhENs5kofG7q_z09yuWMWOLE1pmwT4Y-m5Ci8BcdGtDvNO46KFaDkJCUaRCmROPc', tag: 'Commercial' },
-  { id: 3, category: 'Residential', title: 'The Sharma Residence', location: 'Ranchi, Jharkhand', capacity: '10 kWp', savings: '₹1.2 Lakhs', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCdtAkQYe7AjDRyYX8VXdnTL3JiowGbcpGeS4o3kU0jMr_x5yHc-DY6j6V-WkqrxV258bwDhHBCUGebgJxD_oOlY5cGrpiuzu8P_IXfn_2ljLNePoc_CWM1ahLgD3ARQsnMU95MRgJpDfGsFY680M_jjJl9pryt0Qij3T-5aiWIHyQJTHF_IR8A6FvrIx6XtFYzhxciBdZSY4uXvYiFdGnR9XELZVSWiG85MpN704bszoQ4X0hzeqTUGbMxSgwahbXcLk-VkTWtdRQ', tag: 'Residential' },
-  { id: 4, category: 'Industrial', title: 'Green Acres Farm', location: 'Nashik, Maharashtra', capacity: '250 kWp', savings: '₹20 Lakhs', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuACPt39R9JEGvahstEWrsjbaO5Nfzggu-tDsdy82m4E26_lekmEAFVcHNtl0nry9UE_3BEmDlYzWyi_FoGapOuMRagUixquFAkS1hxhz_Y45lAOe82sDRojff_4P_Zxc1yC6SVpn7vMw3T7zw0gMl9xG1siOxeTLvd9iFsioaURvxzuQrH3og0XoAJiWseq3KL4zDimBBvfgIKxfJg64HeBRTBMMNTbvcW1lTrElEZqTcuw4kEZwfXZHTlvbrNcy7I3o9xWBIrDapc', tag: 'Industrial' },
-  { id: 5, category: 'Commercial', title: 'City Care Hospital', location: 'Delhi, NCR', capacity: '300 kWp', savings: '₹28 Lakhs', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCyCZe0HnXRYSmqXG_qk8mqfCCwYpnD5oMCLYwo3Nt2zGbPALZ4SiqKVg9QRZYKpGvp9Iu0B9IXdZhrYfXjgzpPzFhhZ8biHYUp1XilZQTdSkYTllJceELmM3FaxjYixWVsh3h08xnQBdNZNtKNJhI_Jpy12at36iZaPUakpKFv_Va01MKnDm7_H-iO9iV96fXrhHzmgFyJ-mbff7hWF7Iel-ncQR3poJ_d4NL0oFySusxyMCboiWKcd4hZNlCuR2wYGetvQ7c5MKY', tag: 'Commercial' },
-  { id: 6, category: 'Residential', title: 'Palm Grove Villas', location: 'Goa', capacity: '25 kWp', savings: '₹2.5 Lakhs', img: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBaUdCKINPZz6MzCQFl2hI-s82N3FTZjjMKLHooTXvFJ4GM2JkE33uo9HaAkBrVMLZuaaplezuhladLhcuXnUxh1jyzq2ce8D4m3bdqVQ8kVJbiGqJH0dh5B2uAGeWGX4dntFclWDRpkZitB0gF4NJ5zjiLICnfetggzbxtSn9j9dxfkoypmQB6rwjP-rx_piPlUPPwJH2vs9Xo_2jpjz8FWsaXeZaTuVPYNQetrwATb6IBKzSs18NR0XmrUdouwB7DI7qlwpaaH2s', tag: 'Residential' },
-];
-
+// Photo gallery of the projects the admin manages in Admin → Projects.
+// API fails → built-in project list (same as the Projects page).
+// API OK but no projects → friendly "coming soon" message.
 const Gallery = () => {
   const { t } = useT();
+  const [projects, setProjects] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState('All');
+  const [openIndex, setOpenIndex] = useState(null); // index into `filtered`
+
+  useEffect(() => {
+    let alive = true;
+    fetchProjects().then(({ projects: list }) => {
+      if (!alive) return;
+      setProjects(list);
+      setLoading(false);
+    });
+    return () => { alive = false; };
+  }, []);
+
+  const types = buildTypes(projects);
+  const activeFilter = types.includes(filter) ? filter : 'All';
+  const filtered = activeFilter === 'All' ? projects : projects.filter(p => p.type === activeFilter);
+  const open = openIndex !== null ? filtered[openIndex] : null;
+  const empty = !loading && projects.length === 0;
+
+  // Lightbox keyboard: Esc closes, arrows move
+  useEffect(() => {
+    if (openIndex === null) return undefined;
+    const onKey = (e) => {
+      if (e.key === 'Escape') setOpenIndex(null);
+      else if (e.key === 'ArrowRight' && filtered.length > 1) setOpenIndex(i => (i + 1) % filtered.length);
+      else if (e.key === 'ArrowLeft' && filtered.length > 1) setOpenIndex(i => (i - 1 + filtered.length) % filtered.length);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [openIndex, filtered.length]);
+
+  const pickFilter = (type) => { setFilter(type); setOpenIndex(null); };
+  const onImgError = (e) => { if (e.target.src !== FALLBACK_PROJECT_IMAGE) e.target.src = FALLBACK_PROJECT_IMAGE; };
+  const btnStyle = { fontFamily: 'Work Sans', fontSize: '14px', letterSpacing: '0.05em' };
+
   return (
     <div>
       <div className="pt-24 pb-24">
@@ -20,45 +53,105 @@ const Gallery = () => {
           <p className="text-[18px] text-[#3d4a42] max-w-2xl mx-auto" style={{ fontFamily: 'Work Sans' }}>{t('Explore our portfolio of successful solar installations across residential, commercial, and industrial sectors. See how we deliver reliable, forward-thinking energy solutions.')}</p>
         </section>
 
-        <section className="max-w-[1280px] mx-auto px-5 md:px-[64px] mb-12 flex justify-center gap-4 flex-wrap">
-          <button className="px-6 py-2 rounded-full border border-[#006948] text-[#006948] font-medium hover:bg-[#006948] hover:text-white transition-colors bg-[#00855d]/10" style={{ fontFamily: 'Work Sans', fontSize: '14px', letterSpacing: '0.05em' }}>{t('All Projects')}</button>
-          <button className="px-6 py-2 rounded-full border border-[#E5E7EB] text-[#3d4a42] font-medium hover:border-[#006948] hover:text-[#006948] transition-colors" style={{ fontFamily: 'Work Sans', fontSize: '14px', letterSpacing: '0.05em' }}>{t('Residential')}</button>
-          <button className="px-6 py-2 rounded-full border border-[#E5E7EB] text-[#3d4a42] font-medium hover:border-[#006948] hover:text-[#006948] transition-colors" style={{ fontFamily: 'Work Sans', fontSize: '14px', letterSpacing: '0.05em' }}>{t('Commercial')}</button>
-          <button className="px-6 py-2 rounded-full border border-[#E5E7EB] text-[#3d4a42] font-medium hover:border-[#006948] hover:text-[#006948] transition-colors" style={{ fontFamily: 'Work Sans', fontSize: '14px', letterSpacing: '0.05em' }}>{t('Industrial')}</button>
-        </section>
+        {loading && (
+          <div className="flex justify-center py-16"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-[#006948]"></div></div>
+        )}
 
-        <section className="max-w-[1280px] mx-auto px-5 md:px-[64px]">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {projects.map((project) => (
-              <div key={project.id} className="bg-[#ffffff] rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-[#E5E7EB] group">
-                <div className="relative h-64 overflow-hidden">
-                  <img alt={project.title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" src={project.img} />
-                  <div className="absolute top-4 left-4 bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-[#E5E7EB]">
-                    <span className="text-[14px] font-medium text-[#006948]" style={{ fontFamily: 'Work Sans' }}>{t(project.tag)}</span>
-                  </div>
-                </div>
-                <div className="p-6">
-                  <h3 className="text-[20px] font-semibold text-[#141b2b] mb-2" style={{ fontFamily: 'Manrope' }}>{project.title}</h3>
-                  <div className="flex items-center gap-2 text-[#3d4a42] mb-4">
-                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
-                    <span className="text-[16px]" style={{ fontFamily: 'Work Sans' }}>{project.location}</span>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 border-t border-[#E5E7EB] pt-4">
-                    <div>
-                      <span className="text-[14px] text-[#3d4a42] block uppercase tracking-wider" style={{ fontFamily: 'Work Sans', fontWeight: 500 }}>{t('System Capacity')}</span>
-                      <span className="text-[16px] text-[#141b2b] font-semibold" style={{ fontFamily: 'Work Sans' }}>{project.capacity}</span>
+        {empty && (
+          <section className="max-w-md mx-auto px-5 text-center py-12">
+            <div className="text-5xl mb-4">☀️</div>
+            <h2 className="text-2xl font-bold text-[#141b2b] mb-2" style={{ fontFamily: 'Manrope' }}>{t('Projects coming soon')}</h2>
+            <p className="text-[#3d4a42] mb-6" style={{ fontFamily: 'Work Sans' }}>{t('We are adding photos of our latest solar installations. Please check back soon.')}</p>
+            <Link to="/booking" className="inline-block bg-[#006948] text-white px-8 py-3 rounded-full font-semibold hover:bg-green-700 transition-colors">
+              {t('Start Your Solar Journey →')}
+            </Link>
+          </section>
+        )}
+
+        {!loading && !empty && (
+          <>
+            {types.length > 2 && (
+              <section className="max-w-[1280px] mx-auto px-5 md:px-[64px] mb-12 flex justify-center gap-4 flex-wrap">
+                {types.map(type => (
+                  <button key={type} type="button" onClick={() => pickFilter(type)} aria-pressed={activeFilter === type}
+                    className={'px-6 py-2 rounded-full border font-medium transition-colors ' +
+                      (activeFilter === type
+                        ? 'border-[#006948] bg-[#006948] text-white'
+                        : 'border-[#E5E7EB] text-[#3d4a42] hover:border-[#006948] hover:text-[#006948]')}
+                    style={btnStyle}>
+                    {type === 'All' ? t('All Projects') : t(type)}
+                  </button>
+                ))}
+              </section>
+            )}
+
+            <section className="max-w-[1280px] mx-auto px-5 md:px-[64px]">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                {filtered.map((project, i) => (
+                  <button key={project.id} type="button" onClick={() => setOpenIndex(i)}
+                    className="relative block w-full h-72 rounded-xl overflow-hidden shadow-sm hover:shadow-lg transition-all border border-[#E5E7EB] group text-left focus:outline-none focus-visible:ring-4 focus-visible:ring-[#006948]/40">
+                    <img alt={project.title} loading="lazy" src={project.image_url || FALLBACK_PROJECT_IMAGE} onError={onImgError}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" />
+                    {project.type && (
+                      <div className="absolute top-4 left-4 max-w-[70%] bg-white/90 backdrop-blur-sm px-3 py-1 rounded-full border border-[#E5E7EB]">
+                        <span className="block truncate text-[14px] font-medium text-[#006948]" style={{ fontFamily: 'Work Sans' }}>{t(project.type)}</span>
+                      </div>
+                    )}
+                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent p-5 pt-16 text-white">
+                      <h3 className="text-[20px] font-semibold line-clamp-2 break-words" style={{ fontFamily: 'Manrope' }}>{t(project.title)}</h3>
+                      <div className="flex items-center justify-between gap-3 mt-1 text-sm text-white/85" style={{ fontFamily: 'Work Sans' }}>
+                        {project.location ? (
+                          <span className="flex items-center gap-1 min-w-0">
+                            <svg className="w-4 h-4 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
+                            <span className="truncate">{t(project.location)}</span>
+                          </span>
+                        ) : <span />}
+                        {project.capacity && <span className="flex-shrink-0 max-w-[40%] truncate bg-[#006948] px-2.5 py-0.5 rounded-full text-xs font-semibold">{t(project.capacity)}</span>}
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-[14px] text-[#3d4a42] block uppercase tracking-wider" style={{ fontFamily: 'Work Sans', fontWeight: 500 }}>{t('Annual Savings')}</span>
-                      <span className="text-[16px] text-[#006948] font-semibold" style={{ fontFamily: 'Work Sans' }}>{project.savings}</span>
-                    </div>
-                  </div>
-                </div>
+                  </button>
+                ))}
               </div>
-            ))}
-          </div>
-        </section>
+
+              {filtered.length === 0 && (
+                <div className="text-center py-16 text-gray-400">
+                  <p>{t('No {type} projects found', { type: t(activeFilter) })}</p>
+                </div>
+              )}
+            </section>
+          </>
+        )}
       </div>
+
+      {/* Lightbox */}
+      {open && (
+        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setOpenIndex(null)} role="dialog" aria-modal="true" aria-label={t(open.title)}>
+          <button type="button" onClick={() => setOpenIndex(null)} aria-label={t('Close')}
+            className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/15 hover:bg-white/30 text-white text-xl flex items-center justify-center">✕</button>
+          {filtered.length > 1 && (
+            <>
+              <button type="button" aria-label={t('Previous')}
+                onClick={e => { e.stopPropagation(); setOpenIndex(i => (i - 1 + filtered.length) % filtered.length); }}
+                className="absolute left-2 md:left-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 hover:bg-white/30 text-white text-2xl flex items-center justify-center">‹</button>
+              <button type="button" aria-label={t('Next')}
+                onClick={e => { e.stopPropagation(); setOpenIndex(i => (i + 1) % filtered.length); }}
+                className="absolute right-2 md:right-6 top-1/2 -translate-y-1/2 w-10 h-10 rounded-full bg-white/15 hover:bg-white/30 text-white text-2xl flex items-center justify-center">›</button>
+            </>
+          )}
+          <figure className="max-w-5xl w-full" onClick={e => e.stopPropagation()}>
+            <img src={open.image_url || FALLBACK_PROJECT_IMAGE} alt={open.title} onError={onImgError}
+              className="w-full max-h-[75vh] object-contain rounded-lg" />
+            <figcaption className="text-white mt-4 text-center px-8">
+              <h2 className="text-xl md:text-2xl font-semibold break-words" style={{ fontFamily: 'Manrope' }}>{t(open.title)}</h2>
+              <p className="text-white/75 text-sm mt-1 break-words" style={{ fontFamily: 'Work Sans' }}>
+                {[open.location && t(open.location), open.capacity && t(open.capacity), open.type && t(open.type)].filter(Boolean).join(' · ')}
+              </p>
+              {open.savings && <p className="text-[#6ee7b7] text-sm mt-1 break-words">{t('Annual Savings')}: {t(open.savings)}</p>}
+              {open.description && <p className="text-white/70 text-sm mt-2 max-w-2xl mx-auto line-clamp-3 break-words">{t(open.description)}</p>}
+            </figcaption>
+          </figure>
+        </div>
+      )}
     </div>
   );
 };

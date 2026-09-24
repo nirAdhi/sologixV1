@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { adminAPI, uploadAPI } from '../../utils/api';
 import { BRANDING } from '../../utils/branding';
+import { parseFeatures } from '../../components/ServiceCard';
 
 const API_URL = BRANDING.apiUrl;
 
@@ -262,17 +263,16 @@ const AdminServices = () => {
 
   const openEditModal = (service) => {
     setEditingService(service);
-    const features = service.features 
-      ? (typeof service.features === 'string' ? JSON.parse(service.features) : service.features)
-      : [''];
+    // Safe parse: features may be an array, JSON string, double-encoded JSON or plain text
+    const features = parseFeatures(service.features);
     setFormData({
-      name: service.name,
+      name: service.name || '',
       description: service.description || '',
-      price: service.price,
+      price: service.price ?? '',
       duration_hours: service.duration_hours || 4,
       features: features.length > 0 ? features : [''],
       image_url: service.image_url || '',
-      is_active: service.is_active
+      is_active: service.is_active === true || service.is_active === 1 || service.is_active === '1'
     });
     setShowModal(true);
   };
@@ -409,6 +409,8 @@ const AdminServices = () => {
       // Use the admin API to update service directly
       await adminAPI.updateService(selectedService.id, {
         ...selectedService,
+        // always a real array — sending the DB's JSON string back double-encodes it
+        features: parseFeatures(selectedService.features),
         image_url: url
       });
       
@@ -424,11 +426,15 @@ const AdminServices = () => {
 
   const handleSubmit = async () => {
     try {
+      const price = parseFloat(formData.price);
+      const duration = parseInt(formData.duration_hours, 10);
       const data = {
         ...formData,
-        price: parseFloat(formData.price),
-        duration_hours: parseInt(formData.duration_hours),
-        features: formData.features.filter(f => f.trim() !== '')
+        price: Number.isFinite(price) ? price : 0,
+        duration_hours: Number.isFinite(duration) ? duration : 4,
+        // always a real array of non-empty strings
+        features: parseFeatures(formData.features),
+        is_active: !!formData.is_active
       };
 
       if (editingService) {

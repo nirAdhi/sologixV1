@@ -4,6 +4,20 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { adminAPI } from '../../utils/api';
 
+// Format a DATE from the API for <input type="date"> using LOCAL date parts.
+// (toISOString()/split('T') converts to UTC and shows the previous day in IST.)
+const toDateInput = (value) => {
+  if (!value) return '';
+  if (typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value.trim())) return value.trim();
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return '';
+  const pad = (n) => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+};
+
+// Empty date fields must go to the server as null, not '' (MariaDB rejects '').
+const emptyToNull = (v) => (v === '' || v === undefined ? null : v);
+
 const AdminBookings = () => {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -85,7 +99,7 @@ const AdminBookings = () => {
     setFormData({
       status: booking.status,
       admin_notes: booking.admin_notes || '',
-      appointment_date: booking.appointment_date?.split('T')[0] || '',
+      appointment_date: toDateInput(booking.appointment_date),
       appointment_time: booking.appointment_time || '',
       subject: '',
       message: ''
@@ -97,9 +111,9 @@ const AdminBookings = () => {
     setSelectedBooking(booking);
     setProgressData({
       delivery_status: booking.delivery_status || 'not_applicable',
-      delivery_date: booking.delivery_date?.split('T')[0] || '',
+      delivery_date: toDateInput(booking.delivery_date),
       delivery_notes: booking.delivery_notes || '',
-      installation_scheduled_date: booking.installation_scheduled_date?.split('T')[0] || '',
+      installation_scheduled_date: toDateInput(booking.installation_scheduled_date),
       installation_notes: booking.installation_notes || '',
       work_progress: booking.work_progress || 'not_started'
     });
@@ -113,12 +127,17 @@ const AdminBookings = () => {
 
   const handleProgressUpdate = async () => {
     try {
-      await adminAPI.updateBookingProgress(selectedBooking.booking_id || selectedBooking.id, progressData);
+      const payload = {
+        ...progressData,
+        delivery_date: emptyToNull(progressData.delivery_date),
+        installation_scheduled_date: emptyToNull(progressData.installation_scheduled_date),
+      };
+      await adminAPI.updateBookingProgress(selectedBooking.booking_id || selectedBooking.id, payload);
       toast.success('Booking progress updated');
       setShowProgressModal(false);
       fetchBookings(pagination.page);
     } catch (error) {
-      toast.error('Failed to update progress');
+      toast.error(error.response?.data?.message || 'Failed to update progress');
     }
   };
 
@@ -381,7 +400,8 @@ const AdminBookings = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Admin Notes</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Message to customer</label>
+                  <p className="text-xs text-gray-500 -mt-1 mb-2">Shown to the customer as "Message from Sologix" in their portal and booking page. Leave empty to show nothing.</p>
                   <textarea
                     name="admin_notes"
                     value={formData.admin_notes}

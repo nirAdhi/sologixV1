@@ -9,7 +9,6 @@ const httpsUrl = (v) => (/^https:\/\/[^\s"'<>]+$/i.test(clean(v)) ? clean(v) : '
 const digits = (v) => clean(v).replace(/[^\d]/g, '');
 
 // Built-in defaults = what the site showed before .env control existed.
-// YouTube has no default: both channel links that were in the code return 404.
 const DEFAULTS = {
   phone: '+91 8287766474',
   phoneAlt: '+91 9031018640',
@@ -20,7 +19,7 @@ const DEFAULTS = {
   siteUrl: 'https://sologixenergy.com',
   address: 'STPI Building, Plot-8, Namkum Industrial Area, Ranchi, Jharkhand - 834010',
   social: {
-    youtube: '',
+    youtube: 'https://www.youtube.com/@Solar_by_Sologix',
     facebook: 'https://www.facebook.com/sologix/',
     instagram: 'https://www.instagram.com/sologixenergy/',
     linkedin: 'https://www.linkedin.com/company/m-s-sologix-energy/',

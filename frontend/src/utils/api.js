@@ -114,6 +114,8 @@ export const customerAPI = {
 };
 
 export const uploadAPI = {
+  // Any admin content image: Cloudinary if set up, otherwise stored on the server (/uploads/...)
+  uploadImage: (image, folder) => api.post('/upload/image', { image, folder }),
   // Upload from Google Drive URL
   uploadFromDrive: (data) => api.post('/upload/cloudinary/upload-from-drive', data),
   // Upload from base64
@@ -153,6 +155,12 @@ export const testimonialsAPI = {
   create: (data) => api.post('/testimonials', data),
   update: (id, data) => api.put('/testimonials/' + id, data),
   delete: (id) => api.delete('/testimonials/' + id),
+};
+
+export const youtubeAPI = {
+  getPublic: () => api.get('/youtube'),
+  getAdmin: () => api.get('/youtube/admin'),
+  refresh: () => api.post('/youtube/refresh'),
 };
 
 export const emailAdminAPI = {

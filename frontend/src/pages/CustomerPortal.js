@@ -374,6 +374,14 @@ const CustomerPortal = () => {
                         )}
                       </div>
 
+                      {/* Admin's note to the customer */}
+                      {typeof booking.admin_notes === 'string' && booking.admin_notes.trim() !== '' && (
+                        <div className="mt-4 border-l-4 border-[#006948] bg-green-50 rounded-r-lg p-4" role="note">
+                          <p className="text-sm font-semibold text-[#006948] mb-1">💬 {t('Message from Sologix')}</p>
+                          <p className="text-sm text-gray-700 whitespace-pre-line break-words">{booking.admin_notes.trim()}</p>
+                        </div>
+                      )}
+
                       <Link
                         to={`/portal/booking/${booking.booking_id}`}
                         className="mt-4 text-green-600 hover:text-green-700 font-medium text-sm inline-block"
@@ -423,7 +431,14 @@ const CustomerPortal = () => {
                             {booking.booking_id}
                           </Link>
                         </td>
-                        <td className="px-6 py-4 text-gray-800">{t(booking.service_name)}</td>
+                        <td className="px-6 py-4 text-gray-800">
+                          {t(booking.service_name)}
+                          {typeof booking.admin_notes === 'string' && booking.admin_notes.trim() !== '' && (
+                            <Link to={`/portal/booking/${booking.booking_id}`} className="block text-xs text-[#006948] font-medium mt-1 hover:underline">
+                              💬 {t('Message from Sologix')}
+                            </Link>
+                          )}
+                        </td>
                         <td className="px-6 py-4 text-gray-600">
                           {new Date(booking.appointment_date).toLocaleDateString(locale)}
                         </td>

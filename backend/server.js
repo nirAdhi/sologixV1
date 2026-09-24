@@ -41,12 +41,13 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net'],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://checkout.razorpay.com', 'https://cdn.razorpay.com', 'https://api.razorpay.com', 'https://cdn.tailwindcss.com', 'https://www.googletagmanager.com', 'https://www.google-analytics.com', 'https://ssl.google-analytics.com'],
+      styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', 'https://code.tidio.co', 'https://widget-v4.tidiochat.com'],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://checkout.razorpay.com', 'https://cdn.razorpay.com', 'https://api.razorpay.com', 'https://cdn.tailwindcss.com', 'https://www.googletagmanager.com', 'https://www.google-analytics.com', 'https://ssl.google-analytics.com',
+        'https://www.clarity.ms', 'https://scripts.clarity.ms', 'https://code.tidio.co', 'https://widget-v4.tidiochat.com'],
       imgSrc: ["'self'", 'data:', 'https:', 'http:', 'https://www.google-analytics.com'],
-      fontSrc: ["'self'", 'https://fonts.gstatic.com', 'https://cdn.jsdelivr.net'],
+      fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com', 'https://cdn.jsdelivr.net', 'https://code.tidio.co', 'https://widget-v4.tidiochat.com'],
       connectSrc: ["'self'", 'https:', 'http:', 'wss:', 'https://www.google-analytics.com', 'https://analytics.google.com', 'https://region1.google-analytics.com'],
-      frameSrc: ["'self'", 'https://checkout.razorpay.com', 'https://api.razorpay.com'],
+      frameSrc: ["'self'", 'https://checkout.razorpay.com', 'https://api.razorpay.com', 'https://www.youtube-nocookie.com', 'https://www.youtube.com', 'https://code.tidio.co', 'https://widget-v4.tidiochat.com'],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'", 'https:', 'http:']
     }
@@ -128,7 +129,7 @@ app.use((req, res, next) => {
   } else {
     // Keep the raw bytes so webhook signatures (WhatsApp) can be verified exactly
     // as Meta computed them. 500kb elsewhere (live setting); 10mb only on upload endpoints.
-    const isUpload = req.originalUrl.startsWith('/api/upload/');
+    const isUpload = req.originalUrl.startsWith('/api/upload/') || req.originalUrl.startsWith('/api/site-settings/');
     express.json({
       limit: isUpload ? '10mb' : '500kb',
       verify: (r, _res, buf) => { r.rawBody = buf; }
@@ -169,6 +170,7 @@ app.use('/api/bookings', require('./routes/bookings'));
 app.use('/api/payments', require('./routes/payments'));
 const configRoutes = require('./routes/config');
 app.use('/api/config', configRoutes.publicRouter);
+app.use('/api/youtube', require('./routes/youtube'));
 app.use('/api/admin/email', configRoutes.adminRouter); // before /api/admin
 app.use('/api/admin', require('./routes/admin'));
 app.use('/api/customer', require('./routes/customer'));

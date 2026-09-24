@@ -17,20 +17,47 @@ export default function AdminProjects() {
   useEffect(() => { load(); }, []);
   const load = async () => {
     try { const r = await projectsAPI.getAll(); setItems(r.data.data || []); }
-    catch(e) { toast.error('Failed'); } finally { setLoading(false); }
+    catch(e) { toast.error(errMsg(e, 'Failed to load projects')); } finally { setLoading(false); }
   };
 
   const openAdd = () => { setEditing(null); setForm({...empty, sort_order: items.length+1}); setShowForm(true); };
-  const openEdit = (p) => { setEditing(p.id); setForm({...p, is_featured: p.is_featured===1||p.is_featured===true}); setShowForm(true); };
+  const openEdit = (p) => {
+    setEditing(p.id);
+    const clean = {};
+    Object.keys(empty).forEach(k => { clean[k] = p[k] ?? empty[k]; });
+    setForm({ ...clean, is_featured: p.is_featured===1 || p.is_featured===true || p.is_featured==='1' });
+    setShowForm(true);
+  };
 
+  // Resize in the browser: the server rejects bodies over ~1 MB, so a raw
+  // phone photo (3–8 MB as base64) would never save.
   const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (file.size > 3*1024*1024) { toast.error('Image must be under 3MB'); return; }
+    if (!file.type.startsWith('image/')) { toast.error('Please choose an image file'); return; }
+    if (file.size > 15 * 1024 * 1024) { toast.error('Image must be under 15MB'); return; }
     const reader = new FileReader();
-    reader.onload = ev => setForm(f => ({...f, image_url: ev.target.result}));
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 1200;
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        setForm(f => ({ ...f, image_url: canvas.toDataURL('image/jpeg', 0.82) }));
+      };
+      img.onerror = () => toast.error('Could not read that image');
+      img.src = ev.target.result;
+    };
     reader.readAsDataURL(file);
   };
+
+  const errMsg = (e, fallback) => e?.response?.data?.message || fallback;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -47,21 +74,21 @@ export default function AdminProjects() {
         toast.success('Project added!');
       }
       setShowForm(false);
-    } catch(e) { toast.error('Failed to save'); } finally { setSaving(false); }
+    } catch(e) { toast.error(errMsg(e, 'Failed to save project')); } finally { setSaving(false); }
   };
 
   const handleDelete = async (id) => {
     if (!window.confirm('Delete this project?')) return;
     try { await projectsAPI.delete(id); setItems(prev => prev.filter(p => p.id!==id)); toast.success('Deleted'); }
-    catch(e) { toast.error('Failed'); }
+    catch(e) { toast.error(errMsg(e, 'Failed to delete project')); }
   };
 
   const toggleFeatured = async (p) => {
     try {
       const r = await projectsAPI.update(p.id, { is_featured: !p.is_featured });
       setItems(prev => prev.map(x => x.id===p.id ? r.data.data : x));
-      toast.success(r.data.data.is_featured ? 'Added to homepage' : 'Removed from homepage');
-    } catch(e) {}
+      toast.success(r.data.data.is_featured ? 'Featured on homepage' : 'No longer featured on homepage');
+    } catch(e) { toast.error(errMsg(e, 'Failed to update project')); }
   };
 
   const typeColor = (t) => ({ Residential:'bg-blue-100 text-blue-700', Commercial:'bg-green-100 text-green-700', Industrial:'bg-orange-100 text-orange-700', Institutional:'bg-purple-100 text-purple-700' }[t] || 'bg-gray-100 text-gray-700');
@@ -71,7 +98,8 @@ export default function AdminProjects() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h2 className="text-xl font-bold text-gray-800">Project Portfolio</h2>
-          <p className="text-sm text-gray-500 mt-1">{items.filter(p=>p.is_featured).length} on homepage · {items.length} total</p>
+          <p className="text-sm text-gray-500 mt-1">{items.filter(p=>p.is_featured).length} featured on homepage · {items.length} total</p>
+          <p className="text-xs text-gray-400 mt-1">Featured projects appear in the homepage 'Our Projects' section (if none are featured, the newest 6 are shown); all projects appear on the Projects and Gallery pages.</p>
         </div>
         <button onClick={openAdd} className="bg-[#006948] text-white px-5 py-2.5 rounded-xl font-semibold hover:bg-green-700 text-sm">+ Add Project</button>
       </div>
@@ -92,9 +120,9 @@ export default function AdminProjects() {
                   <span className={"text-xs px-2 py-1 rounded-full font-medium " + typeColor(p.type)}>{p.type}</span>
                 </div>
                 <div className="absolute top-3 right-3">
-                  <button onClick={() => toggleFeatured(p)}
+                  <button onClick={() => toggleFeatured(p)} title="Featured projects appear in the homepage 'Our Projects' section (if none are featured, the newest 6 are shown); all projects appear on the Projects and Gallery pages."
                     className={"text-xs px-2 py-1 rounded-full font-medium transition-colors " + (p.is_featured ? 'bg-yellow-400 text-yellow-900 hover:bg-gray-100 hover:text-gray-600' : 'bg-white/80 text-gray-600 hover:bg-yellow-400 hover:text-yellow-900')}>
-                    {p.is_featured ? '⭐ Featured' : '○ Hidden'}
+                    {p.is_featured ? '★ Featured on homepage' : 'Not featured'}
                   </button>
                 </div>
               </div>
@@ -141,6 +169,7 @@ export default function AdminProjects() {
                     <p className="text-xs text-gray-400 mb-1">Upload from device</p>
                     <input type="file" accept="image/*" onChange={handleFileUpload}
                       className="w-full border border-dashed border-gray-300 rounded-xl px-3 py-2 text-xs text-gray-500 cursor-pointer" />
+                    <p className="text-xs text-gray-400 mt-1">Large photos are resized automatically.</p>
                   </div>
                   <div>
                     <p className="text-xs text-gray-400 mb-1">Or paste URL</p>
@@ -202,8 +231,9 @@ export default function AdminProjects() {
                   <input type="checkbox" checked={form.is_featured} onChange={e=>setForm(f=>({...f,is_featured:e.target.checked}))} className="sr-only peer" />
                   <div className="w-11 h-6 bg-gray-200 peer-checked:bg-[#006948] rounded-full transition-colors relative after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:bg-white after:rounded-full after:transition-transform peer-checked:after:translate-x-5"></div>
                 </div>
-                <span className="text-sm font-medium text-gray-700">⭐ Show on homepage (featured)</span>
+                <span className="text-sm font-medium text-gray-700">{form.is_featured ? '★ Featured on homepage' : 'Not featured'}</span>
               </label>
+              <p className="text-xs text-gray-400 -mt-2">Featured projects appear in the homepage 'Our Projects' section (if none are featured, the newest 6 are shown); all projects appear on the Projects and Gallery pages.</p>
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={()=>setShowForm(false)} className="flex-1 border border-gray-200 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-50">Cancel</button>
                 <button type="submit" disabled={saving} className="flex-1 bg-[#006948] text-white py-3 rounded-xl font-semibold hover:bg-green-700">
