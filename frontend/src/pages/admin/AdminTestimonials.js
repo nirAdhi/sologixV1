@@ -224,7 +224,7 @@ export default function AdminTestimonials() {
                       <div>
                         <input type="file" accept="image/*" onChange={handleFileUpload}
                           className="w-full border border-dashed border-gray-300 rounded-xl px-3 py-2 text-sm text-gray-500 cursor-pointer" />
-                        <p className="text-xs text-gray-400 mt-1">Max 2MB. JPG, PNG, WebP</p>
+                        <p className="text-xs text-gray-400 mt-1">JPG, PNG or WebP. Large photos are resized automatically.</p>
                       </div>
                     )}
                     {form.photo_url && (

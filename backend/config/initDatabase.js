@@ -179,14 +179,6 @@ async function initDatabase() {
       if (err.code !== 'ER_DUP_FIELDNAME') console.log('is_active column error:', err.message);
     }
 
-    // Update existing admin to super_admin
-    try {
-
-      console.log('Main admin updated to super_admin');
-    } catch (err) {
-      console.log('Admin role update error:', err.message);
-    }
-
     // WhatsApp Conversation States Table
     await connection.query(`
       CREATE TABLE IF NOT EXISTS whatsapp_conversations (

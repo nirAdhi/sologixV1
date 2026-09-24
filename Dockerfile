@@ -1,7 +1,7 @@
 # ============================
 # Stage 1: Build Frontend
 # ============================
-FROM node:18-alpine AS frontend-build
+FROM node:22-alpine AS frontend-build
 
 WORKDIR /app/frontend
 
@@ -27,7 +27,7 @@ RUN npm run build
 # ============================
 # Stage 2: Build Backend
 # ============================
-FROM node:18-alpine AS backend-build
+FROM node:22-alpine AS backend-build
 
 WORKDIR /app/backend
 
@@ -44,7 +44,7 @@ COPY backend/ ./
 # ============================
 # Stage 3: Production Image
 # ============================
-FROM node:18-alpine
+FROM node:22-alpine
 
 # Add dumb-init for proper signal handling (PID 1 problem)
 RUN apk add --no-cache dumb-init

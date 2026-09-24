@@ -1,5 +1,14 @@
 # Deploying the fixed live build
 
+**Tested before release (2026-09-24):** built with this `Dockerfile` and run against MySQL 8.0.46 in strict
+mode (same as production). 25/25 end-to-end browser checks passed against the container itself (contact
+form, booking, booking lookup, Pay on Delivery order, admin login, testimonial with a 12 MB photo, leads,
+orders, catalog, site settings), plus 34/34 backend behaviour tests. Container reports `healthy`.
+
+**Base image is now Node 22** (was Node 18, which stopped receiving security updates in April 2025 and is
+too old for the patched email library). Nothing to do on the server: `docker compose up -d --build` pulls it.
+The first build after this change downloads the new base image, so it takes a few minutes longer.
+
 This tree is the **exact code running on the server** (`/root/sologix/sologix_up_2026-06-13/sologix-main`,
 verified: `HomePage.js` is byte-identical to what sologixenergy.com serves) plus the security and
 functional fixes in the latest commit. It is safe to deploy over the live folder: no live feature is

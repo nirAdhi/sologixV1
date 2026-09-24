@@ -22,12 +22,13 @@ whenever set).
 
 **Housekeeping on the server:** the unused copy `~/sologix/sologix-main` and `~/sologix/sologix-main.zip`,
 plus `frontend.zip` and `*.bak*` files inside the live folder, should be archived off the server.
-The frontend `package-lock.json` is out of sync with `package.json` (run `npm install` in
-`frontend/` once and commit the lockfile).
+(The frontend lockfile has been re-synced.)
 
 **Hardening backlog (lower priority):** CSP still allows `'unsafe-inline'`/`'unsafe-eval'` and any
-`connect-src`; schema changes run on every boot instead of versioned migrations; dependency upgrades
-(`npm audit fix` in backend and frontend; nodemailer 10 and cloudinary 2 are major versions;
-react-scripts is unmaintained, plan a move to Vite); add a UNIQUE(appointment_date, appointment_time)
+`connect-src`; schema changes run on every boot instead of versioned migrations; frontend build tooling:
+the backend now has 0 known dependency vulnerabilities (nodemailer 10, cloudinary 2, express 4.22, Node 22
+image); the frontend's remaining 32 advisories are inside react-scripts (build-time only, not shipped to
+visitors) plus one moderate react-router-dom issue fixed only in v7. react-scripts is unmaintained: plan a
+move to Vite; add a UNIQUE(appointment_date, appointment_time)
 constraint; `/api/payments/create-razorpay-order` requires an admin login (fine while bookings are
 free; revisit if paid bookings return).
