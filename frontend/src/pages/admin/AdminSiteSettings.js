@@ -5,7 +5,7 @@ import { siteSettingsAPI, youtubeAPI, uploadAPI } from '../../utils/api';
 import toast from 'react-hot-toast';
 import { getSiteConfig, loadSiteConfig } from '../../utils/siteConfig';
 import {
-  DEFAULT_STATS, DEFAULT_OFFERINGS, DEFAULT_WHY, DEFAULT_PROCESS, DEFAULT_YOUTUBE,
+  DEFAULT_STATS, DEFAULT_OFFERINGS, DEFAULT_WHY, DEFAULT_PROCESS, DEFAULT_YOUTUBE, DEFAULT_PROMO_BANNER, DEFAULT_BRANCHES, DEFAULT_CHANNEL_PARTNERS,
   setSiteContentKey, padNum,
 } from '../../utils/siteContent';
 
@@ -25,6 +25,7 @@ const LIST_DEFAULTS = {
   offerings: DEFAULT_OFFERINGS,
   why_us: DEFAULT_WHY,
   work_process: DEFAULT_PROCESS,
+  branches: DEFAULT_BRANCHES,
 };
 
 const BLANK_ITEM = {
@@ -32,6 +33,7 @@ const BLANK_ITEM = {
   offerings: () => ({ label: '', desc: '', img: '', link: '/solutions' }),
   why_us: () => ({ icon: '⭐', title: '', desc: '' }),
   work_process: (len) => ({ num: padNum(len + 1), icon: '🔧', title: '', desc: '' }),
+  branches: () => ({ name: '', address: '', phones: [] }),
 };
 
 const MAX_DATA_URL = 1000000;        // ~1 MB per uploaded image (as a data URL)
@@ -172,6 +174,17 @@ const prepare = {
     });
     return { value, errors, warnings: [] };
   },
+  branches: (list) => {
+    const errors = [];
+    const value = list.map((b, i) => {
+      const phones = (Array.isArray(b.phones) ? b.phones : String(b.phones || '').split('\n'))
+        .map(x => str(x).trim()).filter(Boolean).slice(0, 5);
+      const item = { name: str(b.name).trim(), address: str(b.address).trim(), phones };
+      if (!item.name) errors.push(`Branch #${i + 1}: the branch name is required.`);
+      return item;
+    });
+    return { value, errors, warnings: [] };
+  },
 };
 
 const fmtDate = (iso, withTime) => {
@@ -194,6 +207,25 @@ const normYoutube = (v) => {
     hidden: Array.isArray(src.hidden) ? src.hidden.filter(x => typeof x === 'string') : [],
   };
 };
+
+const normPromo = (v) => {
+  const o = parseMaybe(v);
+  const src = o && typeof o === 'object' && !Array.isArray(o) ? o : {};
+  const out = { ...DEFAULT_PROMO_BANNER };
+  for (const k of Object.keys(out)) {
+    if (src[k] === undefined) continue;
+    out[k] = (k === 'enabled' || k === 'show_countdown') ? src[k] !== false && src[k] !== 'false' && src[k] !== 0 : str(src[k]);
+  }
+  if (!['diwali', 'navratri', 'green'].includes(out.theme)) out.theme = 'diwali';
+  return out;
+};
+
+// Must match THEMES in components/PromoBanner.js (preview only).
+const PROMO_THEMES = [
+  { id: 'diwali', name: 'Diwali (purple & gold)', icon: '🪔', preview: 'linear-gradient(90deg,#2e1065,#701a75,#9d174d)', btn: '#fbbf24' },
+  { id: 'navratri', name: 'Navratri / Dussehra (orange)', icon: '🏵️', preview: 'linear-gradient(90deg,#7c2d12,#c2410c,#b91c1c)', btn: '#fde047' },
+  { id: 'green', name: 'Sologix green', icon: '✨', preview: 'linear-gradient(90deg,#064e3b,#047857,#065f46)', btn: '#fde047' },
+];
 
 const Toggle = ({ checked, onChange, label, id }) => (
   <label htmlFor={id} className="inline-flex items-center gap-3 cursor-pointer select-none">
@@ -224,12 +256,22 @@ export default function AdminSiteSettings() {
 
   useEffect(() => { loadSiteConfig().then(setSiteCfg); }, []);
 
+  // Channel partner brands (textarea, one per line)
+  const [cpText, setCpText] = useState(() => DEFAULT_CHANNEL_PARTNERS.join('\n'));
+
+  // Festive banner
+  const [pbForm, setPbForm] = useState(() => normPromo(null));
+  const [pbBusy, setPbBusy] = useState(false);
+
   useEffect(() => {
     siteSettingsAPI.getAll()
       .then(r => {
         const data = (r.data && r.data.data) || {};
         setSettings(data);
         if (data.youtube_section !== undefined) setYtForm(normYoutube(data.youtube_section));
+        if (data.promo_banner !== undefined) setPbForm(normPromo(data.promo_banner));
+        const cp = parseMaybe(data.channel_partners);
+        if (Array.isArray(cp)) setCpText(cp.join('\n'));
       })
       .catch(() => {})
       .finally(() => setLoading(false));
@@ -372,6 +414,37 @@ export default function AdminSiteSettings() {
     finally { setYtBusy(''); }
   };
 
+  // ── Festive banner actions ──
+  const savePromo = async () => {
+    const value = {
+      ...pbForm,
+      heading: str(pbForm.heading).trim(),
+      subheading: str(pbForm.subheading).trim(),
+      cta_text: str(pbForm.cta_text).trim(),
+      cta_link: str(pbForm.cta_link).trim() || '/booking',
+      coupon: str(pbForm.coupon).trim(),
+    };
+    if (value.enabled && !value.heading) { toast.error('Please enter a heading (or restore the default one).'); return; }
+    if (value.cta_link && !/^\/(?!\/)/.test(value.cta_link) && !/^https:\/\//i.test(value.cta_link)) {
+      toast.error('The button link must start with "/" (a page on this site) or "https://".'); return;
+    }
+    if (value.start_date && value.end_date && value.start_date > value.end_date) {
+      toast.error('The end date is before the start date.'); return;
+    }
+    setPbBusy(true);
+    const ok = await save('promo_banner', value);
+    if (ok) setPbForm(value);
+    setPbBusy(false);
+  };
+
+  const restorePromoDefaults = async () => {
+    const def = clone(DEFAULT_PROMO_BANNER);
+    setPbForm(def);
+    setPbBusy(true);
+    await save('promo_banner', def);
+    setPbBusy(false);
+  };
+
   const toggleHidden = (id) => setYtForm(f => ({
     ...f,
     hidden: f.hidden.includes(id) ? f.hidden.filter(x => x !== id) : [...f.hidden, id],
@@ -404,8 +477,92 @@ export default function AdminSiteSettings() {
     <AdminLayout requiredPerm="manage_settings" title="Site Settings">
       <div className="mb-6">
         <h2 className="text-xl font-bold text-gray-800">Homepage Content Manager</h2>
-        <p className="text-sm text-gray-500 mt-1">Edit stats, offerings, why-choose-us cards, work process steps and the YouTube section. Visitors see saved changes the next time they open or reload a page.</p>
+        <p className="text-sm text-gray-500 mt-1">Edit the festive offer banner, stats, offerings, why-choose-us cards, work process steps and the YouTube section. Visitors see saved changes the next time they open or reload a page.</p>
       </div>
+
+      {/* Festive offer banner */}
+      <Section icon="🪔" title="Festive offer banner (top of every page)"
+        actions={<RestoreDefaults busy={pbBusy} onConfirm={restorePromoDefaults} />}>
+        <p className="text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 mb-5">
+          A festive strip shown under the menu on every public page — use it for Dussehra / Diwali / Puja offers.
+          It hides itself automatically outside the start and end dates, and visitors can close it for their visit.
+          The default text is also shown in Hindi; text you type yourself is shown as typed.
+        </p>
+
+        {/* Live preview */}
+        {(() => {
+          const th = PROMO_THEMES.find(x => x.id === pbForm.theme) || PROMO_THEMES[0];
+          return (
+            <div className="rounded-xl overflow-hidden mb-5 shadow-sm" style={{ background: th.preview }}>
+              <div className="px-4 py-3 flex flex-wrap items-center gap-3 text-white">
+                <span className="text-xl">{th.icon}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="font-extrabold text-sm">{str(pbForm.heading) || '(heading)'}</p>
+                  {str(pbForm.subheading) && <p className="text-xs opacity-90">{pbForm.subheading}</p>}
+                </div>
+                {str(pbForm.coupon) && <span className="px-3 py-1 rounded-full border border-dashed border-white/50 text-xs font-semibold">Use code <span className="font-mono font-bold">{pbForm.coupon}</span></span>}
+                {pbForm.show_countdown && str(pbForm.end_date) && <span className="px-3 py-1 rounded-full border border-white/40 text-xs font-semibold">⏳ Offer ends {fmtDate(pbForm.end_date) || pbForm.end_date}</span>}
+                {str(pbForm.cta_text) && <span className="px-4 py-1.5 rounded-full text-xs font-bold" style={{ background: th.btn, color: '#3b1d06' }}>{pbForm.cta_text}</span>}
+              </div>
+              {!pbForm.enabled && <p className="bg-black/40 text-white/90 text-[11px] px-4 py-1">The banner is switched off — visitors do not see it.</p>}
+            </div>
+          );
+        })()}
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div className="flex flex-col gap-3">
+            <Toggle id="pb-enabled" checked={pbForm.enabled} onChange={v => setPbForm(f => ({ ...f, enabled: v }))} label="Show the banner on the website" />
+            <Toggle id="pb-countdown" checked={pbForm.show_countdown} onChange={v => setPbForm(f => ({ ...f, show_countdown: v }))} label={'Show a countdown ("Offer ends in X days")'} />
+          </div>
+          <div>
+            <label className={labelCls}>Festive style</label>
+            <div className="flex flex-wrap gap-2">
+              {PROMO_THEMES.map(th => (
+                <button key={th.id} type="button" onClick={() => setPbForm(f => ({ ...f, theme: th.id }))}
+                  className={'flex items-center gap-2 px-3 py-1.5 rounded-xl border-2 text-xs font-semibold ' + (pbForm.theme === th.id ? 'border-gray-800 text-gray-800' : 'border-gray-200 text-gray-500 hover:border-gray-400')}>
+                  <span className="w-6 h-4 rounded" style={{ background: th.preview }}></span>
+                  {th.icon} {th.name}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="pb-heading">Heading *</label>
+            <input id="pb-heading" value={str(pbForm.heading)} onChange={e => setPbForm(f => ({ ...f, heading: e.target.value }))} maxLength={100} placeholder={DEFAULT_PROMO_BANNER.heading} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="pb-sub">Smaller text under the heading</label>
+            <input id="pb-sub" value={str(pbForm.subheading)} onChange={e => setPbForm(f => ({ ...f, subheading: e.target.value }))} maxLength={250} placeholder={DEFAULT_PROMO_BANNER.subheading} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="pb-cta">Button text (empty = no button)</label>
+            <input id="pb-cta" value={str(pbForm.cta_text)} onChange={e => setPbForm(f => ({ ...f, cta_text: e.target.value }))} maxLength={40} placeholder={DEFAULT_PROMO_BANNER.cta_text} className={inputCls} />
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="pb-link">Button link</label>
+            <input id="pb-link" value={str(pbForm.cta_link)} onChange={e => setPbForm(f => ({ ...f, cta_link: e.target.value }))} placeholder="/booking" className={inputCls} />
+            <p className="text-xs text-gray-400 mt-1">A page on this site (e.g. /booking, /contact, /solar-calculator) or an https:// link.</p>
+          </div>
+          <div>
+            <label className={labelCls} htmlFor="pb-coupon">Discount code shown on the banner (optional)</label>
+            <input id="pb-coupon" value={str(pbForm.coupon)} onChange={e => setPbForm(f => ({ ...f, coupon: e.target.value }))} maxLength={30} placeholder="e.g. DIWALI10" className={inputCls} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls} htmlFor="pb-start">Show from (optional)</label>
+              <input id="pb-start" type="date" value={str(pbForm.start_date)} onChange={e => setPbForm(f => ({ ...f, start_date: e.target.value }))} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls} htmlFor="pb-end">Show until (optional)</label>
+              <input id="pb-end" type="date" value={str(pbForm.end_date)} onChange={e => setPbForm(f => ({ ...f, end_date: e.target.value }))} className={inputCls} />
+            </div>
+          </div>
+        </div>
+
+        <button type="button" onClick={savePromo} disabled={pbBusy} className={saveBtnCls}>
+          {pbBusy ? 'Saving...' : 'Save Festive Banner'}
+        </button>
+      </Section>
 
       {/* Stats */}
       <Section icon="📊" title="Statistics Badges (Homepage and About page)"
@@ -675,6 +832,68 @@ export default function AdminSiteSettings() {
             {ytBusy === 'refresh' ? 'Refreshing...' : 'Refresh from YouTube now'}
           </button>
           <span className="text-xs text-gray-400">Hide/Show and the options above take effect after "Save YouTube settings".</span>
+        </div>
+      </Section>
+
+      {/* Channel partner brands */}
+      <Section icon="🤝" title="Channel partner brands (homepage and products page)">
+        <p className="text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 mb-4">
+          Shown as an "Authorised Channel Partner of ..." ribbon on the homepage and the products page.
+          One brand per line, up to 12. Leave empty and save to hide the ribbon.
+        </p>
+        <textarea rows={5} value={cpText} onChange={e => setCpText(e.target.value)}
+          className={inputCls + ' max-w-md font-medium'} placeholder={DEFAULT_CHANNEL_PARTNERS.join('\n')} />
+        <div>
+          <button onClick={() => {
+            const arr = cpText.split('\n').map(x => x.trim()).filter(Boolean).slice(0, 12);
+            save('channel_partners', arr);
+          }} disabled={saving.channel_partners} className={'mt-4 ' + saveBtnCls}>
+            {saving.channel_partners ? 'Saving...' : 'Save Channel Partners'}
+          </button>
+        </div>
+      </Section>
+
+      {/* Branch offices */}
+      <Section icon="🏢" title="Branch offices (Contact page and footer)"
+        actions={<RestoreDefaults busy={saving.branches} onConfirm={() => restoreDefaults('branches')} />}>
+        <p className="text-xs text-gray-500 bg-gray-50 border border-gray-100 rounded-xl px-4 py-3 mb-5">
+          Shown as cards on the Contact page and as a compact list in the footer of every page, so customers can
+          reach the branch nearest to them. Add a branch whenever you open a new office.
+        </p>
+        {listOf('branches').length === 0 && emptyNote('branches')}
+        <div className="space-y-4">
+          {listOf('branches').map((b, i) => (
+            <div key={i} className="border border-gray-100 rounded-xl p-4 bg-gray-50">
+              <div className="mb-3"><ItemToolbar index={i} count={listOf('branches').length} onMove={moveItem('branches')} onRemove={removeItem('branches')} /></div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div>
+                  <label className={labelCls}>Branch name *</label>
+                  <input value={str(b.name)} onChange={e => updateItem('branches', i, { name: e.target.value })}
+                    placeholder="e.g. Jamshedpur Branch" className={inputCls} />
+                </div>
+                <div className="md:row-span-2">
+                  <label className={labelCls}>Contact numbers (one per line, "Name — number")</label>
+                  <textarea rows={3}
+                    value={Array.isArray(b.phones) ? b.phones.join('\n') : str(b.phones)}
+                    onChange={e => updateItem('branches', i, { phones: e.target.value.split('\n') })}
+                    placeholder={'Amit Ranjan — 9031018640\nPal Ji — 9835560075'}
+                    className={inputCls + ' resize-none'} />
+                </div>
+                <div>
+                  <label className={labelCls}>Address</label>
+                  <textarea rows={2} value={str(b.address)} onChange={e => updateItem('branches', i, { address: e.target.value })}
+                    placeholder="Street, area, city, state, PIN" className={inputCls + ' resize-none'} />
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+        <ErrorList errors={errors.branches} />
+        <div className="flex flex-wrap items-center">
+          {addBtn('branches', 'Add branch')}
+          <button onClick={() => saveList('branches')} disabled={saving.branches} className={'mt-4 ' + saveBtnCls}>
+            {saving.branches ? 'Saving...' : 'Save Branches'}
+          </button>
         </div>
       </Section>
 

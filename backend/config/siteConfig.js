@@ -10,8 +10,8 @@ const digits = (v) => clean(v).replace(/[^\d]/g, '');
 
 // Built-in defaults = what the site showed before .env control existed.
 const DEFAULTS = {
-  phone: '+91 8287766474',
-  phoneAlt: '+91 9031018640',
+  phone: '+91 9771419133',
+  phoneAlt: '+91 8287766474',
   consultationPhone: '+91 9771419133',
   email: 'info@sologixenergy.in',
   emailAlt: 'amit@sologixenergy.in',

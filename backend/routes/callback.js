@@ -41,7 +41,7 @@ router.post('/', formLimiter, [
 });
 
 // Get all callback requests (admin only)
-router.get('/', auth, async (req, res) => {
+router.get('/', auth, canManage, async (req, res) => {
   try {
     const [requests] = await db.query(
       'SELECT * FROM callback_requests ORDER BY created_at DESC'

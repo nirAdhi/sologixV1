@@ -42,7 +42,7 @@ app.use(helmet({
     directives: {
       defaultSrc: ["'self'"],
       styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com', 'https://cdn.jsdelivr.net', 'https://code.tidio.co', 'https://widget-v4.tidiochat.com'],
-      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://checkout.razorpay.com', 'https://cdn.razorpay.com', 'https://api.razorpay.com', 'https://cdn.tailwindcss.com', 'https://www.googletagmanager.com', 'https://www.google-analytics.com', 'https://ssl.google-analytics.com',
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'", 'https://checkout.razorpay.com', 'https://cdn.razorpay.com', 'https://api.razorpay.com', 'https://cdn.tailwindcss.com', 'https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/', 'https://www.googletagmanager.com', 'https://www.google-analytics.com', 'https://ssl.google-analytics.com',
         'https://www.clarity.ms', 'https://scripts.clarity.ms', 'https://code.tidio.co', 'https://widget-v4.tidiochat.com'],
       imgSrc: ["'self'", 'data:', 'https:', 'http:', 'https://www.google-analytics.com'],
       fontSrc: ["'self'", 'data:', 'https://fonts.gstatic.com', 'https://cdn.jsdelivr.net', 'https://code.tidio.co', 'https://widget-v4.tidiochat.com'],
@@ -119,6 +119,7 @@ const authLimiter = rateLimit({
 app.use('/api/', (req, res, next) => req.path === '/whatsapp/webhook' ? next() : generalLimiter(req, res, next));
 app.use('/api/admin/login', authLimiter);
 app.use('/api/customer/login', authLimiter);
+app.use('/api/auth/login', authLimiter);
 app.use('/api/customer/register', authLimiter);
 
 // Body parsing with size limits
@@ -128,10 +129,26 @@ app.use((req, res, next) => {
     next();
   } else {
     // Keep the raw bytes so webhook signatures (WhatsApp) can be verified exactly
-    // as Meta computed them. 500kb elsewhere (live setting); 10mb only on upload endpoints.
+    // as Meta computed them. 500kb elsewhere (live setting); 10mb only on upload
+    // endpoints, and only when the caller presents a token signed by us — every
+    // upload/settings-write route requires admin auth anyway, and this stops
+    // anonymous callers from making the server parse 10MB JSON bodies.
     const isUpload = req.originalUrl.startsWith('/api/upload/') || req.originalUrl.startsWith('/api/site-settings/');
+    let bigBodyAllowed = false;
+    if (isUpload) {
+      const h = req.header('Authorization') || '';
+      const tk = h.startsWith('Bearer ') ? h.slice(7) : null;
+      if (tk) {
+        try {
+          // Only ADMIN tokens unlock the big limit — customer tokens are
+          // self-service and must not buy 10MB of JSON parsing per request.
+          const decoded = require('jsonwebtoken').verify(tk, process.env.JWT_SECRET, { algorithms: ['HS256'] });
+          bigBodyAllowed = decoded && decoded.type === 'admin';
+        } catch (e) { /* small limit */ }
+      }
+    }
     express.json({
-      limit: isUpload ? '10mb' : '500kb',
+      limit: bigBodyAllowed ? '10mb' : '500kb',
       verify: (r, _res, buf) => { r.rawBody = buf; }
     })(req, res, next);
   }
@@ -172,7 +189,10 @@ const configRoutes = require('./routes/config');
 app.use('/api/config', configRoutes.publicRouter);
 app.use('/api/youtube', require('./routes/youtube'));
 app.use('/api/admin/email', configRoutes.adminRouter); // before /api/admin
+app.use('/api/admin/analytics', require('./routes/analytics')); // before /api/admin
+app.use('/api/auth', require('./routes/authLogin'));
 app.use('/api/admin', require('./routes/admin'));
+app.use('/api/track', require('./routes/track'));
 app.use('/api/customer', require('./routes/customer'));
 app.use('/api/callback', require('./routes/callback'));
 // Public lead submissions get their own strict rate limiter (defined in security middleware)

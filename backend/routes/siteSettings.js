@@ -7,7 +7,7 @@ const { normalizeSection } = require('../services/youtube');
 // SECURITY: this endpoint is public, so only known content keys may be read or
 // written, and every value is checked/cleaned before it is stored so the
 // homepage can never be broken by a malformed save.
-const KEYS = ['stats', 'offerings', 'why_us', 'work_process', 'social_links', 'site_theme', 'youtube_section', 'tracking', 'capture'];
+const KEYS = ['stats', 'offerings', 'why_us', 'work_process', 'social_links', 'site_theme', 'youtube_section', 'tracking', 'capture', 'promo_banner', 'branches', 'channel_partners'];
 const MAX_BYTES = { offerings: 3000000 };           // offerings may carry uploaded images
 const DEFAULT_MAX_BYTES = 200000;
 
@@ -66,6 +66,46 @@ const NORMALIZE = {
     if (ga4 && !/^G-[A-Z0-9]{4,12}$/.test(ga4)) throw bad('Google Analytics ID must look like G-XXXXXXX');
     if (clarity && !/^[a-z0-9]{6,20}$/i.test(clarity)) throw bad('Clarity ID must be 6–20 letters/numbers');
     return { ga4_id: ga4, clarity_id: clarity };
+  },
+  channel_partners: (v) => {
+    if (!Array.isArray(v)) throw bad('Channel partners must be a list');
+    if (v.length > 12) throw bad('Channel partners: at most 12 brands');
+    const out = v.map((x) => str(x, 40)).filter(Boolean);
+    return out;
+  },
+  branches: (v) => list(v, 'Branches', (it) => {
+    const name = str(it.name, 80); if (!name) throw bad('Every branch needs a name (e.g. "Jamshedpur Branch")');
+    const address = str(it.address, 300);
+    let phones = Array.isArray(it.phones) ? it.phones : [];
+    phones = phones.map((p) => str(p, 90)).filter(Boolean).slice(0, 5);
+    return { name, address, phones };
+  }, 12),
+  promo_banner: (v) => {
+    const o = v && typeof v === 'object' && !Array.isArray(v) ? v : {};
+    const THEMES = ['diwali', 'navratri', 'green'];
+    const date = (x, name) => {
+      const s = str(x, 10);
+      if (!s) return '';
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(s) || Number.isNaN(Date.parse(s))) throw bad(`${name} must be a date like 2026-11-08`);
+      return s;
+    };
+    const start = date(o.start_date, 'The start date');
+    const end = date(o.end_date, 'The end date');
+    if (start && end && start > end) throw bad('The banner end date is before its start date');
+    const out = {
+      enabled: bool(o.enabled),
+      heading: str(o.heading, 100),
+      subheading: str(o.subheading, 250),
+      cta_text: str(o.cta_text, 40),
+      cta_link: link(o.cta_link, '/booking'),
+      coupon: str(o.coupon, 30),
+      theme: THEMES.includes(str(o.theme, 20)) ? str(o.theme, 20) : 'diwali',
+      start_date: start,
+      end_date: end,
+      show_countdown: bool(o.show_countdown),
+    };
+    if (out.enabled && !out.heading) throw bad('The banner needs a heading');
+    return out;
   },
   capture: (v) => {
     const o = v && typeof v === 'object' && !Array.isArray(v) ? v : {};

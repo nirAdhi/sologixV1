@@ -4,7 +4,7 @@ import { catalogAPI } from '../../utils/api';
 import toast from 'react-hot-toast';
 
 const CATEGORIES = ['Solar Panels','On-Grid Inverters','Hybrid Inverters','Lithium Batteries','BOS & Accessories'];
-const empty = { category:'Solar Panels', brand:'', model:'', specs:'', price_range:'Contact for pricing', price:'', unit:'per NOS', discount_price:'', show_price:false, image_url:'', badge:'', in_stock:true, sort_order:0 };
+const empty = { category:'Solar Panels', brand:'', model:'', specs:'', price_range:'Contact for pricing', price:'', unit:'per NOS', discount_price:'', show_price:false, image_url:'', badge:'', in_stock:true, sort_order:0, model_url:'', description:'', warranty:'', specs_detail:'' };
 const UNITS = ['per NOS','per Wp','per metre','per KGS','per set','per kit'];
 const NEW_CAT = '__new__';
 const MAX_DATA_URL = 1000000; // server rejects image_url longer than ~1.5M chars; stay well under
@@ -110,6 +110,8 @@ export default function AdminCatalog() {
       unit: form.unit || 'per NOS', show_price: form.show_price ? 1 : 0,
       image_url: form.image_url || '', badge: form.badge || '',
       in_stock: form.in_stock ? 1 : 0, sort_order: parseInt(form.sort_order, 10) || 0,
+      model_url: (form.model_url || '').trim(),
+      description: (form.description || '').trim(), warranty: (form.warranty || '').trim(), specs_detail: (form.specs_detail || '').trim(),
     };
     setSaving(true);
     try {
@@ -148,6 +150,8 @@ export default function AdminCatalog() {
       category: p.category || 'Solar Panels',
       brand: p.brand || '', model: p.model || '', specs: p.specs || '',
       price_range: p.price_range || '', image_url: p.image_url || '', badge: p.badge || '',
+      model_url: p.model_url || '',
+      description: p.description || '', warranty: p.warranty || '', specs_detail: p.specs_detail || '',
       price: p.price === null || p.price === undefined ? '' : String(p.price),
       discount_price: p.discount_price === null || p.discount_price === undefined ? '' : String(p.discount_price),
       unit: p.unit || 'per NOS',
@@ -350,6 +354,32 @@ export default function AdminCatalog() {
                     <option value="Popular">Popular</option>
                     <option value="New">New</option>
                   </select>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">3D model link (optional)</label>
+                  <input value={form.model_url} onChange={e=>setForm(f=>({...f,model_url:e.target.value}))}
+                    placeholder="https://... .glb"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500" />
+                  <p className="text-xs text-gray-400 mt-1">An https:// link to a .glb or .gltf 3D file of the product. With one, the product page shows a real rotating 3D model; without it, visitors still get the interactive drag-to-tilt photo view.</p>
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Warranty</label>
+                  <input value={form.warranty} onChange={e=>setForm(f=>({...f,warranty:e.target.value}))} maxLength={50}
+                    placeholder="e.g. 25 Years"
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Description (product page)</label>
+                  <textarea value={form.description} onChange={e=>setForm(f=>({...f,description:e.target.value}))} rows={4} maxLength={5000}
+                    placeholder="A few sentences about the product, shown on its detail page."
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500 resize-none" />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Specifications table (one per line, "Name: Value")</label>
+                  <textarea value={form.specs_detail} onChange={e=>setForm(f=>({...f,specs_detail:e.target.value}))} rows={6} maxLength={5000}
+                    placeholder={'Power Output: 580 Wp\nCell Type: Mono PERC\nEfficiency: 21.5%\nWarranty: 25 Years'}
+                    className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500 resize-none font-mono" />
+                  <p className="text-xs text-gray-400 mt-1">Shown as the "Technical Specifications" table on the product page. One line per row, name and value separated by a colon.</p>
                 </div>
               </div>
 

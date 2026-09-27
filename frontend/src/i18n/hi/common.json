@@ -25,7 +25,6 @@
   "Deye, Growatt, Microtek": "Deye, Growatt, Microtek",
   "LuxPower, Deye Hybrid": "LuxPower, Deye Hybrid",
   "Bi-Tech, Solis — LiFePO4": "Bi-Tech, Solis — LiFePO4",
-
   "Access denied. Super admin only.": "पहुंच अस्वीकृत। केवल सुपर एडमिन के लिए।",
   "An account with this email already exists. Please log in to book, or book as a guest without creating an account.": "इस ईमेल से पहले से एक अकाउंट मौजूद है। बुक करने के लिए लॉगिन करें, या बिना अकाउंट बनाए गेस्ट के रूप में बुक करें।",
   "Booking ID is required": "बुकिंग ID ज़रूरी है",
@@ -117,5 +116,22 @@
   "Phone required": "फ़ोन नंबर ज़रूरी है",
   "Service interest too long": "सेवा का विवरण बहुत लंबा है",
   "Something went wrong. Please try again.": "कुछ गड़बड़ हो गई। कृपया फिर से कोशिश करें।",
-  "Network error. Please check your connection and try again.": "नेटवर्क की समस्या। कृपया अपना इंटरनेट जांचें और फिर कोशिश करें।"
+  "Network error. Please check your connection and try again.": "नेटवर्क की समस्या। कृपया अपना इंटरनेट जांचें और फिर कोशिश करें।",
+  "Cookies on this site": "इस वेबसाइट पर कुकीज़",
+  "We use cookies to count visitors and understand which pages help you, so we can improve our solar services. No personal details are collected without your permission.": "हम विज़िटर गिनने और यह समझने के लिए कुकीज़ इस्तेमाल करते हैं कि कौन-से पेज आपके काम आते हैं, ताकि हम अपनी सोलर सेवाएं बेहतर बना सकें। आपकी अनुमति के बिना कोई निजी जानकारी नहीं ली जाती।",
+  "Accept cookies": "कुकीज़ स्वीकार करें",
+  "Only necessary": "सिर्फ़ ज़रूरी",
+  "Cookie preferences": "कुकी सेटिंग",
+  "Drag to rotate": "घुमाने के लिए खींचें",
+  "Scroll to zoom": "ज़ूम के लिए स्क्रॉल करें",
+  "Zoom in": "बड़ा करें",
+  "Zoom out": "छोटा करें",
+  "Reset view": "व्यू रीसेट करें",
+  "Photo": "फ़ोटो",
+  "3D View": "3D व्यू",
+  "Near You": "आपके पास",
+  "Our Branch Offices": "हमारे ब्रांच ऑफ़िस",
+  "Walk in or call the branch closest to you.": "अपने नज़दीकी ब्रांच में आएं या कॉल करें।",
+  "Jamshedpur Branch": "जमशेदपुर ब्रांच",
+  "Hazaribagh Branch": "हज़ारीबाग़ ब्रांच"
 }

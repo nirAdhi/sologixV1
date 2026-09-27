@@ -56,6 +56,15 @@ export const paymentsAPI = {
   getUpiDetails: (bookingId) => api.post('/payments/upi-details', { booking_id: bookingId }),
 };
 
+export const authAPI = {
+  // One login for customers and admins; the server answers with type: 'admin' | 'customer'.
+  login: (credentials) => api.post('/auth/login', credentials),
+};
+
+export const analyticsAPI = {
+  get: (days) => api.get('/admin/analytics', { params: { days } }),
+};
+
 export const adminAPI = {
   login: (credentials) => api.post('/admin/login', credentials),
   getMe: () => api.get('/admin/me'),
@@ -166,6 +175,8 @@ export const youtubeAPI = {
 export const emailAdminAPI = {
   get: () => api.get('/admin/email'),
   saveSettings: (settings) => api.put('/admin/email/settings', settings),
+  saveSmtp: (smtp) => api.put('/admin/email/smtp', smtp),
+  clearSmtp: () => api.delete('/admin/email/smtp'),
   verify: () => api.post('/admin/email/verify'),
   test: (to) => api.post('/admin/email/test', { to }),
 };

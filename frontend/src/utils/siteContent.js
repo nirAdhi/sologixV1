@@ -61,6 +61,42 @@ export const DEFAULT_YOUTUBE = {
   hidden: [],
 };
 
+// Festive offer banner (top of every public page). Shown with this text until
+// the admin edits it in Admin > Site Content > Festive offer banner. The
+// default texts have Hindi translations in i18n/hi/home.json (word-for-word).
+export const DEFAULT_PROMO_BANNER = {
+  enabled: true,
+  heading: 'Festive Season Offer — Dussehra & Diwali Special',
+  subheading: 'Special festive discounts on rooftop solar for your home or business — limited period.',
+  cta_text: 'Book Now & Save',
+  cta_link: '/booking',
+  coupon: '',
+  theme: 'diwali',
+  start_date: '',
+  end_date: '2026-11-10',
+  show_countdown: true,
+};
+
+// Brands Sologix is an authorised channel partner of (homepage strip +
+// products page). Edited in Admin > Site Content.
+export const DEFAULT_CHANNEL_PARTNERS = [
+  'Tata Power Solar', 'Rayzon Solar', 'Luxpowertek', 'Microtek', 'V-Guard',
+];
+
+// Branch offices (Contact page + footer). Edited in Admin > Site Content.
+export const DEFAULT_BRANCHES = [
+  {
+    name: 'Jamshedpur Branch',
+    address: 'Birsa Nagar Zone No 3B, Near Sarkari Kua Maidan, Jamshedpur, Jharkhand 831017',
+    phones: ['Amit Ranjan — 9031018640', 'Pal Ji — 9835560075'],
+  },
+  {
+    name: 'Hazaribagh Branch',
+    address: 'Dipughara, Canary Hill Road, Opposite Hi-Tech Nursery, Hazaribagh, Jharkhand 825301',
+    phones: ['Amit Ranjan — 9031018640', 'Rajesh Kumar — 8578804817'],
+  },
+];
+
 export const SITE_CONTENT_DEFAULTS = {
   stats: DEFAULT_STATS,
   offerings: DEFAULT_OFFERINGS,

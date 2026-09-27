@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useT } from '../i18n';
 import { BRANDING } from '../utils/branding';
 import { getSiteConfig, whatsappHref, telHref } from '../utils/siteConfig';
+import { BranchOfficesCompact } from './BranchOffices';
 
 const Footer = () => {
   const { t } = useT();
@@ -107,6 +108,7 @@ const Footer = () => {
             {[
               { to:'/contact', label:'Contact Us' },
               { to:'/booking', label:'Customer Support' },
+              { to:'/track-order', label:'Track Your Order' },
               { to:'/become-partner', label:'Become a Partner' },
               { to:'/booking', label:'Get Free Consultation' },
               { to:'/booking', label:'Request a Quote' },
@@ -117,7 +119,10 @@ const Footer = () => {
         </div>
       </div>
 
-      <div className="border-t border-white/10 pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-500">
+      {/* Branch offices (Admin > Site Content > Branch offices) */}
+      <BranchOfficesCompact />
+
+      <div className="border-t border-white/10 pt-8 mt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-xs text-gray-500">
         <p>{t('Copyright 2023 Sologix. All Rights Reserved.')}</p>
         <div className="flex gap-6">
           <a href="#" className="hover:text-white">{t('Privacy Policy')}</a>

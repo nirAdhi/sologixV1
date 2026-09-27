@@ -343,8 +343,11 @@ async function createBookingFromWhatsApp(phone, tempData) {
     }
 
     // Generate booking ID
+    // SECURITY: booking_id is a bearer credential (it unlocks the public booking
+    // lookup and payment endpoints), so it must be unguessable — same scheme as
+    // routes/bookings.js, not Math.random().
     const timestamp = Date.now().toString(36).toUpperCase();
-    const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const random = crypto.randomBytes(6).toString('hex').toUpperCase(); // 48 bits
     const bookingId = `SOL${timestamp}${random}`;
 
     // Parse date
@@ -383,7 +386,7 @@ async function createBookingFromWhatsApp(phone, tempData) {
 }
 
 // API to get WhatsApp conversations for admin (requires auth)
-router.get('/conversations', auth, async (req, res) => {
+router.get('/conversations', auth, canManage, async (req, res) => {
   try {
     const [conversations] = await db.query(
       `SELECT * FROM whatsapp_conversations ORDER BY updated_at DESC LIMIT 50`
@@ -396,7 +399,7 @@ router.get('/conversations', auth, async (req, res) => {
 });
 
 // API to get messages for a phone number (admin only)
-router.get('/messages/:phone', auth, async (req, res) => {
+router.get('/messages/:phone', auth, canManage, async (req, res) => {
   try {
     const [messages] = await db.query(
       `SELECT * FROM whatsapp_messages WHERE phone = ? ORDER BY created_at ASC`,

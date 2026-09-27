@@ -22,7 +22,9 @@ function escapeHtml(str) {
   if (str === undefined || str === null) return '';
   return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
-const mask = (a) => String(a || '').replace(/^(.).*(@.*)$/, '$1***$2');
+const mask = (a) => Array.isArray(a)
+  ? a.map((x) => mask(x)).join(', ')
+  : String(a || '').replace(/^(.).*(@.*)$/, '$1***$2');
 const isTempEmail = (a) => /^temp_\d+@/i.test(String(a || '')); // quick-booking placeholder addresses
 const fmtDate = (d) => {
   try { return new Date(d).toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }); }
@@ -35,7 +37,11 @@ const fmtTime = (t) => {
   return `${((h + 11) % 12) + 1}:${m[2]} ${h < 12 ? 'AM' : 'PM'}`;
 };
 
-// ---------- SMTP from .env ----------
+// ---------- SMTP connection ----------
+// The connection can come from two places, in this order:
+//   1. Admin > Email & Integrations (stored in site_settings under a PRIVATE key
+//      that the public settings routes never read or write), or
+//   2. the server's .env file (SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS).
 function smtpEnv() {
   const port = Number(process.env.SMTP_PORT) || 587;
   // SMTP_SECURE=true forces SSL/TLS from the first byte (normally only port 465),
@@ -50,12 +56,86 @@ function smtpEnv() {
     from: clean(process.env.SMTP_FROM) || clean(process.env.SMTP_USER),
   };
 }
+
+const SMTP_KEY = 'smtp_settings'; // deliberately NOT in routes/siteSettings.js KEYS
+let smtpSavedCache = null;
+let smtpSavedAt = 0;
+async function getSmtpSaved() {
+  if (smtpSavedCache && Date.now() - smtpSavedAt < 30000) return smtpSavedCache;
+  let saved = null;
+  try {
+    const [rows] = await db.query('SELECT `value` FROM site_settings WHERE `key` = ?', [SMTP_KEY]);
+    if (rows.length) saved = JSON.parse(rows[0].value) || null;
+  } catch (e) { /* table missing or DB down → env only */ }
+  smtpSavedCache = saved && saved.host && saved.user && saved.pass ? saved : null;
+  smtpSavedAt = Date.now();
+  return smtpSavedCache;
+}
+
+// The connection actually used. `source` is 'admin', 'env' or ''.
+async function effectiveSmtp() {
+  const saved = await getSmtpSaved();
+  if (saved) {
+    const port = Number(saved.port) || 587;
+    return {
+      host: saved.host, port,
+      secure: saved.security === 'ssl' ? true : saved.security === 'starttls' ? false : port === 465,
+      user: saved.user, pass: saved.pass,
+      from: saved.from || saved.user,
+      source: 'admin',
+    };
+  }
+  const e = smtpEnv();
+  return { ...e, source: smtpConfigured() ? 'env' : '' };
+}
+
+const HOST_RE = /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$/i;
+function validateSmtp(input) {
+  const host = clean(input.host).toLowerCase();
+  if (!HOST_RE.test(host)) throw Object.assign(new Error('Enter the mail server address, e.g. smtp.gmail.com'), { status: 400 });
+  const port = parseInt(input.port, 10);
+  if (!(port >= 1 && port <= 65535)) throw Object.assign(new Error('Port must be a number (usually 587 or 465)'), { status: 400 });
+  const security = ['auto', 'ssl', 'starttls'].includes(input.security) ? input.security : 'auto';
+  const user = clean(input.user).slice(0, 200);
+  if (!user) throw Object.assign(new Error('Enter the SMTP username (usually the email address)'), { status: 400 });
+  const pass = String(input.pass || '');
+  if (pass.length > 200) throw Object.assign(new Error('Password is too long'), { status: 400 });
+  const from = clean(input.from).slice(0, 200);
+  if (from && !EMAIL_RE.test(from)) {
+    throw Object.assign(new Error('"Send from" must be an email address (e.g. solarenquiry@prasanit.org) — usually the same as the username, or leave it empty. To change the NAME people see on emails, use "Sender name" further down the page.'), { status: 400 });
+  }
+  return { host, port, security, user, pass, from };
+}
+
+async function saveSmtp(input) {
+  const next = validateSmtp(input);
+  if (!next.pass) {
+    // Empty password = keep the one already saved (the form never shows it).
+    const saved = await getSmtpSaved();
+    if (!saved || !saved.pass) throw Object.assign(new Error('Enter the SMTP password (for Gmail: an App Password)'), { status: 400 });
+    next.pass = saved.pass;
+  }
+  const value = JSON.stringify(next);
+  await db.query('INSERT INTO site_settings (`key`, `value`) VALUES (?, ?) ON DUPLICATE KEY UPDATE `value` = ?', [SMTP_KEY, value, value]);
+  smtpSavedCache = next;
+  smtpSavedAt = Date.now();
+  transporter = null; // rebuild with the new connection
+  return next;
+}
+
+async function clearSmtp() {
+  await db.query('DELETE FROM site_settings WHERE `key` = ?', [SMTP_KEY]);
+  smtpSavedCache = null;
+  smtpSavedAt = Date.now();
+  transporter = null;
+}
+
 let transporter = null;
 let transporterKey = '';
-function getTransporter() {
-  if (!smtpConfigured()) return null;
-  const e = smtpEnv();
-  const key = [e.host, e.port, e.user, e.pass].join('|');
+async function getTransporter() {
+  const e = await effectiveSmtp();
+  if (!e.source || !e.host || !e.user || !e.pass) return null;
+  const key = [e.host, e.port, e.secure, e.user, e.pass].join('|');
   if (!transporter || key !== transporterKey) {
     transporter = nodemailer.createTransport({
       host: e.host,
@@ -76,6 +156,18 @@ function getTransporter() {
 // ---------- settings (admin page) ----------
 const SETTINGS_KEY = 'email_settings';
 const TOGGLES = ['customer_booking_confirmation', 'customer_status_updates', 'admin_new_booking', 'admin_new_lead', 'admin_new_order'];
+// ADMIN_NOTIFY_EMAIL in .env may hold one address or a comma-separated list.
+const parseEmailList = (v, max = 5) => {
+  const arr = Array.isArray(v) ? v : String(v || '').split(/[\n,;]+/);
+  const out = [];
+  for (const x of arr) {
+    const a = clean(x);
+    if (a && EMAIL_RE.test(a) && !out.includes(a)) out.push(a);
+    if (out.length >= max) break;
+  }
+  return out;
+};
+
 function defaultSettings() {
   const pc = publicConfig();
   return {
@@ -86,7 +178,9 @@ function defaultSettings() {
     admin_new_order: true,
     from_name: clean(process.env.MAIL_FROM_NAME) || pc.name,
     reply_to: clean(process.env.MAIL_REPLY_TO) || pc.email,
-    admin_notify_email: clean(process.env.ADMIN_NOTIFY_EMAIL) || pc.email,
+    admin_notify_emails: parseEmailList(process.env.ADMIN_NOTIFY_EMAIL) .length
+      ? parseEmailList(process.env.ADMIN_NOTIFY_EMAIL)
+      : parseEmailList(pc.email),
   };
 }
 let settingsCache = null;
@@ -98,7 +192,12 @@ async function getSettings() {
     const [rows] = await db.query('SELECT `value` FROM site_settings WHERE `key` = ?', [SETTINGS_KEY]);
     if (rows.length) saved = JSON.parse(rows[0].value) || {};
   } catch (e) { /* table missing or DB down: use defaults */ }
-  settingsCache = { ...defaultSettings(), ...saved };
+  const merged = { ...defaultSettings(), ...saved };
+  // Older saves kept a single admin_notify_email string; carry it into the list.
+  if (!Array.isArray(merged.admin_notify_emails) || !merged.admin_notify_emails.length) {
+    merged.admin_notify_emails = parseEmailList(saved.admin_notify_email || defaultSettings().admin_notify_emails);
+  }
+  settingsCache = merged;
   settingsAt = Date.now();
   return settingsCache;
 }
@@ -110,11 +209,19 @@ function validateSettings(input) {
     if (!v) throw Object.assign(new Error('Sender name cannot be empty'), { status: 400 });
     out.from_name = v;
   }
-  for (const k of ['reply_to', 'admin_notify_email']) {
-    if (input[k] === undefined) continue;
-    const v = clean(input[k]);
-    if (v && !EMAIL_RE.test(v)) throw Object.assign(new Error(`${k === 'reply_to' ? 'Reply-to' : 'Notification'} address is not a valid email`), { status: 400 });
-    out[k] = v;
+  if (input.reply_to !== undefined) {
+    const v = clean(input.reply_to);
+    if (v && !EMAIL_RE.test(v)) throw Object.assign(new Error('Reply-to address is not a valid email'), { status: 400 });
+    out.reply_to = v;
+  }
+  // Alert recipients: up to 5 addresses (array, or one per line / comma separated).
+  const notifyInput = input.admin_notify_emails !== undefined ? input.admin_notify_emails : input.admin_notify_email;
+  if (notifyInput !== undefined) {
+    const raw = (Array.isArray(notifyInput) ? notifyInput : String(notifyInput || '').split(/[\n,;]+/)).map(clean).filter(Boolean);
+    const invalid = raw.find((a) => !EMAIL_RE.test(a));
+    if (invalid) throw Object.assign(new Error(`"${invalid}" is not a valid email address`), { status: 400 });
+    if (raw.length > 5) throw Object.assign(new Error('At most 5 alert addresses'), { status: 400 });
+    out.admin_notify_emails = [...new Set(raw)];
   }
   return out;
 }
@@ -138,19 +245,20 @@ function record(entry) {
 
 // ---------- core send ----------
 async function send(kind, { to, subject, html, text }, { throwOnError = false } = {}) {
-  const t = getTransporter();
+  const t = await getTransporter();
   if (!t) {
-    record({ kind, to: mask(to), subject, ok: false, skipped: true, error: 'Email is not set up in .env' });
+    record({ kind, to: mask(to), subject, ok: false, skipped: true, error: 'Email is not set up' });
     console.log(`Email not configured, skipping ${kind}`);
-    if (throwOnError) throw Object.assign(new Error('Email is not set up. Add SMTP_HOST, SMTP_PORT, SMTP_USER and SMTP_PASS to .env and restart.'), { status: 400 });
+    if (throwOnError) throw Object.assign(new Error('Email is not set up. Enter the SMTP connection in Admin → Email & Integrations (or in .env).'), { status: 400 });
     return { ok: false, skipped: true };
   }
   const s = await getSettings();
-  const e = smtpEnv();
+  const e = await effectiveSmtp();
   try {
     const info = await t.sendMail({
       from: { name: s.from_name, address: e.from },
-      to: singleRecipient(to),
+      // Admin alerts may go to several addresses; each one is validated.
+      to: Array.isArray(to) ? to.map(singleRecipient) : singleRecipient(to),
       replyTo: s.reply_to && EMAIL_RE.test(s.reply_to) ? s.reply_to : undefined,
       subject,
       html,
@@ -297,10 +405,11 @@ async function sendCustomEmail(to, subject, message, customerName = 'Customer') 
 // ---------- admin notifications ----------
 async function notifyAdmin(kind, toggle, subject, rows, extraHtml = '') {
   const s = await getSettings();
-  if (!s[toggle] || !s.admin_notify_email) return { ok: false, disabled: true };
+  const recipients = Array.isArray(s.admin_notify_emails) ? s.admin_notify_emails : parseEmailList(s.admin_notify_email);
+  if (!s[toggle] || !recipients.length) return { ok: false, disabled: true };
   const body = `<p style="margin:0 0 8px;font-size:17px;font-weight:bold;">${escapeHtml(subject)}</p>${detailsTable(rows)}${extraHtml}
     <p style="margin:12px 0 0;font-size:13px;color:#6b7280;">Open the admin panel to follow up. You get this email because "${escapeHtml(toggle.replace(/_/g, ' '))}" is switched on in Admin → Email &amp; Integrations.</p>`;
-  return send(kind, { to: s.admin_notify_email, subject: `[Sologix] ${subject}`, html: layout(subject, body), text: subject });
+  return send(kind, { to: recipients, subject: `[Sologix] ${subject}`, html: layout(subject, body), text: subject });
 }
 function notifyAdminNewBooking(b) {
   return notifyAdmin('admin_new_booking', 'admin_new_booking', `New booking ${b.booking_id || ''}`.trim(), [
@@ -332,22 +441,23 @@ function later(fn, ...args) {
 // ---------- admin page helpers ----------
 async function sendTestEmail(to) {
   const pc = publicConfig();
-  const e = smtpEnv();
+  const e = await effectiveSmtp();
   const body = `<p style="margin:0 0 12px;">This is a test email from your website's admin panel.</p>
     <p style="margin:0 0 12px;">If you can read this, email sending works. Customers will receive booking confirmations from <b>${escapeHtml(e.from)}</b>.</p>
     ${detailsTable([row('SMTP server', `${e.host}:${e.port}`), row('Sent at', new Date().toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST')])}`;
   return send('test', { to, subject: `Test email | ${pc.name}`, html: layout('Test email', body), text: 'Test email from the Sologix admin panel. Email sending works.' }, { throwOnError: true });
 }
 async function verifyConnection() {
-  const t = getTransporter();
-  if (!t) return { ok: false, error: 'Email is not set up in .env' };
+  const t = await getTransporter();
+  if (!t) return { ok: false, error: 'Email is not set up. Enter the SMTP connection above (or in .env).' };
   try { await t.verify(); return { ok: true }; }
   catch (err) { return { ok: false, error: String(err && (err.response || err.message) || err).slice(0, 300) }; }
 }
-function status() {
-  const e = smtpEnv();
+async function status() {
+  const e = await effectiveSmtp();
   return {
-    configured: smtpConfigured(),
+    configured: !!e.source && !!e.user && !!e.pass,
+    source: e.source,                     // 'admin' | 'env' | ''
     host: e.host,
     port: e.port,
     security: e.secure ? 'SSL/TLS' : 'STARTTLS',
@@ -361,7 +471,7 @@ function status() {
 module.exports = {
   sendBookingConfirmation, sendStatusUpdate, sendCustomEmail, sendOrderStatusUpdate,
   notifyAdminNewBooking, notifyAdminNewLead, notifyAdminNewOrder, later,
-  getSettings, saveSettings, sendTestEmail, verifyConnection, status,
+  getSettings, saveSettings, sendTestEmail, verifyConnection, status, saveSmtp, clearSmtp,
   // exported for tests
   _singleRecipient: singleRecipient, _escapeHtml: escapeHtml, _layout: layout,
 };

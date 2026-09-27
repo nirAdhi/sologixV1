@@ -5,6 +5,7 @@ import toast from 'react-hot-toast';
 import { useT } from '../i18n';
 import { BRANDING } from '../utils/branding';
 import { whatsappHref, telHref } from '../utils/siteConfig';
+import Product3DViewer from '../components/Product3DViewer';
 
 const API_URL = process.env.REACT_APP_API_URL || '/api';
 const DEFAULT_IMG = 'https://images.unsplash.com/photo-1509391366360-2e959784a276?w=800&h=600&fit=crop';
@@ -147,6 +148,7 @@ export default function ProductDetail() {
   const [orderForm, setOrderForm] = useState({ name:'', phone:'', email:'', address:'', qty:1, payment:'cod', notes:'' });
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [orderDone, setOrderDone] = useState(false);
+  const [placedOrderId, setPlacedOrderId] = useState(null);
   const cartSynced = useRef(false);
 
   const loadCatalog = useCallback(() => {
@@ -217,9 +219,17 @@ export default function ProductDetail() {
   const inCart = cart.find(i => String(i.id) === String(product.id));
   const canOrder = !product._fallback && inStock(product);
   const priceInfo = getPriceInfo(product);
-  const specsTable = Array.isArray(product.specs_table)
+  // Specification rows: DB products carry admin-entered "Name: Value" lines in
+  // specs_detail; the built-in fallback list carries a ready specs_table array.
+  const specsTable = Array.isArray(product.specs_table) && product.specs_table.length
     ? product.specs_table.filter(row => Array.isArray(row) && row.length >= 2 && row[0] !== undefined && row[0] !== null && row[0] !== '')
-    : [];
+    : String(product.specs_detail || '')
+        .split(/\r?\n/)
+        .map(line => {
+          const i = line.indexOf(':');
+          return i > 0 ? [line.slice(0, i).trim(), line.slice(i + 1).trim()] : null;
+        })
+        .filter(row => row && row[0] && row[1]);
 
   const addToCart = () => {
     if (!canOrder) return;
@@ -278,7 +288,7 @@ export default function ProductDetail() {
             }),
           });
           const result = await verify.json();
-          if (result.success) { onSuccess(response.razorpay_payment_id); }
+          if (result.success) { onSuccess(response.razorpay_payment_id, result.order_id); }
           else { toast.error(serverMessage(t, result.message, 'Payment verification failed. Contact support.')); }
         } catch { toast.error(t('Verification error. Please contact us.')); }
       },
@@ -309,7 +319,7 @@ export default function ProductDetail() {
         if (!rpRes.ok || !rpData.success || !rpData.data) { toast.error(serverMessage(t, rpData.message, 'Payment gateway error. Try COD.')); setOrderSubmitting(false); return; }
         setOrderSubmitting(false);
         launchRazorpay(rpData.data, { name: orderForm.name, phone: orderForm.phone, email: orderForm.email }, items,
-          (paymentId) => { setOrderDone(true); toast.success(t('Payment confirmed! ID: {id}', { id: paymentId })); }
+          (paymentId, orderId) => { setPlacedOrderId(orderId || null); setOrderDone(true); toast.success(t('Payment confirmed! ID: {id}', { id: paymentId })); }
         );
         return;
       }
@@ -317,9 +327,9 @@ export default function ProductDetail() {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: orderForm.name, phone: orderForm.phone, email: orderForm.email, address: orderForm.address, items, notes: 'Pay on Delivery. ' + (orderForm.notes||''), customer_type: 'direct_order', status: 'pending' }),
       });
-      if (res.ok) { setOrderDone(true); toast.success(t('Order placed! Team confirms within 2 hours.')); }
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) { setPlacedOrderId(data && data.data && data.data.id ? data.data.id : null); setOrderDone(true); toast.success(t('Order placed! Team confirms within 2 hours.')); }
       else {
-        const data = await res.json().catch(() => ({}));
         toast.error(serverMessage(t, data.message, 'Order failed. Please call us.'));
       }
     } catch { toast.error(t('Network error.')); }
@@ -351,12 +361,14 @@ export default function ProductDetail() {
           </div>
         )}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 mb-16">
-          {/* Left: Image */}
+          {/* Left: Image + interactive 3D view */}
           <div>
-            <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden aspect-[4/3] shadow-sm">
-              <img src={product.image_url || DEFAULT_IMG}
-                alt={product.model} className="w-full h-full object-cover" loading="lazy" onError={onImgError} />
-            </div>
+            <Product3DViewer
+              image={product.image_url || DEFAULT_IMG}
+              alt={product.model}
+              modelUrl={product.model_url}
+              onImgError={onImgError}
+            />
             {/* Trust badges */}
             <div className="flex gap-3 mt-4 flex-wrap">
               {[['🏅','Authorised Seller'],['🚚','Pan India Delivery'],['✅','Quality Assured'],['📋','Datasheet Available']].map(([i,label]) => (
@@ -562,7 +574,13 @@ export default function ProductDetail() {
               <div className="p-8 text-center">
                 <div className="text-5xl mb-4">🎉</div>
                 <h3 className="text-xl font-bold text-[#006948] mb-2">{t('Order Placed!')}</h3>
-                <p className="text-gray-500 text-sm mb-6">{t('Our team will call you within 2 hours to confirm delivery details.')}</p>
+                <p className="text-gray-500 text-sm mb-4">{t('Our team will call you within 2 hours to confirm delivery details.')}</p>
+                {placedOrderId && (
+                  <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3 mb-4 text-left">
+                    <p className="text-sm text-gray-700">{t('Your order number')}: <span className="font-extrabold text-[#006948]">#{placedOrderId}</span></p>
+                    <Link to={'/track-order?id=' + placedOrderId} onClick={() => setShowOrder(false)} className="inline-block mt-1 text-sm font-bold text-[#006948] hover:underline">{t('Track your order')} →</Link>
+                  </div>
+                )}
                 <button onClick={() => setShowOrder(false)} className="bg-[#006948] text-white px-8 py-3 rounded-xl font-semibold">{t('Done')}</button>
               </div>
             ) : (

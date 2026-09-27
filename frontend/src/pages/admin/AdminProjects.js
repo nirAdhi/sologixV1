@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { projectsAPI } from '../../utils/api';
 import toast from 'react-hot-toast';
 
-const empty = { title:'', location:'', capacity:'', type:'Residential', description:'', image_url:'', savings:'', is_featured:true, sort_order:0 };
+const empty = { title:'', location:'', capacity:'', type:'Residential', description:'', image_url:'', savings:'', is_featured:true, sort_order:0, is_milestone:false, completed_on:'', video_url:'' };
 const TYPES = ['Residential','Commercial','Industrial','Institutional'];
 
 export default function AdminProjects() {
@@ -25,7 +25,7 @@ export default function AdminProjects() {
     setEditing(p.id);
     const clean = {};
     Object.keys(empty).forEach(k => { clean[k] = p[k] ?? empty[k]; });
-    setForm({ ...clean, is_featured: p.is_featured===1 || p.is_featured===true || p.is_featured==='1' });
+    setForm({ ...clean, is_featured: p.is_featured===1 || p.is_featured===true || p.is_featured==='1', is_milestone: p.is_milestone===1 || p.is_milestone===true || p.is_milestone==='1', completed_on: p.completed_on || '', video_url: p.video_url || '' });
     setShowForm(true);
   };
 
@@ -234,6 +234,30 @@ export default function AdminProjects() {
                 <span className="text-sm font-medium text-gray-700">{form.is_featured ? '★ Featured on homepage' : 'Not featured'}</span>
               </label>
               <p className="text-xs text-gray-400 -mt-2">Featured projects appear in the homepage 'Our Projects' section (if none are featured, the newest 6 are shown); all projects appear on the Projects and Gallery pages.</p>
+              {/* Milestone toggle */}
+              <label className="flex items-center gap-3 cursor-pointer">
+                <div className="relative">
+                  <input type="checkbox" checked={form.is_milestone} onChange={e=>setForm(f=>({...f,is_milestone:e.target.checked}))} className="sr-only peer" />
+                  <div className="w-11 h-6 bg-gray-200 peer-checked:bg-amber-500 rounded-full transition-colors relative after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:w-5 after:h-5 after:bg-white after:rounded-full after:transition-transform peer-checked:after:translate-x-5"></div>
+                </div>
+                <span className="text-sm font-medium text-gray-700">{form.is_milestone ? '🏆 Milestone project (big homepage showcase)' : 'Not a milestone'}</span>
+              </label>
+              <p className="text-xs text-gray-400 -mt-2">Milestone projects get the large "Major Milestones" showcase near the top of the homepage — use it for your biggest achievements (e.g. 500 kW+). Up to 4 are shown, in display order.</p>
+              {form.is_milestone && (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Completed (shown on the showcase)</label>
+                    <input value={form.completed_on} onChange={e=>setForm(f=>({...f,completed_on:e.target.value}))} maxLength={30}
+                      placeholder="e.g. August 2026" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Project video (YouTube link, optional)</label>
+                    <input value={form.video_url} onChange={e=>setForm(f=>({...f,video_url:e.target.value}))} maxLength={500}
+                      placeholder="https://youtu.be/..." className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500" />
+                    <p className="text-xs text-gray-400 mt-1">With a link, the project pop-up plays the video instead of just the photo.</p>
+                  </div>
+                </div>
+              )}
               <div className="flex gap-3 pt-2">
                 <button type="button" onClick={()=>setShowForm(false)} className="flex-1 border border-gray-200 text-gray-600 py-3 rounded-xl font-medium hover:bg-gray-50">Cancel</button>
                 <button type="submit" disabled={saving} className="flex-1 bg-[#006948] text-white py-3 rounded-xl font-semibold hover:bg-green-700">

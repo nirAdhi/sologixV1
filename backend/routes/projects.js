@@ -20,7 +20,10 @@ const validImage = (v) => v === undefined || v === '' || (typeof v === 'string' 
 router.get('/', async (req, res) => {
   try {
     const featured = req.query.featured === 'true';
-    const q = featured ? 'SELECT * FROM projects WHERE is_featured=1 ORDER BY sort_order ASC LIMIT 6' : 'SELECT * FROM projects ORDER BY sort_order ASC, created_at DESC';
+    const milestones = req.query.milestones === 'true';
+    const q = milestones ? 'SELECT * FROM projects WHERE is_milestone=1 ORDER BY sort_order ASC LIMIT 12'
+      : featured ? 'SELECT * FROM projects WHERE is_featured=1 ORDER BY sort_order ASC LIMIT 6'
+      : 'SELECT * FROM projects ORDER BY sort_order ASC, created_at DESC';
     const [rows] = await db.query(q);
     res.json({ success: true, data: rows });
   } catch (e) {
@@ -31,11 +34,14 @@ router.get('/', async (req, res) => {
 
 router.post('/', ...canManage, async (req, res) => {
   try {
-    const { title, location, capacity, type, description, image_url, savings, is_featured, sort_order } = req.body;
+    const { title, location, capacity, type, description, image_url, savings, is_featured, sort_order, is_milestone, completed_on, video_url } = req.body;
     if (!title) return res.status(400).json({ success: false, message: 'Title required' });
     if (!validImage(image_url)) return res.status(400).json({ success: false, message: 'image_url must be an https URL, /uploads/ path or image' });
-    const [r] = await db.query('INSERT INTO projects (title, location, capacity, type, description, image_url, savings, is_featured, sort_order) VALUES (?,?,?,?,?,?,?,?,?)',
-      [title, location||'', capacity||'', type||'Residential', description||'', image_url||'', savings||'', is_featured?1:0, sort_order||0]);
+    if (video_url !== undefined && video_url !== '' && video_url !== null && !/^https:\/\/[^\s"'<>]+$/i.test(String(video_url))) {
+      return res.status(400).json({ success: false, message: 'video_url must be an https:// link' });
+    }
+    const [r] = await db.query('INSERT INTO projects (title, location, capacity, type, description, image_url, savings, is_featured, sort_order, is_milestone, completed_on, video_url) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
+      [title, location||'', capacity||'', type||'Residential', description||'', image_url||'', savings||'', is_featured?1:0, sort_order||0, is_milestone?1:0, String(completed_on||'').slice(0,30)||null, String(video_url||'').slice(0,500)||null]);
     const [[p]] = await db.query('SELECT * FROM projects WHERE id=?', [r.insertId]);
     res.status(201).json({ success: true, data: p });
   } catch (e) { res.status(500).json({ success: false, message: 'Failed' }); }
@@ -44,7 +50,8 @@ router.post('/', ...canManage, async (req, res) => {
 router.put('/:id', ...canManage, async (req, res) => {
   try {
     if (!validImage(req.body.image_url)) return res.status(400).json({ success: false, message: 'image_url must be an https URL, /uploads/ path or image' });
-    const fields = ['title','location','capacity','type','description','image_url','savings','is_featured','sort_order'];
+    if (req.body.video_url !== undefined && req.body.video_url !== '' && req.body.video_url !== null && !/^https:\/\/[^\s"'<>]+$/i.test(String(req.body.video_url))) return res.status(400).json({ success: false, message: 'video_url must be an https:// link' });
+    const fields = ['title','location','capacity','type','description','image_url','savings','is_featured','sort_order','is_milestone','completed_on','video_url'];
     const updates = []; const params = [];
     fields.forEach(f => { if (req.body[f] !== undefined) { updates.push(f+'=?'); params.push(req.body[f]); }});
     if (!updates.length) return res.status(400).json({ success: false, message: 'Nothing to update' });

@@ -169,6 +169,26 @@ router.post('/', publicBookingLimiter, [
       password
     } = req.body;
 
+    // SECURITY: only a real, still-free slot may be booked. Previously any time
+    // string passing the regex was accepted and the same slot could be booked
+    // any number of times (calendar pollution / slot-exhaustion abuse).
+    if (!ALLOWED_SLOTS.includes(appointment_time)) {
+      return res.status(400).json({ success: false, message: 'Please choose one of the offered time slots' });
+    }
+    const todayYmd = new Date().toISOString().split('T')[0];
+    const maxD = new Date(); maxD.setDate(maxD.getDate() + 90);
+    const maxYmd = maxD.toISOString().split('T')[0];
+    if (appointment_date < todayYmd || appointment_date > maxYmd) {
+      return res.status(400).json({ success: false, message: 'Appointments can be booked from today up to 90 days ahead' });
+    }
+    const [slotTaken] = await db.query(
+      `SELECT id FROM bookings WHERE appointment_date = ? AND appointment_time = ? AND status IN ('pending', 'confirmed') LIMIT 1`,
+      [appointment_date, appointment_time]
+    );
+    if (slotTaken.length > 0) {
+      return res.status(409).json({ success: false, message: 'This slot has just been taken. Please choose another time.' });
+    }
+
     const [existingCustomer] = await db.query(
       'SELECT id, password FROM customers WHERE email = ?',
       [customer_email]
@@ -214,10 +234,22 @@ router.post('/', publicBookingLimiter, [
     const bookingId = generateBookingId();
 
     const [result] = await db.query(`
-      INSERT INTO bookings 
+      INSERT INTO bookings
       (booking_id, customer_id, service_id, appointment_date, appointment_time, notes, total_amount, payment_status, status)
       VALUES (?, ?, ?, ?, ?, ?, 0, 'completed', 'confirmed')
     `, [bookingId, customerId, service_id, appointment_date, appointment_time, notes || null]);
+
+    // Race guard: two simultaneous requests can both pass the availability
+    // check above. After inserting, the earliest row for the slot wins; a
+    // later duplicate removes itself and answers with the same 409.
+    const [slotRows] = await db.query(
+      `SELECT id FROM bookings WHERE appointment_date = ? AND appointment_time = ? AND status IN ('pending', 'confirmed') ORDER BY id ASC`,
+      [appointment_date, appointment_time]
+    );
+    if (slotRows.length > 1 && slotRows[0].id !== result.insertId) {
+      await db.query('DELETE FROM bookings WHERE id = ?', [result.insertId]);
+      return res.status(409).json({ success: false, message: 'This slot has just been taken. Please choose another time.' });
+    }
 
     const [newBooking] = await db.query(`
       SELECT b.*, s.name as service_name, 

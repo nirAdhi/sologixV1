@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { avatarUrl } from '../utils/avatar';
+import ChannelPartners from '../components/ChannelPartners';
 import { useT } from '../i18n';
 import { getSiteConfig, whatsappHref } from '../utils/siteConfig';
 import {
@@ -425,6 +426,36 @@ const HomePage = () => {
   const [testimonials, setTestimonials] = useState(null);
   // Projects: null -> built-in 6; [] -> grid hidden (button stays).
   const [projects, setProjects] = useState(null);
+  // Milestone projects (Admin > Projects, "Milestone" toggle): section hidden when none.
+  const [milestones, setMilestones] = useState([]);
+  const [openMilestone, setOpenMilestone] = useState(null); // project shown in the pop-up
+  useEffect(() => {
+    if (!openMilestone) return undefined;
+    const onKey = (e) => { if (e.key === 'Escape' || e.key === 'Esc') setOpenMilestone(null); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [openMilestone]);
+  // YouTube link (watch / youtu.be / shorts / embed) → embeddable id, else null.
+  const ytId = (u) => {
+    const m = String(u || '').match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,20})/i);
+    return m ? m[1] : null;
+  };
+  // Milestone strip: arrow buttons instead of a visible scrollbar.
+  const milesRef = useRef(null);
+  const [milesNav, setMilesNav] = useState({ left: false, right: false });
+  const updateMilesNav = useCallback(() => {
+    const el = milesRef.current; if (!el) return;
+    setMilesNav({ left: el.scrollLeft > 10, right: el.scrollLeft + el.clientWidth < el.scrollWidth - 10 });
+  }, []);
+  useEffect(() => {
+    updateMilesNav();
+    window.addEventListener('resize', updateMilesNav);
+    return () => window.removeEventListener('resize', updateMilesNav);
+  }, [milestones, updateMilesNav]);
+  const milesScroll = (dir) => {
+    const el = milesRef.current;
+    if (el) el.scrollBy({ left: dir * el.clientWidth * 0.8, behavior: 'smooth' });
+  };
   // Catalog products: null or [] -> built-in cards.
   const [catalog, setCatalog] = useState(null);
   useEffect(() => {
@@ -445,6 +476,9 @@ const HomePage = () => {
         if (alive) setProjects(list.slice(0, 6));
       } catch (e) { /* keep built-in */ }
     })();
+    fetchJSON('/api/projects?milestones=true')
+      .then(d => { const list = asArray(d); if (alive && list) setMilestones(list.filter(isObj).slice(0, 12)); })
+      .catch(() => {});
     fetchJSON('/api/catalog')
       .then(d => { const list = asArray(d); if (alive && list) setCatalog(list.filter(isObj)); })
       .catch(() => {});
@@ -629,6 +663,9 @@ const HomePage = () => {
 
       </section>
 
+      {/* ── Authorised channel partner brands (Admin > Site Content) ── */}
+      <ChannelPartners />
+
       {/* ── Stats Badges (Admin > Site Content > Statistics) ── */}
       {statsList.length > 0 && (
         <section className="py-12 bg-white border-y border-gray-100">
@@ -676,6 +713,154 @@ const HomePage = () => {
       </section>
       )}
 
+
+      {/* ── Major Milestones — compact card strip; a card opens a pop-up with the
+             full project bio, so the homepage stays short however many there are.
+             (Admin > Projects, "Milestone" toggle) ── */}
+      {milestones.length > 0 && (
+      <section className="py-20 bg-white">
+        <div className="max-w-[1280px] mx-auto px-6 lg:px-16">
+          <div className="text-center mb-10">
+            <span className="text-[#006948] font-medium uppercase tracking-[0.2em] block mb-2 text-sm">{t('Proven at Scale')}</span>
+            <h2 className="text-4xl font-bold">{t('Major Milestones')}</h2>
+            <p className="text-gray-500 mt-3 text-sm">{t('Tap a project to read its full story.')}</p>
+          </div>
+          {/* same soft panel as the Solar Calculator — the palette you liked */}
+          <div className="bg-gradient-to-br from-[#e9edff] to-[#d1fae5] rounded-[2.5rem] p-6 sm:p-10">
+          <div className="relative">
+            <style>{'.miles-scroll::-webkit-scrollbar{display:none}'}</style>
+            {/* arrows appear only when there is more to see in that direction */}
+            {milesNav.left && (
+              <button type="button" onClick={() => milesScroll(-1)} aria-label={t('Previous projects')}
+                className="hidden sm:flex absolute left-2 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-white text-[#006948] shadow-lg items-center justify-center text-xl font-bold hover:bg-green-50 transition-colors">‹</button>
+            )}
+            {milesNav.right && (
+              <button type="button" onClick={() => milesScroll(1)} aria-label={t('More projects')}
+                className="hidden sm:flex absolute right-2 top-1/2 -translate-y-1/2 z-10 w-11 h-11 rounded-full bg-white text-[#006948] shadow-lg items-center justify-center text-xl font-bold hover:bg-green-50 transition-colors">›</button>
+            )}
+            {/* soft edge fades hint that the row continues */}
+            {milesNav.left && <div className="hidden sm:block absolute left-0 top-0 bottom-0 w-14 bg-gradient-to-r from-[#dcf2e6] to-transparent z-[5] pointer-events-none rounded-l-2xl" aria-hidden="true"></div>}
+            {milesNav.right && <div className="hidden sm:block absolute right-0 top-0 bottom-0 w-14 bg-gradient-to-l from-[#dcf2e6] to-transparent z-[5] pointer-events-none rounded-r-2xl" aria-hidden="true"></div>}
+          <div ref={milesRef} onScroll={updateMilesNav}
+            className="miles-scroll flex gap-4 overflow-x-auto py-1 snap-x snap-mandatory"
+            style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+            {milestones.map((m, i) => (
+              /* Luxury plaque card — deliberately photo-free (the pop-up carries
+                 photo/video when available), so every card looks equally premium. */
+              <button key={m.id ?? i} type="button" onClick={() => setOpenMilestone(m)}
+                aria-haspopup="dialog"
+                className="group relative flex-shrink-0 w-64 sm:w-72 snap-start rounded-2xl bg-white text-left shadow-sm hover:shadow-xl transition-all hover:-translate-y-1.5 focus-visible:ring-2 focus-visible:ring-[#006948] overflow-hidden">
+                  {/* project photo, melting into the white card below */}
+                  <span className="block relative h-40 overflow-hidden">
+                    <img src={toText(m.image_url).trim() || SOLAR_IMGS[i % SOLAR_IMGS.length]} alt={toText(m.title)}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy"
+                      onError={imgFallback(SOLAR_IMGS[i % SOLAR_IMGS.length])} />
+                    <span aria-hidden="true" className="absolute inset-0"
+                      style={{ background: 'linear-gradient(to top, #ffffff 4%, rgba(255,255,255,0.30) 45%, rgba(255,255,255,0))' }}></span>
+                    {ytId(m.video_url) && (
+                      <span className="absolute top-3 right-3 bg-black/55 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-full border border-white/20">
+                        ▶ {t('Video')}
+                      </span>
+                    )}
+                    {/* capacity in brand green over the photo's fade */}
+                    <span className="absolute left-5 -bottom-1 text-[40px] leading-none font-extrabold text-[#006948] drop-shadow-[0_1px_2px_rgba(255,255,255,0.9)]">
+                      {toText(m.capacity)}
+                    </span>
+                  </span>
+
+                  <span className="block relative px-5 pt-4 pb-5">
+                    <span className="block text-[10px] font-bold uppercase tracking-[0.3em] text-gray-400">
+                      {t('On-Grid Solar Power Plant')}
+                    </span>
+                    <span aria-hidden="true" className="block h-px w-12 my-3 bg-gradient-to-r from-[#006948]/40 to-transparent"></span>
+                    <span className="block font-bold text-[15px] leading-snug text-gray-900 line-clamp-2 min-h-[42px]">{toText(m.title)}</span>
+                    <span className="block text-gray-500 text-xs mt-1.5 line-clamp-1">
+                      {[toText(m.type) && t(toText(m.type)), toText(m.location)].filter(Boolean).join(' · ')}
+                    </span>
+                    {toText(m.savings) && (
+                      <span className="inline-block mt-3 text-[11px] font-bold text-amber-700 bg-yellow-50 border border-yellow-200 rounded-full px-3 py-1">
+                        💰 {toText(m.savings)}
+                      </span>
+                    )}
+                    {/* same button style as the calculator's "Calculate My Savings" */}
+                    <span className="block mt-4 w-full text-center bg-[#006948] text-white text-sm font-semibold px-5 py-2.5 rounded-full shadow group-hover:bg-green-700 group-hover:shadow-md transition-all">
+                      {t('About this project')} →
+                    </span>
+                  </span>
+              </button>
+            ))}
+          </div>
+          </div>
+          </div>
+        </div>
+      </section>
+      )}
+
+      {/* Milestone pop-up: the full bio of the tapped project */}
+      {openMilestone && (
+        <div className="fixed inset-0 z-[300] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/70" onClick={() => setOpenMilestone(null)} aria-hidden="true"></div>
+          <div role="dialog" aria-modal="true" aria-label={toText(openMilestone.title)}
+            className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+            <div className="relative bg-gray-100">
+              {ytId(openMilestone.video_url) ? (
+                <div className="aspect-video bg-black">
+                  <iframe
+                    src={'https://www.youtube-nocookie.com/embed/' + ytId(openMilestone.video_url)}
+                    title={toText(openMilestone.title)}
+                    className="w-full h-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                  ></iframe>
+                </div>
+              ) : toText(openMilestone.image_url).trim() ? (
+                <div className="h-52 sm:h-60">
+                  <img src={toText(openMilestone.image_url).trim()} alt={toText(openMilestone.title)}
+                    className="w-full h-full object-cover" onError={imgFallback(SOLAR_IMGS[0])} />
+                </div>
+              ) : (
+                /* no photo yet → soft calculator-style header instead of a stock image */
+                <div className="h-44 sm:h-52 flex flex-col items-center justify-center text-center relative overflow-hidden bg-gradient-to-br from-[#e9edff] to-[#d1fae5]">
+                  <span className="relative text-5xl font-extrabold text-[#006948]">
+                    {toText(openMilestone.capacity)}
+                  </span>
+                  <span className="relative text-[11px] font-bold uppercase tracking-[0.3em] text-gray-500 mt-2">
+                    {t('On-Grid Solar Power Plant')}
+                  </span>
+                  <span aria-hidden="true" className="relative h-px w-16 mt-3 bg-gradient-to-r from-transparent via-[#006948]/50 to-transparent"></span>
+                </div>
+              )}
+              {toText(openMilestone.capacity) && !ytId(openMilestone.video_url) && toText(openMilestone.image_url).trim() && (
+                <span className="absolute bottom-3 left-4 bg-[#006948] text-white text-lg font-extrabold px-4 py-1.5 rounded-full shadow-lg">
+                  {toText(openMilestone.capacity)}
+                </span>
+              )}
+              <button type="button" onClick={() => setOpenMilestone(null)} aria-label={t('Close')}
+                className="absolute -top-0 right-0 sm:top-3 sm:right-3 w-9 h-9 rounded-full bg-black/50 text-white flex items-center justify-center text-xl hover:bg-black/70 z-10">✕</button>
+            </div>
+            <div className="p-6">
+              <h3 className="text-xl font-bold text-gray-900">{toText(openMilestone.title)}</h3>
+              <p className="text-sm text-gray-500 mt-1 mb-4">
+                {[toText(openMilestone.type) && t(toText(openMilestone.type)), toText(openMilestone.location),
+                  toText(openMilestone.completed_on) && t('Completed {when}', { when: toText(openMilestone.completed_on) })]
+                  .filter(Boolean).join(' · ')}
+              </p>
+              {toText(openMilestone.description) && (
+                <p className="text-gray-700 leading-relaxed whitespace-pre-line mb-5">{toText(openMilestone.description)}</p>
+              )}
+              <div className="flex flex-wrap items-center gap-3">
+                {toText(openMilestone.savings) && (
+                  <span className="bg-green-50 border border-green-100 text-[#006948] px-4 py-2 rounded-full text-sm font-bold">💰 {toText(openMilestone.savings)}</span>
+                )}
+                <Link to="/contact" onClick={() => setOpenMilestone(null)}
+                  className="bg-[#006948] text-white px-5 py-2.5 rounded-full text-sm font-bold hover:bg-green-700 transition-colors">
+                  {t('Discuss a project like this')} →
+                </Link>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Our Projects ── */}
       <section className="py-24 bg-gray-50">

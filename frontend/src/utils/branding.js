@@ -11,8 +11,8 @@ export const BRANDING = {
   website: 'https://www.sologixenergy.in',
   email: 'info@sologixenergy.in',
   emailAlt: 'amit@sologixenergy.in',
-  phone: '+91 8287766474',
-  phoneAlt: '+91 9031018640',
+  phone: '+91 9771419133',
+  phoneAlt: '+91 8287766474',
   address: 'STPI Building, Plot-8, Namkum Industrial Area, Ranchi, Jharkhand - 834010',
 
   // Logo URL

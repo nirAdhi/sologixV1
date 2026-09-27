@@ -10,6 +10,7 @@ import { useLocation } from 'react-router-dom';
 import { useT } from '../i18n';
 import { BRANDING } from '../utils/branding';
 import { loadSiteContent } from '../utils/siteContent';
+import { getConsent, onConsentChange } from '../utils/consent';
 
 const API = (BRANDING && BRANDING.apiUrl) || '/api';
 const GA4_RE = /^G-[A-Z0-9]{4,12}$/;
@@ -134,16 +135,23 @@ export default function VisitorTools() {
 
   const privatePage = isPrivatePath(path);
 
+  // Analytics scripts run only after the visitor accepted cookies
+  // (CookieConsent banner); Tidio live chat is a site feature, not tracking.
+  const [consent, setConsentState] = useState(getConsent);
+  useEffect(() => onConsentChange(setConsentState), []);
+
   // Third-party scripts (public pages only).
   useEffect(() => {
     if (!cfg || privatePage) return;
-    if (cfg.ga4) initGA(cfg.ga4);
-    if (cfg.clarity) initClarity(cfg.clarity);
+    if (consent === 'yes') {
+      if (cfg.ga4) initGA(cfg.ga4);
+      if (cfg.clarity) initClarity(cfg.clarity);
+    }
     if (cfg.tidio) initTidio(cfg.tidio);
-  }, [cfg, privatePage]);
+  }, [cfg, privatePage, consent]);
 
-  // GA4 page_view on every route change.
-  const ga4 = cfg ? cfg.ga4 : '';
+  // GA4 page_view on every route change (only with cookie consent).
+  const ga4 = cfg && consent === 'yes' ? cfg.ga4 : '';
   useEffect(() => {
     if (!ga4 || privatePage) return undefined;
     // Small delay so pages can update document.title first.

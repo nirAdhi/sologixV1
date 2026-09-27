@@ -80,11 +80,17 @@ router.get('/categories', async (req, res) => {
 const validImage = (v) => v === undefined || v === '' || (typeof v === 'string' && v.length <= 1500000 &&
   (/^https:\/\/[^\s"'<>]+$/i.test(v) || /^\/uploads\/[\w.-]+$/.test(v) || /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(v)));
 const badMoney = (v) => v !== undefined && v !== null && v !== '' && !(Number(v) >= 0);
+const validModel = (v) => v === undefined || v === null || v === '' ||
+  (typeof v === 'string' && v.length <= 500 && /^https:\/\/[^\s"'<>]+\.(glb|gltf)(\?[^\s"'<>]*)?$/i.test(v));
 function checkProduct(b, partial) {
   if (!partial && (!b.category || !b.brand)) return 'Category and brand are required';
   if (!validImage(b.image_url)) return 'image_url must be an https URL, /uploads/ path or image';
+  if (!validModel(b.model_url)) return '3D model must be an https:// link to a .glb or .gltf file';
   if (badMoney(b.price) || badMoney(b.discount_price)) return 'Prices must be non-negative numbers';
   if (b.price && b.discount_price && Number(b.discount_price) > Number(b.price)) return 'Discount price cannot exceed price';
+  if (b.description !== undefined && String(b.description).length > 5000) return 'Description is too long (max 5000 characters)';
+  if (b.warranty !== undefined && String(b.warranty).length > 50) return 'Warranty is too long (max 50 characters)';
+  if (b.specs_detail !== undefined && String(b.specs_detail).length > 5000) return 'Specifications are too long (max 5000 characters)';
   return null;
 }
 
@@ -93,9 +99,9 @@ router.post('/', ...canManage, async (req, res) => {
   try {
     const err = checkProduct(req.body, false);
     if (err) return res.status(400).json({ success:false, message: err });
-    const {category,brand,model,specs,price_range,image_url,badge,in_stock,sort_order,price,unit,discount_price,show_price} = req.body;
-    const [r] = await db.query('INSERT INTO product_catalog (category,brand,model,specs,price_range,image_url,badge,in_stock,sort_order,price,unit,discount_price,show_price) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
-      [category,brand,model||'',specs||'',price_range||'Contact for pricing',image_url||'',badge||'',in_stock?1:0,sort_order||0,(price===''||price===undefined)?null:Number(price),unit||'per NOS',(discount_price===''||discount_price===undefined)?null:Number(discount_price),show_price?1:0]);
+    const {category,brand,model,specs,price_range,image_url,badge,in_stock,sort_order,price,unit,discount_price,show_price,model_url,description,warranty,specs_detail} = req.body;
+    const [r] = await db.query('INSERT INTO product_catalog (category,brand,model,specs,price_range,image_url,badge,in_stock,sort_order,price,unit,discount_price,show_price,model_url,description,warranty,specs_detail) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      [category,brand,model||'',specs||'',price_range||'Contact for pricing',image_url||'',badge||'',in_stock?1:0,sort_order||0,(price===''||price===undefined)?null:Number(price),unit||'per NOS',(discount_price===''||discount_price===undefined)?null:Number(discount_price),show_price?1:0,model_url||null,description||null,warranty||null,specs_detail||null]);
     const [[p]] = await db.query('SELECT * FROM product_catalog WHERE id=?',[r.insertId]);
     res.status(201).json({success:true,data:p});
   } catch(e){res.status(500).json({success:false,message:'Failed'});}
@@ -105,7 +111,7 @@ router.put('/:id', ...canManage, async (req, res) => {
   try {
     const err = checkProduct(req.body, true);
     if (err) return res.status(400).json({ success:false, message: err });
-    const fields=['category','brand','model','specs','price_range','image_url','badge','in_stock','sort_order','price','unit','discount_price','show_price'];
+    const fields=['category','brand','model','specs','price_range','image_url','badge','in_stock','sort_order','price','unit','discount_price','show_price','model_url','description','warranty','specs_detail'];
     const updates=[],params=[];
     fields.forEach(f=>{if(req.body[f]!==undefined){updates.push(f+'=?');params.push(req.body[f]);}});
     if (!updates.length) return res.status(400).json({ success:false, message:'Nothing to update' });

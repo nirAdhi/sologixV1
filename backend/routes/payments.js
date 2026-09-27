@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const QRCode = require('qrcode');
 const db = require('../config/database');
-const { sendBookingConfirmation, notifyAdminNewOrder, later } = require('../config/email');
+const { sendBookingConfirmation, notifyAdminNewOrder, sendOrderStatusUpdate, later } = require('../config/email');
 const crypto = require('crypto');
 const auth = require('../middleware/auth');
 
@@ -639,9 +639,9 @@ router.post('/verify', async (req, res) => {
     `, [booking_id]);
 
     if (bookingData.length === 0) {
-      return res.status(404).json({ 
-        success: false, 
-        message: 'Booking not found' 
+      return res.status(404).json({
+        success: false,
+        message: 'Booking not found'
       });
     }
 
@@ -654,7 +654,9 @@ router.post('/verify', async (req, res) => {
     // state of ANY booking — including downgrading an already-paid Razorpay booking
     // back to pending and replacing the real payment id. Only allow the transition
     // from an unpaid state, and never touch a completed booking.
-    const currentBooking = bookings[0];
+    // BUGFIX: this route's query result is bookingData, not bookings; the old name
+    // threw a ReferenceError, so every call 500'd before reaching the update.
+    const currentBooking = bookingData[0];
     if (currentBooking.payment_status === 'completed') {
       return res.status(409).json({ success: false, message: 'This booking is already paid' });
     }
@@ -806,7 +808,7 @@ router.post('/product-order/verify', async (req, res) => {
 
     const [orders] = await db.query('SELECT id, amount, status FROM product_orders WHERE razorpay_order_id = ? LIMIT 1', [razorpay_order_id]);
     if (!orders.length) return res.status(404).json({ success: false, message: 'Order not found. Please contact us with your payment ID.' });
-    if (orders[0].status === 'confirmed') return res.json({ success: true, message: 'Payment already recorded', payment_id: razorpay_payment_id });
+    if (orders[0].status === 'confirmed') return res.json({ success: true, message: 'Payment already recorded', payment_id: razorpay_payment_id, order_id: orders[0].id });
 
     // Confirm with Razorpay that the money was actually captured for the right amount.
     const Razorpay = require('razorpay');
@@ -821,10 +823,15 @@ router.post('/product-order/verify', async (req, res) => {
       "UPDATE product_orders SET status='confirmed', payment_id=? WHERE razorpay_order_id=? AND status <> 'confirmed'",
       [razorpay_payment_id, razorpay_order_id]
     );
-    res.json({ success: true, message: 'Payment verified. Order confirmed!', payment_id: razorpay_payment_id, updated: r.affectedRows });
+    res.json({ success: true, message: 'Payment verified. Order confirmed!', payment_id: razorpay_payment_id, order_id: orders[0].id, updated: r.affectedRows });
     if (r.affectedRows) {
-      db.query('SELECT name, email, phone, address, items, amount FROM product_orders WHERE razorpay_order_id = ? LIMIT 1', [razorpay_order_id])
-        .then(([[o]]) => { if (o) later(notifyAdminNewOrder, { ...o, items: (() => { try { return JSON.parse(o.items); } catch (e) { return []; } })(), payment_method: 'Paid online' }); })
+      db.query('SELECT id, name, email, phone, address, items, amount FROM product_orders WHERE razorpay_order_id = ? LIMIT 1', [razorpay_order_id])
+        .then(([[o]]) => {
+          if (!o) return;
+          const items = (() => { try { return JSON.parse(o.items); } catch (e) { return []; } })();
+          later(notifyAdminNewOrder, { ...o, items, payment_method: 'Paid online' });
+          later(sendOrderStatusUpdate, { ...o, items, status: 'confirmed' }); // customer confirmation
+        })
         .catch(() => {});
     }
   } catch (err) {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useT } from '../i18n';
 import { BRANDING } from '../utils/branding';
+import BranchOffices from '../components/BranchOffices';
 
 const API_URL = process.env.REACT_APP_API_URL || '/api';
 
@@ -105,6 +106,9 @@ const Contact = () => {
               )}
             </div>
           </div>
+
+          {/* Branch offices (Admin > Site Content > Branch offices) */}
+          <BranchOffices />
         </div>
       </section>
     </div>

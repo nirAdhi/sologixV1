@@ -394,7 +394,7 @@ router.delete('/delete-service-image', auth, canManage, async (req, res) => {
 // ===== IMAGE MAPPINGS (Google Drive to Cloudinary sync) =====
 
 // Get all image mappings with service names
-router.get('/image-mappings', auth, async (req, res) => {
+router.get('/image-mappings', auth, canManage, async (req, res) => {
   try {
     const [mappings] = await db.query(`
       SELECT im.*, s.name as service_name 
@@ -620,7 +620,7 @@ router.post('/sync-from-drive', auth, canManage, async (req, res) => {
 });
 
 // List images from Cloudinary
-router.get('/cloudinary/list', auth, async (req, res) => {
+router.get('/cloudinary/list', auth, canEditContent, async (req, res) => {
   try {
     const { next_cursor } = req.query;
     // Force the app's own folder and clamp page size (Cloudinary Admin API is rate limited).
@@ -701,7 +701,7 @@ router.get('/cloudinary/list', auth, async (req, res) => {
 });
 
 // Check Cloudinary configuration
-router.get('/cloudinary/config-check', auth, (req, res) => {
+router.get('/cloudinary/config-check', auth, canEditContent, (req, res) => {
   const config = cloudinary.config();
   res.json({
     success: true,

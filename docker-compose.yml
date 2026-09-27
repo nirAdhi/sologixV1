@@ -9,10 +9,10 @@ services:
     container_name: sologix-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-sologix_root_2026}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env.docker}
       MYSQL_DATABASE: ${DB_NAME:-solar_booking}
       MYSQL_USER: ${DB_USER:-sologix}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-sologix_db_secure_2026}
+      MYSQL_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env.docker}
     volumes:
       - mysql_data:/var/lib/mysql
     ports:
@@ -20,7 +20,7 @@ services:
     networks:
       - sologix-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-sologix_root_2026}"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD:?set MYSQL_ROOT_PASSWORD in .env.docker}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -47,7 +47,7 @@ services:
       DB_PORT: 3306
       DB_NAME: ${DB_NAME:-solar_booking}
       DB_USER: ${DB_USER:-sologix}
-      DB_PASSWORD: ${DB_PASSWORD:-sologix_db_secure_2026}
+      DB_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env.docker}
     depends_on:
       mysql:
         condition: service_healthy

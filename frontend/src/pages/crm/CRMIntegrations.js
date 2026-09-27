@@ -6,12 +6,21 @@ const API = process.env.REACT_APP_API_URL || '/api';
 const authHeader = () => ({ 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + localStorage.getItem('adminToken') });
 
 export default function CRMIntegrations() {
-  const [hubspotToken, setHubspotToken] = useState(localStorage.getItem('crm_hubspot_token') || '');
+  // SECURITY: the HubSpot private-app token grants full CRM read/write and used
+  // to be kept in localStorage and echoed into the page. It now lives only on
+  // the server: the field starts empty, is sent once on save, then cleared.
+  const [hubspotToken, setHubspotToken] = useState('');
   const [hubspotPortal, setHubspotPortal] = useState(localStorage.getItem('crm_hubspot_portal') || '');
+  const [configured, setConfigured] = useState(false);
   const [testing, setTesting] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [testResult, setTestResult] = useState(null);
   const [saved, setSaved] = useState(false);
+
+  // Clean up tokens that older versions of this page left in the browser.
+  React.useEffect(() => {
+    try { localStorage.removeItem('crm_hubspot_token'); } catch (e) { /* ignore */ }
+  }, []);
 
   const save = async () => {
     if (!hubspotToken) { toast.error('Enter your HubSpot Private App Token first'); return; }
@@ -22,8 +31,9 @@ export default function CRMIntegrations() {
       });
       const data = await res.json();
       if (data.success) {
-        localStorage.setItem('crm_hubspot_token', hubspotToken);
         localStorage.setItem('crm_hubspot_portal', hubspotPortal);
+        setHubspotToken('');       // never keep the token in the browser
+        setConfigured(true);
         setSaved(true);
         toast.success('HubSpot credentials saved to server!');
         setTimeout(() => setSaved(false), 3000);
@@ -32,7 +42,6 @@ export default function CRMIntegrations() {
   };
 
   const testConnection = async () => {
-    if (!hubspotToken) { toast.error('Save your token first, then test'); return; }
     setTesting(true);
     setTestResult(null);
     try {
@@ -68,8 +77,8 @@ export default function CRMIntegrations() {
               <a href="https://app.hubspot.com" target="_blank" rel="noreferrer" className="text-xs text-orange-400 hover:underline">Open HubSpot Dashboard →</a>
             </div>
             <div className="ml-auto text-center">
-              <div className={"w-3 h-3 rounded-full mx-auto mb-1 " + (hubspotToken ? 'bg-green-500 animate-pulse' : 'bg-gray-600')}></div>
-              <span className="text-xs text-gray-500">{hubspotToken ? 'Configured' : 'Not connected'}</span>
+              <div className={"w-3 h-3 rounded-full mx-auto mb-1 " + (configured || testResult?.success ? 'bg-green-500 animate-pulse' : 'bg-gray-600')}></div>
+              <span className="text-xs text-gray-500">{configured || testResult?.success ? 'Configured' : 'Use "Test Connection"'}</span>
             </div>
           </div>
 
@@ -117,11 +126,11 @@ export default function CRMIntegrations() {
             </div>
           )}
 
-          {/* Backend .env instructions */}
+          {/* Backend .env instructions — never echo the real token into the page */}
           <div className="mt-6 bg-gray-950 rounded-xl p-4 border border-white/5">
-            <p className="text-xs text-gray-500 mb-2 font-semibold">Add to your backend <code className="text-green-400">.env</code> file:</p>
+            <p className="text-xs text-gray-500 mb-2 font-semibold">Alternatively, set these in your backend <code className="text-green-400">.env</code> file (paste your own values there):</p>
             <pre className="text-green-400 text-xs">
-{`HUBSPOT_TOKEN=${hubspotToken || 'pat-na1-your-token-here'}
+{`HUBSPOT_TOKEN=pat-na1-your-token-here
 HUBSPOT_PORTAL_ID=${hubspotPortal || '12345678'}`}
             </pre>
           </div>

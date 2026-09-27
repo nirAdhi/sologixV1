@@ -112,12 +112,10 @@ router.post('/login', [
 
     const customer = customers[0];
 
-    // If customer doesn't have a password, they must register first
+    // Guests (booking-created, no password) must register first — but say the
+    // same thing as any failed login, so email addresses can't be probed.
     if (!customer.password) {
-      return res.status(401).json({ 
-        success: false, 
-        message: 'No account found. Please register first or book a service to create an account.' 
-      });
+      return res.status(401).json({ success: false, message: 'Invalid email or password' });
     }
 
     // Verify password
@@ -132,6 +130,8 @@ router.post('/login', [
       JWT_SECRET,
       { expiresIn: '7d' }
     );
+
+    require('./track').logEvent('customer_login'); // footfall analytics counter
 
     res.json({
       success: true,
@@ -159,7 +159,7 @@ router.get('/profile', async (req, res) => {
       return res.status(401).json({ success: false, message: 'No token provided' });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     
     if (decoded.type !== 'customer') {
       return res.status(401).json({ success: false, message: 'Invalid token type' });
@@ -189,7 +189,7 @@ router.get('/bookings', async (req, res) => {
       return res.status(401).json({ success: false, message: 'No token provided' });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     
     if (decoded.type !== 'customer') {
       return res.status(401).json({ success: false, message: 'Invalid token type' });
@@ -222,7 +222,7 @@ router.get('/bookings/:bookingId', async (req, res) => {
       return res.status(401).json({ success: false, message: 'No token provided' });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     
     if (decoded.type !== 'customer') {
       return res.status(401).json({ success: false, message: 'Invalid token type' });
@@ -259,7 +259,7 @@ router.put('/profile', async (req, res) => {
       return res.status(401).json({ success: false, message: 'No token provided' });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     
     if (decoded.type !== 'customer') {
       return res.status(401).json({ success: false, message: 'Invalid token type' });
@@ -287,7 +287,7 @@ router.put('/change-password', passwordLimiter, async (req, res) => {
       return res.status(401).json({ success: false, message: 'No token provided' });
     }
 
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] });
     
     if (decoded.type !== 'customer') {
       return res.status(401).json({ success: false, message: 'Invalid token type' });
@@ -295,8 +295,8 @@ router.put('/change-password', passwordLimiter, async (req, res) => {
 
     const { currentPassword, newPassword } = req.body;
 
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({ success: false, message: 'New password must be at least 6 characters' });
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ success: false, message: 'New password must be at least 8 characters' });
     }
 
     const [customers] = await db.query('SELECT * FROM customers WHERE id = ?', [decoded.id]);

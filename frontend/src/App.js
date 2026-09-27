@@ -3,6 +3,9 @@ import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Navbar from './components/Navbar';
+import PromoBanner from './components/PromoBanner';
+import CookieConsent from './components/CookieConsent';
+import PageviewTracker from './components/PageviewTracker';
 import ConsultationWidget from './components/ConsultationWidget';
 import VisitorTools from './components/VisitorTools';
 import ThemeProvider from './components/ThemeProvider';
@@ -43,10 +46,12 @@ const AdminProjects = lazy(() => import('./pages/admin/AdminProjects'));
 const AdminOrders = lazy(() => import('./pages/admin/AdminOrders'));
 const AdminCatalog = lazy(() => import('./pages/admin/AdminCatalog'));
 const AdminEmail = lazy(() => import('./pages/admin/AdminEmail'));
+const AdminAnalytics = lazy(() => import('./pages/admin/AdminAnalytics'));
 const UnifiedLogin = lazy(() => import('./pages/UnifiedLogin'));
 const CustomerPortal = lazy(() => import('./pages/CustomerPortal'));
 const CustomerBookingDetail = lazy(() => import('./pages/CustomerBookingDetail'));
 const Gallery = lazy(() => import('./pages/Gallery'));
+const TrackOrder = lazy(() => import('./pages/TrackOrder'));
 const ProjectsPage = lazy(() => import('./pages/ProjectsPage'));
 const CRMDashboard = lazy(() => import('./pages/crm/CRMDashboard'));
 const CRMLeads = lazy(() => import('./pages/crm/CRMLeads'));
@@ -59,6 +64,7 @@ function WithNavbar({ children }) {
   return (
     <>
       <Navbar />
+      <PromoBanner />
       <main className="flex-grow">{children}</main>
       <Footer />
     </>
@@ -80,6 +86,8 @@ function AppContent() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       <ScrollToTop />
+      <PageviewTracker />
+      {!isAdminPage && !isPortalPage && <CookieConsent />}
       {!isAdminPage && !isPortalPage && <ConsultationWidget />}
       {!isAdminPage && !isPortalPage && <VisitorTools />}
       <Toaster
@@ -113,6 +121,7 @@ function AppContent() {
         <Route path="/admin/orders"         element={<AdminOrders />} />
         <Route path="/admin/catalog"        element={<AdminCatalog />} />
         <Route path="/admin/email"          element={<AdminEmail />} />
+        <Route path="/admin/analytics"      element={<AdminAnalytics />} />
 
         {/* ── Customer portal (no navbar/footer) ── */}
         <Route path="/portal/login"               element={<UnifiedLogin />} />
@@ -134,6 +143,7 @@ function AppContent() {
         <Route path="/gallery"         element={<WithNavbar><Gallery /></WithNavbar>} />
         <Route path="/products"        element={<WithNavbar><Products /></WithNavbar>} />
         <Route path="/products/:id"     element={<WithNavbar><ProductDetail /></WithNavbar>} />
+        <Route path="/track-order"     element={<WithNavbar><TrackOrder /></WithNavbar>} />
         <Route path="/become-partner"  element={<WithNavbar><BecomePartner /></WithNavbar>} />
         <Route path="/about"           element={<WithNavbar><About /></WithNavbar>} />
         <Route path="/faq"             element={<WithNavbar><FAQ /></WithNavbar>} />

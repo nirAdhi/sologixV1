@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, Link } from 'react-router-dom';
+import ChannelPartners from '../components/ChannelPartners';
 import { catalogAPI } from '../utils/api';
 import toast from 'react-hot-toast';
 import { useT } from '../i18n';
@@ -181,9 +182,11 @@ export default function Products() {
   const [submitted, setSubmitted] = useState(false);
   const [showOrderModal, setShowOrderModal] = useState(false);
   const [orderProduct, setOrderProduct] = useState(null);
+  const [orderCartMode, setOrderCartMode] = useState(false); // true = ordering the whole cart
   const [orderForm, setOrderForm] = useState({ name:'', phone:'', email:'', address:'', qty:1, payment:'cod', notes:'' });
   const [orderSubmitting, setOrderSubmitting] = useState(false);
   const [orderDone, setOrderDone] = useState(false);
+  const [placedOrderId, setPlacedOrderId] = useState(null);
   const cartSynced = useRef(false);
 
   useEffect(() => {
@@ -304,8 +307,32 @@ export default function Products() {
   const openOrder = (product) => {
     if (!canOrder(product)) return;
     setOrderProduct(product);
+    setOrderCartMode(false);
     setOrderForm({ name:'', phone:'', email:'', address:'', qty:1, payment:'cod', notes:'' });
     setOrderDone(false);
+    setPlacedOrderId(null);
+    setShowOrderModal(true);
+  };
+
+  // Order everything in the cart in one go (checkout).
+  const cartOrderable = cart.length > 0 && cart.every(i => canOrder(productsById.get(String(i.id))));
+  // Total for the items that have a listed price; null when none do.
+  const cartTotal = useMemo(() => {
+    let sum = 0, priced = 0;
+    cart.forEach(i => {
+      const info = getPriceInfo(productsById.get(String(i.id)) || i);
+      if (info.show) { sum += info.selling * (parseInt(i.qty, 10) || 0); priced += 1; }
+    });
+    return { sum, priced, unpriced: cart.length - priced };
+  }, [cart, productsById]);
+  const openCartOrder = () => {
+    if (!cartOrderable) { toast.error(t('An item in your cart cannot be ordered right now. Remove it or request a quote instead.')); return; }
+    setOrderProduct(null);
+    setOrderCartMode(true);
+    setOrderForm({ name:'', phone:'', email:'', address:'', qty:1, payment:'cod', notes:'' });
+    setOrderDone(false);
+    setPlacedOrderId(null);
+    setShowCart(false);
     setShowOrderModal(true);
   };
 
@@ -336,7 +363,7 @@ export default function Products() {
             }),
           });
           const result = await verify.json();
-          if (result.success) { onSuccess(response.razorpay_payment_id); }
+          if (result.success) { onSuccess(response.razorpay_payment_id, result.order_id); }
           else { toast.error(serverMessage(t, result.message, 'Payment verification failed. Contact support.')); }
         } catch { toast.error(t('Verification error. Please contact us.')); }
       },
@@ -352,9 +379,16 @@ export default function Products() {
   };
 
   const submitOrder = async () => {
-    if (!canOrder(orderProduct)) return;
+    if (orderCartMode ? !cartOrderable : !canOrder(orderProduct)) return;
     if (!orderForm.name || !orderForm.phone || !orderForm.address) { toast.error(t('Name, phone and address required')); return; }
-    const items = [{ id: orderProduct.id, brand: orderProduct.brand, model: orderProduct.model, qty: orderForm.qty, unit: orderProduct.unit }];
+    const items = orderCartMode
+      ? cart.map(i => ({ id: i.id, brand: i.brand, model: i.model, qty: parseInt(i.qty, 10) || 1, unit: i.unit }))
+      : [{ id: orderProduct.id, brand: orderProduct.brand, model: orderProduct.model, qty: orderForm.qty, unit: orderProduct.unit }];
+    const onPlaced = (id) => {
+      setPlacedOrderId(id || null);
+      setOrderDone(true);
+      if (orderCartMode) setCart([]);      // the cart has become an order
+    };
     setOrderSubmitting(true);
     try {
       if (orderForm.payment === 'online') {
@@ -373,7 +407,7 @@ export default function Products() {
         if (!rpRes.ok || !rpData.success || !rpData.data) { toast.error(serverMessage(t, rpData.message, 'Payment gateway error. Try COD or call us.')); setOrderSubmitting(false); return; }
         setOrderSubmitting(false);
         launchRazorpay(rpData.data, { name: orderForm.name, phone: orderForm.phone, email: orderForm.email }, items,
-          (paymentId) => { setOrderDone(true); toast.success(t('Payment successful! Order confirmed. Payment ID: {id}', { id: paymentId })); }
+          (paymentId, orderId) => { onPlaced(orderId); toast.success(t('Payment successful! Order confirmed. Payment ID: {id}', { id: paymentId })); }
         );
         return;
       }
@@ -388,9 +422,9 @@ export default function Products() {
           customer_type: 'direct_order', status: 'pending',
         }),
       });
-      if (res.ok) { setOrderDone(true); toast.success(t('Order placed! Team will confirm within 2 hours.')); }
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) { onPlaced(data && data.data && data.data.id); toast.success(t('Order placed! Team will confirm within 2 hours.')); }
       else {
-        const data = await res.json().catch(() => ({}));
         toast.error(serverMessage(t, data.message, 'Order failed. Please call us.'));
       }
     } catch { toast.error(t('Network error. Please call us.')); }
@@ -431,6 +465,9 @@ export default function Products() {
           </div>
         </div>
       </section>
+
+      {/* Authorised channel partner brands (Admin > Site Content) */}
+      <ChannelPartners />
 
       {/* Sticky search bar */}
       <div className="bg-white border-b border-gray-100 sticky top-0 z-30 shadow-sm">
@@ -651,9 +688,19 @@ export default function Products() {
                   ); })}
                 </div>
                 <div className="p-4 border-t border-gray-100 sticky bottom-0 bg-white">
+                  {cartTotal.priced > 0 && (
+                    <div className="flex items-baseline justify-between mb-3">
+                      <span className="text-sm text-gray-500">{t('Total')}{cartTotal.unpriced > 0 ? ' (' + t('{count} items priced on request', { count: cartTotal.unpriced }) + ')' : ''}</span>
+                      <span className="text-xl font-extrabold text-[#006948]">{fmtINR(cartTotal.sum)}</span>
+                    </div>
+                  )}
+                  <button onClick={openCartOrder} disabled={!cartOrderable}
+                    className="w-full bg-[#006948] text-white py-4 rounded-xl font-bold text-sm hover:bg-[#004d34] transition-colors disabled:opacity-50">
+                    🛒 {t('Place Order (Pay on Delivery / Online)')}
+                  </button>
                   <button onClick={() => { setShowCart(false); setShowQuoteModal(true); setSubmitted(false); }}
-                    className="w-full bg-[#006948] text-white py-4 rounded-xl font-bold text-sm hover:bg-[#004d34] transition-colors">
-                    {t('Submit Quote Request')}
+                    className="w-full border-2 border-[#006948] text-[#006948] py-3 rounded-xl font-bold text-sm hover:bg-green-50 transition-colors mt-2">
+                    {t('Request Best Price Instead')}
                   </button>
                   <p className="text-xs text-gray-400 text-center mt-2">{t('Best price guaranteed within 24 hours')}</p>
                 </div>
@@ -711,21 +758,25 @@ export default function Products() {
                     {submitting ? t('Sending...') : t('Submit Quote')}
                   </button>
                 </div>
-                <p className="text-xs text-gray-400 text-center">{t('Razorpay payment integration — coming soon')}</p>
+                <p className="text-xs text-gray-400 text-center">{t('Want to buy right away? Use "Place Order" in the cart — Pay on Delivery or secure online payment.')}</p>
               </div>
             )}
           </div>
         </div>
       )}
 
-      {/* ── Direct Order Modal ── */}
-      {showOrderModal && orderProduct && (
+      {/* ── Direct Order Modal (one product, or the whole cart) ── */}
+      {showOrderModal && (orderProduct || orderCartMode) && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60">
           <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
             <div className="bg-[#006948] px-6 py-4 text-white flex justify-between items-center sticky top-0">
               <div>
                 <h2 className="text-lg font-bold">{t('Place Order')}</h2>
-                <p className="text-white/80 text-xs">{orderProduct.brand} — {orderProduct.model}</p>
+                <p className="text-white/80 text-xs">
+                  {orderCartMode
+                    ? t('{count} items from your cart', { count: totalItems })
+                    : orderProduct.brand + ' — ' + orderProduct.model}
+                </p>
               </div>
               <button onClick={() => setShowOrderModal(false)} className="text-white/70 hover:text-white text-xl">✕</button>
             </div>
@@ -734,12 +785,42 @@ export default function Products() {
                 <div className="text-5xl mb-4">🎉</div>
                 <h3 className="text-xl font-bold text-[#006948] mb-2">{t('Order Placed!')}</h3>
                 <p className="text-gray-500 text-sm mb-2">{t('Thank you! Our team will call you within 2 hours to confirm your order and delivery details.')}</p>
-                <p className="text-xs text-gray-400 mb-6">{t('Order reference: #{ref}', { ref: Date.now().toString().slice(-6) })}</p>
+                {placedOrderId && (
+                  <div className="bg-green-50 border border-green-100 rounded-xl px-4 py-3 mb-4">
+                    <p className="text-sm text-gray-700">{t('Your order number')}: <span className="font-extrabold text-[#006948]">#{placedOrderId}</span></p>
+                    <p className="text-xs text-gray-500 mt-1">{t('Note it down — with it and your phone number you can check the order status any time.')}</p>
+                    <Link to={'/track-order?id=' + placedOrderId} onClick={() => setShowOrderModal(false)}
+                      className="inline-block mt-2 text-sm font-bold text-[#006948] hover:underline">
+                      {t('Track your order')} →
+                    </Link>
+                  </div>
+                )}
                 <button onClick={() => setShowOrderModal(false)} className="bg-[#006948] text-white px-8 py-3 rounded-xl font-semibold">{t('Done')}</button>
               </div>
             ) : (
               <div className="p-6 space-y-4">
-                {/* Product summary */}
+                {/* Order summary */}
+                {orderCartMode ? (
+                  <div className="bg-gray-50 rounded-xl p-3 border border-gray-100">
+                    <p className="text-xs font-semibold text-gray-700 mb-2">{t('Items in your order:')}</p>
+                    {cart.map(i => {
+                      const info = getPriceInfo(productsById.get(String(i.id)) || i);
+                      return (
+                        <div key={i.id} className="flex justify-between gap-3 text-xs text-gray-600 py-0.5">
+                          <span className="truncate">• {i.qty} × {i.brand} {i.model}</span>
+                          {info.show && <span className="font-semibold text-gray-800 flex-shrink-0">{fmtINR(info.selling * (parseInt(i.qty, 10) || 0))}</span>}
+                        </div>
+                      );
+                    })}
+                    {cartTotal.priced > 0 && (
+                      <div className="flex justify-between border-t border-gray-200 mt-2 pt-2 text-sm">
+                        <span className="font-semibold text-gray-700">{t('Total')}{cartTotal.unpriced > 0 ? ' *' : ''}</span>
+                        <span className="font-extrabold text-[#006948]">{fmtINR(cartTotal.sum)}</span>
+                      </div>
+                    )}
+                    {cartTotal.unpriced > 0 && <p className="text-[11px] text-gray-400 mt-1">* {t('{count} items priced on request', { count: cartTotal.unpriced })} — {t('our team confirms the final amount by phone.')}</p>}
+                  </div>
+                ) : (
                 <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 flex items-center gap-3">
                   <img src={orderProduct.image_url || DEFAULT_IMG} alt={orderProduct.model} className="w-14 h-12 object-cover rounded-lg flex-shrink-0" />
                   <div className="flex-1 min-w-0">
@@ -753,6 +834,7 @@ export default function Products() {
                     <button onClick={() => setOrderForm(f => ({...f, qty: f.qty+1}))} className="w-7 h-7 rounded-full border border-gray-300 flex items-center justify-center hover:bg-gray-100 font-bold">+</button>
                   </div>
                 </div>
+                )}
 
                 <input type="text" placeholder={t('Your Full Name *')} required value={orderForm.name}
                   onChange={e => setOrderForm(f => ({...f, name: e.target.value}))}

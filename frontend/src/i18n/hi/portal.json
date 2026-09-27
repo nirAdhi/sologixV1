@@ -128,5 +128,11 @@
   "Total Amount": "कुल राशि",
   "Booking Date": "बुकिंग की तारीख",
   "Service Description": "सेवा का विवरण",
-  "Features Included": "शामिल सुविधाएं"
+  "Features Included": "शामिल सुविधाएं",
+  "Welcome back": "वापसी पर स्वागत है",
+  "One login for customers and staff — we open the right portal for you.": "ग्राहकों और स्टाफ़ के लिए एक ही लॉगिन — हम आपके लिए सही पोर्टल खोल देंगे।",
+  "Create your account": "अपना खाता बनाएं",
+  "Sign up to book and track your solar journey": "बुकिंग और अपने सोलर सफ़र को ट्रैक करने के लिए साइन अप करें",
+  "Password must be at least 8 characters": "पासवर्ड कम से कम 8 अक्षरों का होना चाहिए",
+  "Create a password (min 8 characters)": "पासवर्ड बनाएं (कम से कम 8 अक्षर)"
 }

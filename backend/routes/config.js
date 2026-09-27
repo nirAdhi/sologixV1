@@ -34,7 +34,33 @@ const testLimiter = rateLimit({ windowMs: 10 * 60 * 1000, max: 10, standardHeade
   message: { success: false, message: 'Too many test emails. Please wait a few minutes.' } });
 
 adminRouter.get('/', ...canManage, async (req, res) => {
-  res.json({ success: true, data: { status: email.status(), settings: await email.getSettings(), integrations: integrationStatus() } });
+  const status = await email.status();
+  const integrations = integrationStatus();
+  // integrationStatus() only knows about .env; reflect an admin-panel SMTP too.
+  if (integrations.email) integrations.email.configured = status.configured;
+  res.json({ success: true, data: { status, settings: await email.getSettings(), integrations } });
+});
+
+// Save the SMTP connection from the admin panel (empty password = keep saved one).
+adminRouter.put('/smtp', ...canManage, async (req, res) => {
+  try {
+    await email.saveSmtp(req.body || {});
+    res.json({ success: true, message: 'SMTP connection saved. Use "Check connection" to test the login.', data: { status: await email.status() } });
+  } catch (e) {
+    if (e.status === 400) return res.status(400).json({ success: false, message: e.message });
+    console.error('Save SMTP failed:', e.message);
+    res.status(500).json({ success: false, message: 'Could not save the SMTP connection' });
+  }
+});
+
+// Forget the admin-panel SMTP and fall back to the server's .env values.
+adminRouter.delete('/smtp', ...canManage, async (req, res) => {
+  try {
+    await email.clearSmtp();
+    res.json({ success: true, message: 'Removed. The server now uses the SMTP values from .env (if any).', data: { status: await email.status() } });
+  } catch (e) {
+    res.status(500).json({ success: false, message: 'Could not remove the saved connection' });
+  }
 });
 
 adminRouter.put('/settings', ...canManage, async (req, res) => {

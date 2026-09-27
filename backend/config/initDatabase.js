@@ -417,6 +417,34 @@ async function initDatabase() {
     await safeAddColumn('product_catalog', 'unit', "VARCHAR(50) DEFAULT 'per NOS'");
     await safeAddColumn('product_catalog', 'discount_price', 'DECIMAL(12,2) DEFAULT NULL');
     await safeAddColumn('product_catalog', 'show_price', 'TINYINT(1) DEFAULT 0');
+    // Optional 3D model (.glb/.gltf) shown by the product page's 3D viewer
+    await safeAddColumn('product_catalog', 'model_url', 'VARCHAR(500) DEFAULT NULL');
+    // Full product-page details, editable in Admin > Product Catalog
+    await safeAddColumn('product_catalog', 'description', 'TEXT DEFAULT NULL');
+    await safeAddColumn('product_catalog', 'warranty', 'VARCHAR(50) DEFAULT NULL');
+    await safeAddColumn('product_catalog', 'specs_detail', 'TEXT DEFAULT NULL');
+    // Milestone projects: highlighted in the big homepage showcase band
+    await safeAddColumn('projects', 'is_milestone', 'TINYINT(1) DEFAULT 0');
+    await safeAddColumn('projects', 'completed_on', 'VARCHAR(30) DEFAULT NULL');
+    await safeAddColumn('projects', 'video_url', 'VARCHAR(500) DEFAULT NULL');
+
+    // First-party footfall analytics (cookie-consented pageviews + login events).
+    // No PII: visitor is a random id from the visitor's own browser.
+    await connection.query(`
+      CREATE TABLE IF NOT EXISTS site_visits (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        event VARCHAR(20) NOT NULL DEFAULT 'pageview',
+        path VARCHAR(255) NOT NULL DEFAULT '',
+        referrer VARCHAR(255) DEFAULT '',
+        visitor CHAR(32) DEFAULT '',
+        device VARCHAR(10) DEFAULT '',
+        lang VARCHAR(5) DEFAULT '',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_visits_created (created_at),
+        INDEX idx_visits_event (event, created_at)
+      )
+    `);
+    console.log('Site visits (analytics) table ready');
 
     console.log('Product catalog and orders tables ready');
 

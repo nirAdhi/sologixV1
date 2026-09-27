@@ -41,6 +41,8 @@ const Pill = ({ ok, children }) => (
   </span>
 );
 
+const BLANK_SMTP = { host: '', port: '587', security: 'auto', user: '', pass: '', from: '' };
+
 export default function AdminEmail() {
   const [data, setData] = useState(null);
   const [form, setForm] = useState(null);
@@ -49,13 +51,17 @@ export default function AdminEmail() {
   const [testing, setTesting] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [testTo, setTestTo] = useState('');
+  const [smtpForm, setSmtpForm] = useState(BLANK_SMTP);
+  const [smtpOpen, setSmtpOpen] = useState(false);
+  const [smtpSaving, setSmtpSaving] = useState(false);
 
   const load = async () => {
     try {
       const r = await emailAdminAPI.get();
       setData(r.data.data);
       setForm(r.data.data.settings);
-      setTestTo(t => t || r.data.data.settings.admin_notify_email || '');
+      const s = r.data.data.settings;
+      setTestTo(t => t || (Array.isArray(s.admin_notify_emails) && s.admin_notify_emails[0]) || s.admin_notify_email || '');
     } catch (e) {
       toast.error(e.response?.data?.message || 'Could not load email settings');
     } finally { setLoading(false); }
@@ -83,6 +89,23 @@ export default function AdminEmail() {
     catch (e) { toast.error(e.response?.data?.message || 'Sending failed', { duration: 9000 }); }
     finally { setTesting(false); load(); }
   };
+  const saveSmtp = async () => {
+    setSmtpSaving(true);
+    try {
+      const r = await emailAdminAPI.saveSmtp(smtpForm);
+      toast.success(r.data.message, { duration: 6000 });
+      setSmtpForm(f => ({ ...f, pass: '' }));
+      setSmtpOpen(false);
+      load();
+    } catch (e) { toast.error(e.response?.data?.message || 'Could not save', { duration: 8000 }); }
+    finally { setSmtpSaving(false); }
+  };
+  const clearSmtp = async () => {
+    setSmtpSaving(true);
+    try { const r = await emailAdminAPI.clearSmtp(); toast.success(r.data.message, { duration: 6000 }); setSmtpOpen(false); load(); }
+    catch (e) { toast.error(e.response?.data?.message || 'Could not remove'); }
+    finally { setSmtpSaving(false); }
+  };
 
   if (loading) {
     return <AdminLayout title="Email & Integrations"><div className="flex justify-center py-20"><div className="animate-spin rounded-full h-10 w-10 border-b-2 border-green-600" /></div></AdminLayout>;
@@ -97,7 +120,7 @@ export default function AdminEmail() {
       <div className="max-w-4xl">
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900">Email & Integrations</h1>
-          <p className="text-sm text-gray-500 mt-1">Passwords and API keys are kept in the server's <code className="bg-gray-100 px-1 rounded">.env.docker</code> file. Change them there and restart the site.</p>
+          <p className="text-sm text-gray-500 mt-1">Set up the email (SMTP) connection, choose which emails go out, and see whether the other integrations are active.</p>
         </div>
 
         {/* SMTP status */}
@@ -106,14 +129,82 @@ export default function AdminEmail() {
             <div><span className="text-gray-500">Server:</span> <b>{st.host}:{st.port}</b> <span className="text-gray-400">({st.security})</span></div>
             <div><span className="text-gray-500">Login:</span> <b>{st.user || '—'}</b></div>
             <div><span className="text-gray-500">Sends as:</span> <b>{form.from_name}</b> &lt;{st.from || '—'}&gt;</div>
-            <div><span className="text-gray-500">Password:</span> <b>{st.configured ? '•••••••• (in .env)' : 'missing'}</b></div>
+            <div><span className="text-gray-500">Connection from:</span> <b>{st.source === 'admin' ? 'this admin panel' : st.source === 'env' ? 'the server .env file' : 'not set up'}</b></div>
           </div>
           {!st.configured && (
             <div className="bg-amber-50 border border-amber-200 text-amber-800 text-sm rounded-xl p-4 mb-5">
-              <p className="font-semibold mb-1">Emails are switched off until SMTP is added to .env</p>
-              <p>On the server, open <code>.env.docker</code>, fill in <code>SMTP_HOST</code>, <code>SMTP_PORT</code>, <code>SMTP_USER</code> and <code>SMTP_PASS</code>, then run <code>docker compose up -d --force-recreate backend</code>. For Gmail use an App Password, not the normal password.</p>
+              <p className="font-semibold mb-1">Emails are switched off until the SMTP connection is entered</p>
+              <p>Fill in the connection below (for Gmail / Google Workspace: server <code>smtp.gmail.com</code>, port <code>587</code>, and an <b>App Password</b> — not the normal password).</p>
             </div>
           )}
+
+          {/* SMTP connection editor */}
+          <div className="border border-gray-100 rounded-xl p-4 mb-5 bg-gray-50">
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold text-gray-800">SMTP connection</p>
+              <button onClick={() => setSmtpOpen(o => !o)} className="text-xs font-semibold text-[#006948] hover:underline">
+                {smtpOpen ? 'Close' : st.configured ? 'Change connection' : 'Enter connection'}
+              </button>
+            </div>
+            {smtpOpen && (
+              <div className="mt-4">
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Mail server (host)</label>
+                    <input value={smtpForm.host} onChange={e => setSmtpForm(f => ({ ...f, host: e.target.value }))} placeholder="smtp.gmail.com"
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500 bg-white" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Port</label>
+                      <input value={smtpForm.port} onChange={e => setSmtpForm(f => ({ ...f, port: e.target.value }))} placeholder="587"
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500 bg-white" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Security</label>
+                      <select value={smtpForm.security} onChange={e => setSmtpForm(f => ({ ...f, security: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500 bg-white">
+                        <option value="auto">Automatic (by port)</option>
+                        <option value="starttls">STARTTLS (port 587)</option>
+                        <option value="ssl">SSL/TLS (port 465)</option>
+                      </select>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Username (email)</label>
+                    <input value={smtpForm.user} onChange={e => setSmtpForm(f => ({ ...f, user: e.target.value }))} placeholder="info@sologixenergy.in" autoComplete="off"
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500 bg-white" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Password / App Password</label>
+                    <input type="password" value={smtpForm.pass} onChange={e => setSmtpForm(f => ({ ...f, pass: e.target.value }))}
+                      placeholder={st.source === 'admin' ? '(unchanged — leave empty to keep)' : ''} autoComplete="new-password"
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500 bg-white" />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Send from — email address (optional)</label>
+                    <input type="email" value={smtpForm.from} onChange={e => setSmtpForm(f => ({ ...f, from: e.target.value }))} placeholder="usually the same as the username"
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500 bg-white" />
+                    <p className="text-[11px] text-gray-400 mt-1">Leave empty to send as the username. This must be an email — to change the <b>name</b> people see (e.g. "Sologix Enquiry"), edit "Sender name" further down.</p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap gap-3 mt-4">
+                  <button onClick={saveSmtp} disabled={smtpSaving}
+                    className="bg-[#006948] text-white px-5 py-2 rounded-xl text-sm font-semibold hover:bg-green-700 disabled:opacity-50">
+                    {smtpSaving ? 'Saving…' : 'Save connection'}
+                  </button>
+                  {st.source === 'admin' && (
+                    <button onClick={clearSmtp} disabled={smtpSaving}
+                      className="border border-red-200 text-red-600 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-red-50 disabled:opacity-50">
+                      Remove (use .env instead)
+                    </button>
+                  )}
+                  <span className="text-xs text-gray-400 self-center">After saving, use "Check connection" and "Send test email" below.</span>
+                </div>
+                <p className="text-xs text-gray-400 mt-3">The password is stored on your own server and is never shown here again. A connection saved here overrides the .env values.</p>
+              </div>
+            )}
+          </div>
           {st.last_error && (
             <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-xl p-4 mb-5">
               <p className="font-semibold">Last error ({new Date(st.last_error.at).toLocaleString('en-IN')})</p>
@@ -163,9 +254,13 @@ export default function AdminEmail() {
                 className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500" />
             </div>
             <div>
-              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Send my alerts to</label>
-              <input type="email" value={form.admin_notify_email || ''} onChange={e => setForm(f => ({ ...f, admin_notify_email: e.target.value }))}
-                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500" />
+              <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Send my alerts to (up to 5, one per line)</label>
+              <textarea rows={3}
+                value={Array.isArray(form.admin_notify_emails) ? form.admin_notify_emails.join('\n') : (form.admin_notify_email || '')}
+                onChange={e => setForm(f => ({ ...f, admin_notify_emails: e.target.value.split('\n') }))}
+                placeholder={'divya@sologixenergy.in\ninfo@sologixenergy.in'}
+                className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-green-500 resize-none" />
+              <p className="text-[11px] text-gray-400 mt-1">Every booking / enquiry / order alert goes to all addresses listed here.</p>
             </div>
           </div>
           <button onClick={save} disabled={saving}

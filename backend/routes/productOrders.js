@@ -1,6 +1,7 @@
 const express = require('express');
 const { orderValidators, formLimiter } = require('../middleware/security');
 const router = express.Router();
+const rateLimit = require('express-rate-limit');
 const { notifyAdminNewOrder, sendOrderStatusUpdate, later } = require('../config/email');
 const db = require('../config/database');
 const { auth, requirePermission } = require('../middleware/auth');
@@ -38,10 +39,50 @@ router.post('/', formLimiter, ...orderValidators, async (req, res) => {
     );
     res.status(201).json({ success: true, message: 'Order received', data: { id: r.insertId } });
     later(notifyAdminNewOrder, { name, email, phone, address, items: basket, payment_method: 'Pay on Delivery / quote' });
+    // "We received your order" confirmation to the customer (when they gave an email)
+    later(sendOrderStatusUpdate, { id: r.insertId, name, email, items: basket, status: 'pending' });
   } catch (e) {
     // Previously answered 201 "received" even when nothing was saved.
     console.error('Product order save failed:', e.code || e.message);
     res.status(503).json({ success: false, message: 'We could not save your order right now. Please call us.' });
+  }
+});
+
+// Public "track my order": needs the order number AND the phone it was placed
+// with, so an order number alone reveals nothing. Rate limited against guessing.
+const trackLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, max: 20,
+  message: { success: false, message: 'Too many lookups, please try again later.' },
+  standardHeaders: true, legacyHeaders: false,
+});
+router.get('/track', trackLimiter, async (req, res) => {
+  try {
+    const id = parseInt(req.query.id, 10);
+    const phone = String(req.query.phone || '').replace(/\D/g, '');
+    if (!Number.isInteger(id) || id < 1 || phone.length < 10) {
+      return res.status(400).json({ success: false, message: 'Enter the order number and the phone number used for the order' });
+    }
+    const [rows] = await db.query('SELECT id, items, status, amount, created_at, phone FROM product_orders WHERE id = ? LIMIT 1', [id]);
+    const o = rows[0];
+    const digits = (s) => String(s || '').replace(/\D/g, '');
+    if (!o || digits(o.phone).slice(-10) !== phone.slice(-10)) {
+      return res.status(404).json({ success: false, message: 'No order found for that order number and phone' });
+    }
+    let items = [];
+    try { items = JSON.parse(o.items) || []; } catch (e) { items = []; }
+    res.json({
+      success: true,
+      data: {
+        id: o.id,
+        status: o.status,
+        created_at: o.created_at,
+        amount: o.amount,
+        items: items.map(i => ({ brand: i.brand, model: i.model, qty: i.qty || i.quantity || 1, unit: i.unit })),
+      },
+    });
+  } catch (e) {
+    console.error('Order track failed:', e.code || e.message);
+    res.status(500).json({ success: false, message: 'Could not look up the order right now' });
   }
 });
 

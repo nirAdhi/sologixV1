@@ -45,7 +45,10 @@ function clean(body, partial) {
 
 // GET testimonials. Public: active only. ?all=true (admin page) now requires an
 // admin login; previously anyone could read unpublished testimonials with it.
-router.get('/', (req, res, next) => (req.query.all === 'true' ? auth(req, res, next) : next()), async (req, res) => {
+router.get('/',
+  (req, res, next) => (req.query.all === 'true' ? auth(req, res, next) : next()),
+  (req, res, next) => (req.query.all === 'true' ? requirePermission('manage_testimonials')(req, res, next) : next()),
+  async (req, res) => {
   const adminMode = req.query.all === 'true';
   try {
     const q = adminMode

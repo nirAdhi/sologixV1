@@ -56,6 +56,8 @@ router.post('/login', [
       { expiresIn: process.env.JWT_EXPIRE || '1h' }
     );
 
+    require('./track').logEvent('admin_login'); // footfall analytics counter
+
     res.json({
       success: true,
       data: {
@@ -90,7 +92,7 @@ router.get('/subadmins', auth, requireSuperAdmin, async (req, res) => {
 // Create sub-admin (staff)
 router.post('/subadmins', auth, requireSuperAdmin, [
   body('email').isEmail().withMessage('Valid email is required'),
-  body('password').notEmpty().withMessage('Password is required'),
+  body('password').isLength({ min: 12 }).withMessage('Password must be at least 12 characters'),
   body('name').notEmpty().withMessage('Name is required'),
   body('role').isIn(['admin', 'staff']).withMessage('Role must be admin or staff')
 ], async (req, res) => {
@@ -199,7 +201,7 @@ router.get('/me', auth, async (req, res) => {
   }
 });
 
-router.get('/bookings', auth, async (req, res) => {
+router.get('/bookings', auth, requirePermission('manage_bookings'), async (req, res) => {
   try {
     const { status, date_from, date_to, search, page = 1, limit = 20 } = req.query;
     
@@ -470,7 +472,7 @@ router.post('/bookings/:id/email', auth, requirePermission('manage_bookings'), a
   }
 });
 
-router.get('/dashboard/stats', auth, async (req, res) => {
+router.get('/dashboard/stats', auth, requirePermission('view_reports'), async (req, res) => {
   try {
     const [totalBookings] = await db.query(
       'SELECT COUNT(*) as count FROM bookings'
@@ -692,7 +694,7 @@ router.get('/customers', auth, requirePermission('manage_customers'), async (req
 // ===== TRANSACTIONS ENDPOINTS =====
 
 // Get transaction summary (aggregated stats)
-router.get('/transactions/summary', auth, async (req, res) => {
+router.get('/transactions/summary', auth, requirePermission('view_reports'), async (req, res) => {
   try {
     const [totalCollected] = await db.query(
       "SELECT COALESCE(SUM(total_amount), 0) as total FROM bookings WHERE payment_status = 'completed'"
@@ -739,7 +741,7 @@ router.get('/transactions/summary', auth, async (req, res) => {
 });
 
 // Get all transactions (paginated, filterable)
-router.get('/transactions', auth, async (req, res) => {
+router.get('/transactions', auth, requirePermission('view_reports'), async (req, res) => {
   try {
     const { payment_status, payment_method, payment_gateway, date_from, date_to, search, page = 1, limit = 25 } = req.query;
 
@@ -812,7 +814,7 @@ router.get('/transactions', auth, async (req, res) => {
 });
 
 // Get transaction audit log for a specific booking
-router.get('/transactions/:bookingId/log', auth, async (req, res) => {
+router.get('/transactions/:bookingId/log', auth, requirePermission('view_reports'), async (req, res) => {
   try {
     const [logs] = await db.query(`
       SELECT * FROM payment_transactions 

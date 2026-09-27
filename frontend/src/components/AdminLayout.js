@@ -14,6 +14,7 @@ const ADMIN_THEMES = [
 
 const NAV_LINKS = [
   { to: '/admin',               label: 'Dashboard',        perm: null },
+  { to: '/admin/analytics',     label: 'Analytics',        perm: 'view_reports' },
   { to: '/admin/leads',         label: 'Leads',            perm: 'manage_leads' },
   { to: '/admin/bookings',      label: 'Bookings',         perm: 'manage_bookings' },
   { to: '/admin/services',      label: 'Services',         perm: 'manage_services' },
