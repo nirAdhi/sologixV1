@@ -78,8 +78,16 @@ export default function PromoBanner() {
   }, [live, banner.show_countdown, endMs]);
 
   // Wait for the saved settings before showing anything, so a switched-off
-  // banner never flashes on for a moment while the settings load.
-  if (!loaded || !live || closed) return null;
+  // banner never flashes on for a moment while the settings load. To avoid the
+  // page jumping when the banner then appears (layout shift), we remember that
+  // it was visible and reserve its space on the next load.
+  if (!loaded) {
+    let wasVisible = false;
+    try { wasVisible = window.localStorage.getItem('sologix_pb_visible') === '1'; } catch (e) { /* ignore */ }
+    return wasVisible && !closed ? <div aria-hidden="true" style={{ height: 56 }}></div> : null;
+  }
+  try { window.localStorage.setItem('sologix_pb_visible', live && !closed ? '1' : '0'); } catch (e) { /* ignore */ }
+  if (!live || closed) return null;
 
   const theme = THEMES[banner.theme] || THEMES.diwali;
   const ctaText = String(banner.cta_text || '').trim();

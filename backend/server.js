@@ -171,7 +171,7 @@ app.use('/uploads', (req, res, next) => {
     return res.status(403).json({ success: false, message: 'Forbidden' });
   }
   next();
-}, express.static(uploadDir, { dotfiles: 'deny' }));
+}, express.static(uploadDir, { dotfiles: 'deny', maxAge: '7d' }));
 
 // WhatsApp webhook - must be before SPA catch-all
 app.use('/api/whatsapp', require('./routes/whatsapp'));
@@ -224,7 +224,15 @@ if (fs.existsSync(frontendBuildPath)) {
     res.sendFile(path.join(frontendBuildPath, 'manifest.json'));
   });
 
-  app.use(express.static(frontendBuildPath, { index: false }));
+  app.use(express.static(frontendBuildPath, {
+    index: false,
+    setHeaders: (res, filePath) => {
+      // hashed bundles + images/fonts never change at the same URL → cache hard
+      if (/[\\/]static[\\/]/.test(filePath) || /\.(png|jpe?g|webp|svg|ico|woff2?)$/i.test(filePath)) {
+        res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+      }
+    },
+  }));
   
   // Root path - serve React app (index.html)
   app.get('/', (req, res) => {

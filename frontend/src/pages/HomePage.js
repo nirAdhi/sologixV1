@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { avatarUrl } from '../utils/avatar';
+import { cldImg, cldVideo, cldPoster } from '../utils/img';
 import ChannelPartners from '../components/ChannelPartners';
 import { useT } from '../i18n';
 import { getSiteConfig, whatsappHref } from '../utils/siteConfig';
@@ -132,7 +133,7 @@ function MilestoneMedia({ m, t }) {
     <div className="relative">
       {cur.k === 'vid' && (
         <div className="aspect-video bg-black">
-          <video key={cur.url} src={cur.url} controls autoPlay playsInline muted={many}
+          <video key={cur.url} src={cldVideo(cur.url)} controls autoPlay playsInline muted={many}
             onEnded={many ? next : undefined} className="w-full h-full object-contain" />
         </div>
       )}
@@ -147,7 +148,7 @@ function MilestoneMedia({ m, t }) {
       )}
       {cur.k === 'img' && (
         <div className="h-52 sm:h-60">
-          <img key={cur.url} src={cur.url} alt={toText(m.title)} className="w-full h-full object-cover"
+          <img key={cur.url} src={cldImg(cur.url, 1000)} alt={toText(m.title)} className="w-full h-full object-cover"
             onError={imgFallback(SOLAR_IMGS[0])} />
         </div>
       )}
@@ -516,7 +517,7 @@ const HomePage = () => {
     videoIndexRef.current = (videoIndexRef.current + 1) % HERO_VIDEOS.length;
     const vid = videoRef.current;
     if (!vid) return;
-    vid.src = HERO_VIDEOS[videoIndexRef.current];
+    vid.src = cldVideo(HERO_VIDEOS[videoIndexRef.current]);
     vid.load();
     vid.play().catch(() => {});
   }, []);
@@ -758,6 +759,9 @@ const HomePage = () => {
       {/* ── Hero ── */}
       <section className="relative h-[85vh] flex items-center overflow-hidden">
         <div className="absolute inset-0 z-0 overflow-hidden">
+          {/* fast poster paints first (LCP), the video takes over when ready */}
+          <img src={cldPoster(HERO_VIDEOS[0])} alt="" aria-hidden="true" fetchPriority="high"
+            className="absolute inset-0 w-full h-full object-cover" />
           <video
             ref={videoRef}
             autoPlay
@@ -765,8 +769,8 @@ const HomePage = () => {
             playsInline
             preload="metadata"
             onEnded={playNext}
-            className="w-full h-full object-cover"
-            src={HERO_VIDEOS[0]}
+            className="relative w-full h-full object-cover"
+            src={cldVideo(HERO_VIDEOS[0])}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent"></div>
         </div>
@@ -818,7 +822,7 @@ const HomePage = () => {
           {offeringsList.map(({ label, desc, img, link }, i) => (
             <SmartLink key={i} to={link} className={`carousel-item${i === activeOffer ? ' active' : ''}`}>
               <div className="relative rounded-[2rem] overflow-hidden aspect-[4/3] bg-gray-200">
-                <img src={img} alt={t(label)} className="w-full h-full object-cover" loading="lazy" onError={imgFallback(DEFAULT_OFFERING_IMG)} />
+                <img src={cldImg(img, 900)} alt={t(label)} width="900" height="675" className="w-full h-full object-cover" loading="lazy" onError={imgFallback(DEFAULT_OFFERING_IMG)} />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent flex flex-col justify-end p-8 text-left">
                   <h3 className="text-white text-3xl font-bold mb-3 line-clamp-2 break-words">{t(label)}</h3>
                   <p className="text-white/80 text-base line-clamp-3">{t(desc)}</p>
@@ -878,12 +882,12 @@ const HomePage = () => {
                 className="group relative flex-shrink-0 w-64 sm:w-72 snap-start rounded-2xl bg-white text-left shadow-sm hover:shadow-xl transition-all hover:-translate-y-1.5 focus-visible:ring-2 focus-visible:ring-[#006948] overflow-hidden">
                   {/* photo (or the video's thumbnail), melting into the white card below */}
                   <span className="block relative h-40 overflow-hidden">
-                    <img src={milestoneArt(m, i)} alt={toText(m.title)}
+                    <img src={cldImg(milestoneArt(m, i), 640)} alt={toText(m.title)} width="640" height="360"
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy"
                       onError={imgFallback(SOLAR_IMGS[i % SOLAR_IMGS.length])} />
                     {/* hover: the project video plays silently inside the card */}
                     {previewIdx === i && directVideo(m.video_url) && !ytId(m.video_url) && (
-                      <video src={directVideo(m.video_url)} muted autoPlay loop playsInline
+                      <video src={cldVideo(directVideo(m.video_url), 640)} muted autoPlay loop playsInline
                         className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
                     )}
                     {previewIdx === i && ytId(m.video_url) && (
@@ -991,7 +995,7 @@ const HomePage = () => {
             {projectCards.map(({ key, title, location, capacity, type, savings, img, fallback }) => (
               <div key={key} className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-gray-100 group">
                 <div className="relative h-52 overflow-hidden bg-gray-100">
-                  <img src={img} alt={title} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" onError={imgFallback(fallback || SOLAR_IMGS[0])} />
+                  <img src={cldImg(img, 800)} alt={title} width="800" height="600" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" onError={imgFallback(fallback || SOLAR_IMGS[0])} />
                   {type && (
                     <div className="absolute top-4 left-4 bg-white/90 px-3 py-1 rounded-full border border-gray-100 max-w-[80%]">
                       <span className="text-xs font-medium text-[#006948] block truncate">{t(type)}</span>
@@ -1033,7 +1037,7 @@ const HomePage = () => {
               <Link to={link} key={key + '-' + i} aria-hidden={productsLoop && i >= productCards.length ? 'true' : undefined} tabIndex={productsLoop && i >= productCards.length ? -1 : undefined}
                 className="inline-flex flex-col items-center bg-white border border-gray-100 rounded-2xl shadow-sm min-w-[240px] w-[240px] overflow-hidden hover:shadow-md transition-all hover:border-green-200">
                 <div className="relative w-full h-36 bg-gray-100">
-                  <img src={img} alt={t(name)} className="w-full h-36 object-cover" loading="lazy" onError={imgFallback(SOLAR_IMGS[i % SOLAR_IMGS.length])} />
+                  <img src={cldImg(img, 600)} alt={t(name)} width="600" height="450" className="w-full h-36 object-cover" loading="lazy" onError={imgFallback(SOLAR_IMGS[i % SOLAR_IMGS.length])} />
                   {badge && <span className="absolute top-2 left-2 bg-[#006948] text-white text-[10px] font-semibold px-2 py-0.5 rounded-full max-w-[85%] truncate">{t(badge)}</span>}
                 </div>
                 <div className="p-4 text-center w-full">
@@ -1052,7 +1056,7 @@ const HomePage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="relative">
               <div className="absolute -inset-4 bg-[#006948]/10 rounded-[3rem] blur-2xl"></div>
-              <img src="https://res.cloudinary.com/dsiratycd/image/upload/v1780332120/Gemini_Generated_Image_3t00r93t00r93t00_jkpvx2.png" alt={t('PM Surya Ghar Yojana')}
+              <img src={cldImg('https://res.cloudinary.com/dsiratycd/image/upload/v1780332120/Gemini_Generated_Image_3t00r93t00r93t00_jkpvx2.png', 900)} width="900" height="600" alt={t('PM Surya Ghar Yojana')}
                 className="rounded-[2.5rem] shadow-2xl relative z-10 border-8 border-white w-full object-cover"
                 onError={e => { e.target.src='https://res.cloudinary.com/dsiratycd/image/upload/v1774797121/comercial_fie2wd.png'; }} />
             </div>
@@ -1171,13 +1175,13 @@ const HomePage = () => {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                   <div>
                     <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider block mb-2">{t('Monthly Bill Range')}</label>
-                    <select value={calcBill} onChange={e => setCalcBill(e.target.value)} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948] shadow-sm">
+                    <select aria-label={t('Monthly bill range')} value={calcBill} onChange={e => setCalcBill(e.target.value)} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948] shadow-sm">
                       {['Rs 500 - 2,000','Rs 2,001 - 5,000','Rs 5,001 - 15,000','Above Rs 15,000'].map(o => <option key={o} value={o}>{t(o)}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="text-xs font-semibold text-gray-600 uppercase tracking-wider block mb-2">{t('Service Type')}</label>
-                    <select value={calcService} onChange={e => setCalcService(e.target.value)} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948] shadow-sm">
+                    <select aria-label={t('Service type')} value={calcService} onChange={e => setCalcService(e.target.value)} className="w-full bg-white border border-gray-200 rounded-xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-[#006948] shadow-sm">
                       <option value="residential">{t('Residential')}</option>
                       <option value="commercial">{t('Commercial')}</option>
                       <option value="industrial">{t('Industrial')}</option>
@@ -1294,7 +1298,7 @@ const HomePage = () => {
             {[...partners, ...partners].map((p, i) => (
               <div key={i} className="inline-flex items-center justify-center bg-white border border-gray-200 rounded-2xl shadow-sm min-w-[180px] h-32 px-4 hover:shadow-md hover:border-green-300 transition-all">
                 <img
-                  src={/* served from frontend/public/partners/ (the old sologixenergy.in site no longer exists) */ "/partners/" + p + ".jpg"}
+                  src={"/partners/" + p + ".jpg"} width="320" height="224"
                   alt={p}
                   className="max-h-28 max-w-[160px] object-contain" loading="lazy"
                   onError={e => {
