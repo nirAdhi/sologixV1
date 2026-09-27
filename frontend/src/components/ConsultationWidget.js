@@ -44,16 +44,19 @@ const ConsultationWidget = () => {
           50% { transform: translateY(-8px); }
         }
         @keyframes consultPulse {
-          0% { box-shadow: 0 0 0 0 rgba(0,105,72,0.35); }
-          70% { box-shadow: 0 0 0 12px rgba(0,105,72,0); }
-          100% { box-shadow: 0 0 0 0 rgba(0,105,72,0); }
+          0% { transform: scale(1); opacity: 0.4; }
+          70% { transform: scale(1.65); opacity: 0; }
+          100% { transform: scale(1.65); opacity: 0; }
         }
       `}</style>
-      <span className="relative flex-shrink-0 w-11 h-11 rounded-full" style={{ animation: 'consultPulse 2.5s ease-out infinite' }}>
+      <span className="relative flex-shrink-0 w-11 h-11 rounded-full">
+        {/* GPU-composited pulse ring (transform/opacity, not box-shadow) */}
+        <span aria-hidden="true" className="absolute inset-0 rounded-full bg-[#006948]"
+          style={{ animation: 'consultPulse 2.5s ease-out infinite' }}></span>
         <img
           src="https://res.cloudinary.com/dsiratycd/image/upload/f_auto,q_auto,c_fill,w_96,h_96/v1780519660/Gemini_Generated_Image_9vrp69vrp69vrp69_yjkv0f.png" width="44" height="44"
           alt=""
-          className="w-11 h-11 rounded-full object-cover shadow-md"
+          className="relative w-11 h-11 rounded-full object-cover shadow-md"
           onError={e => { e.target.src = 'https://res.cloudinary.com/dsiratycd/image/upload/f_auto,q_auto,w_160/logo_yo5zg9.png'; }}
         />
         <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#006948] border-2 border-white" aria-hidden="true"></span>

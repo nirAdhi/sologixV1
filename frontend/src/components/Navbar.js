@@ -75,7 +75,7 @@ const Navbar = () => {
         {/* was a fixed -120px margin, which pushed the logo off-screen below ~1500px wide (all phones and most laptops) */}
         <div className="flex items-center flex-shrink-0 2xl:-ml-[120px]">
           <Link to="/" className="outline-none focus:outline-none block">
-            <img src="https://res.cloudinary.com/dsiratycd/image/upload/logo_yo5zg9.png" alt="Sologix Energy"
+            <img src="https://res.cloudinary.com/dsiratycd/image/upload/f_auto,q_auto,w_160/logo_yo5zg9.png" width="64" height="64" alt="Sologix Energy"
               className="h-16 w-auto select-none"
                />
           </Link>

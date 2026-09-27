@@ -161,7 +161,7 @@ function MilestoneMedia({ m, t }) {
           <span className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
             {media.map((_, d) => (
               <button key={d} type="button" onClick={() => setIdx(d)} aria-label={(d + 1) + ' / ' + media.length}
-                className={'w-2 h-2 rounded-full transition-colors ' + (d === idx % media.length ? 'bg-white' : 'bg-white/40 hover:bg-white/70')}></button>
+                className="w-6 h-6 -m-1 flex items-center justify-center"><span className={'w-2 h-2 rounded-full transition-colors ' + (d === idx % media.length ? 'bg-white' : 'bg-white/40 hover:bg-white/70')}></span></button>
             ))}
           </span>
         </>
@@ -513,6 +513,30 @@ const HomePage = () => {
   const videoRef = useRef(null);
   const videoIndexRef = useRef(0);
 
+  // Stream the hero video only after the page has finished loading — the
+  // poster image paints instantly, so first paint costs ~50KB instead of
+  // ~1.7MB. Data-saver and reduced-motion visitors keep the still image.
+  useEffect(() => {
+    const vid = videoRef.current;
+    if (!vid) return undefined;
+    try {
+      if (navigator.connection && navigator.connection.saveData) return undefined;
+      if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined;
+    } catch (e) { /* ignore */ }
+    const start = () => {
+      const v = videoRef.current;
+      if (!v || v.src) return;
+      v.src = cldVideo(HERO_VIDEOS[0]);
+      v.play().catch(() => { /* stay on the poster */ });
+    };
+    if (document.readyState === 'complete') {
+      const t2 = setTimeout(start, 200);
+      return () => clearTimeout(t2);
+    }
+    window.addEventListener('load', start, { once: true });
+    return () => window.removeEventListener('load', start);
+  }, []);
+
   const playNext = useCallback(() => {
     videoIndexRef.current = (videoIndexRef.current + 1) % HERO_VIDEOS.length;
     const vid = videoRef.current;
@@ -764,13 +788,11 @@ const HomePage = () => {
             className="absolute inset-0 w-full h-full object-cover" />
           <video
             ref={videoRef}
-            autoPlay
             muted
             playsInline
-            preload="metadata"
+            preload="none"
             onEnded={playNext}
             className="relative w-full h-full object-cover"
-            src={cldVideo(HERO_VIDEOS[0])}
           />
           <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/40 to-transparent"></div>
         </div>

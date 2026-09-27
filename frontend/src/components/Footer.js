@@ -16,7 +16,7 @@ const Footer = () => {
         {/* Brand — spans 2 cols */}
         <div className="lg:col-span-2 space-y-4">
           <Link to="/" className="inline-block hover:opacity-90 transition-opacity">
-            <img src="https://res.cloudinary.com/dsiratycd/image/upload/logo_yo5zg9.png" alt="Sologix Energy" className="h-20 w-auto rounded-full"
+            <img src="https://res.cloudinary.com/dsiratycd/image/upload/f_auto,q_auto,w_160/logo_yo5zg9.png" width="80" height="80" alt="Sologix Energy" className="h-20 w-auto rounded-full"
               onError={e => { e.target.src='https://res.cloudinary.com/dsiratycd/image/upload/logo_yo5zg9.png'; }} />
           </Link>
           <p className="text-sm font-semibold text-[#34d399]">{t('Energizing Naturally')}</p>
