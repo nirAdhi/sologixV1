@@ -43,6 +43,27 @@ function clean(body, partial) {
   return out;
 }
 
+// A brand-new database gets the three classic testimonials once, so the
+// homepage section is never empty on a fresh install (rows are ordinary,
+// admin can edit/delete them).
+let seeded = false;
+const seed = async () => {
+  if (seeded) return;
+  try {
+    const [[{ c }]] = await db.query('SELECT COUNT(*) AS c FROM testimonials');
+    if (Number(c) === 0) {
+      for (const [i, t] of fallbackTestimonials.entries()) {
+        await db.query(
+          'INSERT INTO testimonials (name, role, company, location, review, capacity, savings, rating, photo_url, is_active, sort_order) VALUES (?,?,?,?,?,?,?,?,?,?,?)',
+          [t.name, t.role, t.company, t.location, t.review, t.capacity, t.savings, t.rating, t.photo_url, 1, i + 1]
+        );
+      }
+      console.log('Testimonials seeded (fresh database)');
+    }
+    seeded = true;
+  } catch (e) { console.error('Testimonial seed failed:', e.code || e.message); }
+};
+
 // GET testimonials. Public: active only. ?all=true (admin page) now requires an
 // admin login; previously anyone could read unpublished testimonials with it.
 router.get('/',
@@ -50,6 +71,7 @@ router.get('/',
   (req, res, next) => (req.query.all === 'true' ? requirePermission('manage_testimonials')(req, res, next) : next()),
   async (req, res) => {
   const adminMode = req.query.all === 'true';
+  await seed();
   try {
     const q = adminMode
       ? 'SELECT * FROM testimonials ORDER BY sort_order ASC, created_at DESC'

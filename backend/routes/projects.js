@@ -17,7 +17,30 @@ const canManage = [auth, requirePermission('manage_services')]; // matches the a
 const validImage = (v) => v === undefined || v === '' || (typeof v === 'string' && v.length <= 1500000 &&
   (/^https:\/\/[^\s"'<>]+$/i.test(v) || /^\/uploads\/[\w.-]+$/.test(v) || /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(v)));
 
+// A brand-new database gets the six classic projects once, so the homepage,
+// Projects page and Gallery are never empty on a fresh install. All of them
+// are ordinary rows the admin can edit or delete afterwards (same pattern as
+// the product catalog seed).
+let seeded = false;
+const seed = async () => {
+  if (seeded) return;
+  try {
+    const [[{ c }]] = await db.query('SELECT COUNT(*) AS c FROM projects');
+    if (Number(c) === 0) {
+      for (const p of staticProjects) {
+        await db.query(
+          'INSERT INTO projects (title, location, capacity, type, description, image_url, savings, is_featured, sort_order) VALUES (?,?,?,?,?,?,?,?,?)',
+          [p.title, p.location, p.capacity, p.type, p.description, p.image_url, p.savings, p.is_featured, p.sort_order]
+        );
+      }
+      console.log('Projects seeded (fresh database)');
+    }
+    seeded = true;
+  } catch (e) { console.error('Project seed failed:', e.code || e.message); }
+};
+
 router.get('/', async (req, res) => {
+  await seed();
   try {
     const featured = req.query.featured === 'true';
     const milestones = req.query.milestones === 'true';
