@@ -51,10 +51,10 @@ const ConsultationWidget = () => {
       `}</style>
       <span className="relative flex-shrink-0 w-11 h-11 rounded-full" style={{ animation: 'consultPulse 2.5s ease-out infinite' }}>
         <img
-          src="https://res.cloudinary.com/dsiratycd/image/upload/v1780519660/Gemini_Generated_Image_9vrp69vrp69vrp69_yjkv0f.png"
+          src="https://res.cloudinary.com/dsiratycd/image/upload/f_auto,q_auto,c_fill,w_96,h_96/v1780519660/Gemini_Generated_Image_9vrp69vrp69vrp69_yjkv0f.png" width="44" height="44"
           alt=""
           className="w-11 h-11 rounded-full object-cover shadow-md"
-          onError={e => { e.target.src = 'https://res.cloudinary.com/dsiratycd/image/upload/logo_yo5zg9.png'; }}
+          onError={e => { e.target.src = 'https://res.cloudinary.com/dsiratycd/image/upload/f_auto,q_auto,w_160/logo_yo5zg9.png'; }}
         />
         <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 rounded-full bg-[#006948] border-2 border-white" aria-hidden="true"></span>
       </span>

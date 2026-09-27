@@ -16,7 +16,7 @@ export const BRANDING = {
   address: 'STPI Building, Plot-8, Namkum Industrial Area, Ranchi, Jharkhand - 834010',
 
   // Logo URL
-  logoUrl: 'https://res.cloudinary.com/dsiratycd/image/upload/logo_yo5zg9.png',
+  logoUrl: 'https://res.cloudinary.com/dsiratycd/image/upload/f_auto,q_auto,w_160/logo_yo5zg9.png',
   
   // Colors - matches tailwind.config.js
   colors: {

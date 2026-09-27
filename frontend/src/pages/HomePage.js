@@ -882,7 +882,7 @@ const HomePage = () => {
                 className="group relative flex-shrink-0 w-64 sm:w-72 snap-start rounded-2xl bg-white text-left shadow-sm hover:shadow-xl transition-all hover:-translate-y-1.5 focus-visible:ring-2 focus-visible:ring-[#006948] overflow-hidden">
                   {/* photo (or the video's thumbnail), melting into the white card below */}
                   <span className="block relative h-40 overflow-hidden">
-                    <img src={cldImg(milestoneArt(m, i), 640)} alt={toText(m.title)} width="640" height="360"
+                    <img src={cldImg(milestoneArt(m, i), 480)} alt={toText(m.title)} width="640" height="360"
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy"
                       onError={imgFallback(SOLAR_IMGS[i % SOLAR_IMGS.length])} />
                     {/* hover: the project video plays silently inside the card */}
@@ -995,7 +995,7 @@ const HomePage = () => {
             {projectCards.map(({ key, title, location, capacity, type, savings, img, fallback }) => (
               <div key={key} className="bg-white rounded-xl overflow-hidden shadow-sm hover:shadow-md transition-all border border-gray-100 group">
                 <div className="relative h-52 overflow-hidden bg-gray-100">
-                  <img src={cldImg(img, 800)} alt={title} width="800" height="600" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" onError={imgFallback(fallback || SOLAR_IMGS[0])} />
+                  <img src={cldImg(img, 640)} alt={title} width="800" height="600" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105" loading="lazy" onError={imgFallback(fallback || SOLAR_IMGS[0])} />
                   {type && (
                     <div className="absolute top-4 left-4 bg-white/90 px-3 py-1 rounded-full border border-gray-100 max-w-[80%]">
                       <span className="text-xs font-medium text-[#006948] block truncate">{t(type)}</span>
@@ -1056,7 +1056,7 @@ const HomePage = () => {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-16 items-center">
             <div className="relative">
               <div className="absolute -inset-4 bg-[#006948]/10 rounded-[3rem] blur-2xl"></div>
-              <img src={cldImg('https://res.cloudinary.com/dsiratycd/image/upload/v1780332120/Gemini_Generated_Image_3t00r93t00r93t00_jkpvx2.png', 900)} width="900" height="600" alt={t('PM Surya Ghar Yojana')}
+              <img src={cldImg('https://res.cloudinary.com/dsiratycd/image/upload/v1780332120/Gemini_Generated_Image_3t00r93t00r93t00_jkpvx2.png', 800)} width="900" height="600" alt={t('PM Surya Ghar Yojana')}
                 className="rounded-[2.5rem] shadow-2xl relative z-10 border-8 border-white w-full object-cover"
                 onError={e => { e.target.src='https://res.cloudinary.com/dsiratycd/image/upload/v1774797121/comercial_fie2wd.png'; }} />
             </div>
