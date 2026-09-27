@@ -42,6 +42,133 @@ const fetchJSON = async (url, timeoutMs = 8000) => {
 };
 
 // onError handler: swap to a fallback image once (no infinite loop if that fails too).
+// ── Milestone media helpers ────────────────────────────────────────────────
+// YouTube link (watch / youtu.be / shorts / embed) → embeddable id, else null.
+const ytId = (u) => {
+  const m = String(u || '').match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,20})/i);
+  return m ? m[1] : null;
+};
+// Direct video file (Cloudinary or any https .mp4/.webm) → playable url, else null.
+const directVideo = (u) => {
+  const v = String(u || '').trim();
+  if (!/^https:\/\/[^\s"'<>]+$/i.test(v)) return null;
+  if (/\.(mp4|webm|ogg)(\?[^\s]*)?$/i.test(v) || /\/video\/upload\//i.test(v)) return v;
+  return null;
+};
+const hasVideo = (m) => !!(ytId(m.video_url) || directVideo(m.video_url));
+// Every photo/video of a project, deduplicated: main video, cover photo, then
+// the admin's gallery list — each classified for the right player.
+const milestoneMediaList = (m) => {
+  const items = [];
+  const seen = new Set();
+  const add = (u) => {
+    const url = toText(u).trim();
+    if (!url || seen.has(url)) return;
+    const y = ytId(url);
+    if (y) { seen.add(url); items.push({ k: 'yt', id: y, url }); return; }
+    const d = directVideo(url);
+    if (d) { seen.add(url); items.push({ k: 'vid', url: d }); return; }
+    if (/^https:\/\/[^\s"'<>]+$/i.test(url)) { seen.add(url); items.push({ k: 'img', url }); }
+  };
+  add(m.video_url);
+  add(m.image_url);
+  let g = m.gallery;
+  if (typeof g === 'string') { try { g = JSON.parse(g); } catch (e) { g = []; } }
+  (Array.isArray(g) ? g : []).forEach(add);
+  return items;
+};
+
+// Card art: cover photo, else a video's poster/thumbnail, else the first
+// gallery image, else a stock shot — the card always looks right.
+const milestoneArt = (m, i) => {
+  const poster = (item) => {
+    if (!item) return null;
+    if (item.k === 'img') return item.url;
+    if (item.k === 'yt') return `https://i.ytimg.com/vi/${item.id}/hqdefault.jpg`;
+    // Cloudinary makes a poster frame when the extension is swapped to .jpg
+    if (/\/video\/upload\//i.test(item.url)) return item.url.replace(/\.(mp4|webm|ogg)(\?.*)?$/i, '.jpg');
+    return null;
+  };
+  const img = toText(m.image_url).trim();
+  if (img) return img;
+  const list = milestoneMediaList(m);
+  const firstImg = list.find((x) => x.k === 'img');
+  return poster(firstImg) || poster(list[0]) || SOLAR_IMGS[i % SOLAR_IMGS.length];
+};
+
+// The pop-up's media area: one item plays plainly; several loop as a slideshow
+// (photos advance by themselves, videos play through then move on) with
+// arrows and dots for manual browsing.
+function MilestoneMedia({ m, t }) {
+  const media = React.useMemo(() => milestoneMediaList(m), [m]);
+  const [idx, setIdx] = useState(0);
+  useEffect(() => { setIdx(0); }, [m]);
+  const many = media.length > 1;
+  const cur = media.length ? media[idx % media.length] : null;
+
+  // Auto-advance: photos after 4.5s; YouTube after 20s (no end signal);
+  // direct videos advance themselves via onEnded.
+  useEffect(() => {
+    if (!many || !cur || cur.k === 'vid') return undefined;
+    const t2 = setTimeout(() => setIdx((x) => (x + 1) % media.length), cur.k === 'img' ? 4500 : 20000);
+    return () => clearTimeout(t2);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idx, many, cur && cur.k, media.length]);
+
+  if (!cur) {
+    return (
+      <div className="h-44 sm:h-52 flex flex-col items-center justify-center text-center relative overflow-hidden bg-gradient-to-br from-[#e9edff] to-[#d1fae5]">
+        <span className="relative text-5xl font-extrabold text-[#006948]">{toText(m.capacity)}</span>
+        <span className="relative text-[11px] font-bold uppercase tracking-[0.3em] text-gray-500 mt-2">{t('On-Grid Solar Power Plant')}</span>
+        <span aria-hidden="true" className="relative h-px w-16 mt-3 bg-gradient-to-r from-transparent via-[#006948]/50 to-transparent"></span>
+      </div>
+    );
+  }
+
+  const next = () => setIdx((x) => (x + 1) % media.length);
+  const prev = () => setIdx((x) => (x - 1 + media.length) % media.length);
+
+  return (
+    <div className="relative">
+      {cur.k === 'vid' && (
+        <div className="aspect-video bg-black">
+          <video key={cur.url} src={cur.url} controls autoPlay playsInline muted={many}
+            onEnded={many ? next : undefined} className="w-full h-full object-contain" />
+        </div>
+      )}
+      {cur.k === 'yt' && (
+        <div className="aspect-video bg-black">
+          <iframe key={cur.id}
+            src={'https://www.youtube-nocookie.com/embed/' + cur.id + '?autoplay=1&rel=0&playsinline=1' + (many ? '&mute=1' : '')}
+            title={toText(m.title)} className="w-full h-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            referrerPolicy="strict-origin-when-cross-origin" allowFullScreen></iframe>
+        </div>
+      )}
+      {cur.k === 'img' && (
+        <div className="h-52 sm:h-60">
+          <img key={cur.url} src={cur.url} alt={toText(m.title)} className="w-full h-full object-cover"
+            onError={imgFallback(SOLAR_IMGS[0])} />
+        </div>
+      )}
+      {many && (
+        <>
+          <button type="button" onClick={prev} aria-label={t('Previous')}
+            className="absolute left-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/45 text-white flex items-center justify-center text-lg hover:bg-black/65 z-10">‹</button>
+          <button type="button" onClick={next} aria-label={t('Next')}
+            className="absolute right-2 top-1/2 -translate-y-1/2 w-9 h-9 rounded-full bg-black/45 text-white flex items-center justify-center text-lg hover:bg-black/65 z-10">›</button>
+          <span className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+            {media.map((_, d) => (
+              <button key={d} type="button" onClick={() => setIdx(d)} aria-label={(d + 1) + ' / ' + media.length}
+                className={'w-2 h-2 rounded-full transition-colors ' + (d === idx % media.length ? 'bg-white' : 'bg-white/40 hover:bg-white/70')}></button>
+            ))}
+          </span>
+        </>
+      )}
+    </div>
+  );
+}
+
 const imgFallback = (fallback) => (e) => {
   const img = e.currentTarget;
   if (img.dataset.fallback) { img.style.visibility = 'hidden'; return; }
@@ -435,20 +562,6 @@ const HomePage = () => {
     document.addEventListener('keydown', onKey);
     return () => document.removeEventListener('keydown', onKey);
   }, [openMilestone]);
-  // YouTube link (watch / youtu.be / shorts / embed) → embeddable id, else null.
-  const ytId = (u) => {
-    const m = String(u || '').match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,20})/i);
-    return m ? m[1] : null;
-  };
-  // Card art: the project photo, else the video's own thumbnail, else a stock shot —
-  // so a milestone looks right whether the admin added an image, a video, or both.
-  const milestoneArt = (m, i) => {
-    const img = toText(m.image_url).trim();
-    if (img) return img;
-    const v = ytId(m.video_url);
-    if (v) return `https://i.ytimg.com/vi/${v}/hqdefault.jpg`;
-    return SOLAR_IMGS[i % SOLAR_IMGS.length];
-  };
   // Desktop hover: play a silent looping preview inside the card.
   const [previewIdx, setPreviewIdx] = useState(null);
   // Milestone strip: arrow buttons instead of a visible scrollbar.
@@ -760,7 +873,7 @@ const HomePage = () => {
                  photo/video when available), so every card looks equally premium. */
               <button key={m.id ?? i} type="button" onClick={() => setOpenMilestone(m)}
                 aria-haspopup="dialog"
-                onMouseEnter={() => ytId(m.video_url) && setPreviewIdx(i)}
+                onMouseEnter={() => hasVideo(m) && setPreviewIdx(i)}
                 onMouseLeave={() => setPreviewIdx(null)}
                 className="group relative flex-shrink-0 w-64 sm:w-72 snap-start rounded-2xl bg-white text-left shadow-sm hover:shadow-xl transition-all hover:-translate-y-1.5 focus-visible:ring-2 focus-visible:ring-[#006948] overflow-hidden">
                   {/* photo (or the video's thumbnail), melting into the white card below */}
@@ -769,6 +882,10 @@ const HomePage = () => {
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy"
                       onError={imgFallback(SOLAR_IMGS[i % SOLAR_IMGS.length])} />
                     {/* hover: the project video plays silently inside the card */}
+                    {previewIdx === i && directVideo(m.video_url) && !ytId(m.video_url) && (
+                      <video src={directVideo(m.video_url)} muted autoPlay loop playsInline
+                        className="absolute inset-0 w-full h-full object-cover pointer-events-none" />
+                    )}
                     {previewIdx === i && ytId(m.video_url) && (
                       <iframe
                         src={'https://www.youtube-nocookie.com/embed/' + ytId(m.video_url) +
@@ -781,7 +898,7 @@ const HomePage = () => {
                     )}
                     <span aria-hidden="true" className="absolute inset-0 pointer-events-none"
                       style={{ background: 'linear-gradient(to top, #ffffff 4%, rgba(255,255,255,0.30) 45%, rgba(255,255,255,0))' }}></span>
-                    {ytId(m.video_url) && (
+                    {hasVideo(m) && (
                       <span className="absolute top-3 right-3 bg-black/55 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-full border border-white/20">
                         ▶ {t('Video')}
                       </span>
@@ -827,35 +944,9 @@ const HomePage = () => {
           <div role="dialog" aria-modal="true" aria-label={toText(openMilestone.title)}
             className="relative bg-white rounded-2xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
             <div className="relative bg-gray-100">
-              {ytId(openMilestone.video_url) ? (
-                <div className="aspect-video bg-black">
-                  <iframe
-                    src={'https://www.youtube-nocookie.com/embed/' + ytId(openMilestone.video_url) + '?autoplay=1&rel=0&playsinline=1'}
-                    title={toText(openMilestone.title)}
-                    className="w-full h-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                    allowFullScreen
-                  ></iframe>
-                </div>
-              ) : toText(openMilestone.image_url).trim() ? (
-                <div className="h-52 sm:h-60">
-                  <img src={toText(openMilestone.image_url).trim()} alt={toText(openMilestone.title)}
-                    className="w-full h-full object-cover" onError={imgFallback(SOLAR_IMGS[0])} />
-                </div>
-              ) : (
-                /* no photo yet → soft calculator-style header instead of a stock image */
-                <div className="h-44 sm:h-52 flex flex-col items-center justify-center text-center relative overflow-hidden bg-gradient-to-br from-[#e9edff] to-[#d1fae5]">
-                  <span className="relative text-5xl font-extrabold text-[#006948]">
-                    {toText(openMilestone.capacity)}
-                  </span>
-                  <span className="relative text-[11px] font-bold uppercase tracking-[0.3em] text-gray-500 mt-2">
-                    {t('On-Grid Solar Power Plant')}
-                  </span>
-                  <span aria-hidden="true" className="relative h-px w-16 mt-3 bg-gradient-to-r from-transparent via-[#006948]/50 to-transparent"></span>
-                </div>
-              )}
-              {toText(openMilestone.capacity) && !ytId(openMilestone.video_url) && toText(openMilestone.image_url).trim() && (
+              {/* one item plays plainly; several loop as a slideshow */}
+              <MilestoneMedia m={openMilestone} t={t} />
+              {toText(openMilestone.capacity) && !hasVideo(openMilestone) && toText(openMilestone.image_url).trim() && (
                 <span className="absolute bottom-3 left-4 bg-[#006948] text-white text-lg font-extrabold px-4 py-1.5 rounded-full shadow-lg">
                   {toText(openMilestone.capacity)}
                 </span>

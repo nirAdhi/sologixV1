@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { projectsAPI } from '../../utils/api';
 import toast from 'react-hot-toast';
 
-const empty = { title:'', location:'', capacity:'', type:'Residential', description:'', image_url:'', savings:'', is_featured:true, sort_order:0, is_milestone:false, completed_on:'', video_url:'' };
+const empty = { title:'', location:'', capacity:'', type:'Residential', description:'', image_url:'', savings:'', is_featured:true, sort_order:0, is_milestone:false, completed_on:'', video_url:'', gallery:'' };
 const TYPES = ['Residential','Commercial','Industrial','Institutional'];
 
 export default function AdminProjects() {
@@ -25,7 +25,7 @@ export default function AdminProjects() {
     setEditing(p.id);
     const clean = {};
     Object.keys(empty).forEach(k => { clean[k] = p[k] ?? empty[k]; });
-    setForm({ ...clean, is_featured: p.is_featured===1 || p.is_featured===true || p.is_featured==='1', is_milestone: p.is_milestone===1 || p.is_milestone===true || p.is_milestone==='1', completed_on: p.completed_on || '', video_url: p.video_url || '' });
+    setForm({ ...clean, is_featured: p.is_featured===1 || p.is_featured===true || p.is_featured==='1', is_milestone: p.is_milestone===1 || p.is_milestone===true || p.is_milestone==='1', completed_on: p.completed_on || '', video_url: p.video_url || '', gallery: (()=>{ let g=p.gallery; if(typeof g==='string'){ try{ g=JSON.parse(g);}catch(e){ g=[]; } } return Array.isArray(g)? g.join(String.fromCharCode(10)) : ''; })() });
     setShowForm(true);
   };
 
@@ -251,10 +251,17 @@ export default function AdminProjects() {
                       placeholder="e.g. August 2026" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500" />
                   </div>
                   <div>
-                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Project video (YouTube link, optional)</label>
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">Project video (YouTube or .mp4 link, optional)</label>
                     <input value={form.video_url} onChange={e=>setForm(f=>({...f,video_url:e.target.value}))} maxLength={500}
-                      placeholder="https://youtu.be/..." className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500" />
-                    <p className="text-xs text-gray-400 mt-1">With a link, the project pop-up plays the video instead of just the photo.</p>
+                      placeholder="https://youtu.be/... or a Cloudinary video link" className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500" />
+                    <p className="text-xs text-gray-400 mt-1">YouTube links and direct video files (e.g. a Cloudinary .mp4) both work — the pop-up plays the video, and on computers the card shows a silent preview on hover.</p>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <label className="text-xs font-semibold text-gray-500 uppercase tracking-wider block mb-1">More photos &amp; videos — slideshow (one link per line, up to 12)</label>
+                    <textarea value={form.gallery} onChange={e=>setForm(f=>({...f,gallery:e.target.value}))} rows={4}
+                      placeholder={'https://res.cloudinary.com/.../video/upload/.../plant-drone.mp4\nhttps://res.cloudinary.com/.../image/upload/.../inverter-room.jpg\nhttps://youtu.be/...'}
+                      className="w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-green-500 resize-none font-mono" />
+                    <p className="text-xs text-gray-400 mt-1">Mix freely: Cloudinary videos, photos and YouTube links. The project pop-up plays them as a loop — photos advance by themselves, videos play through, and visitors can browse with arrows.</p>
                   </div>
                 </div>
               )}

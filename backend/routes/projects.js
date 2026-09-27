@@ -14,6 +14,22 @@ const staticProjects = [
 ];
 
 const canManage = [auth, requirePermission('manage_services')]; // matches the admin menu permission
+
+// Gallery: up to 12 https links (photos, YouTube, or video files) as a JSON array.
+// Returns the JSON string to store, '' to clear, or undefined when not sent.
+function normalizeGallery(v) {
+  if (v === undefined) return undefined;
+  const arr = (Array.isArray(v) ? v : String(v || '').split(/\r?\n/))
+    .map((x) => String(x || '').trim()).filter(Boolean);
+  if (!arr.length) return '';
+  if (arr.length > 12) throw Object.assign(new Error('Gallery: at most 12 links'), { status: 400 });
+  for (const u of arr) {
+    if (u.length > 500 || !/^https:\/\/[^\s"'<>]+$/i.test(u)) {
+      throw Object.assign(new Error('Every gallery entry must be an https:// link'), { status: 400 });
+    }
+  }
+  return JSON.stringify(arr);
+}
 const validImage = (v) => v === undefined || v === '' || (typeof v === 'string' && v.length <= 1500000 &&
   (/^https:\/\/[^\s"'<>]+$/i.test(v) || /^\/uploads\/[\w.-]+$/.test(v) || /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/.test(v)));
 
@@ -58,13 +74,14 @@ router.get('/', async (req, res) => {
 router.post('/', ...canManage, async (req, res) => {
   try {
     const { title, location, capacity, type, description, image_url, savings, is_featured, sort_order, is_milestone, completed_on, video_url } = req.body;
+    let gallery; try { gallery = normalizeGallery(req.body.gallery); } catch (ge) { return res.status(400).json({ success: false, message: ge.message }); }
     if (!title) return res.status(400).json({ success: false, message: 'Title required' });
     if (!validImage(image_url)) return res.status(400).json({ success: false, message: 'image_url must be an https URL, /uploads/ path or image' });
     if (video_url !== undefined && video_url !== '' && video_url !== null && !/^https:\/\/[^\s"'<>]+$/i.test(String(video_url))) {
       return res.status(400).json({ success: false, message: 'video_url must be an https:// link' });
     }
-    const [r] = await db.query('INSERT INTO projects (title, location, capacity, type, description, image_url, savings, is_featured, sort_order, is_milestone, completed_on, video_url) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)',
-      [title, location||'', capacity||'', type||'Residential', description||'', image_url||'', savings||'', is_featured?1:0, sort_order||0, is_milestone?1:0, String(completed_on||'').slice(0,30)||null, String(video_url||'').slice(0,500)||null]);
+    const [r] = await db.query('INSERT INTO projects (title, location, capacity, type, description, image_url, savings, is_featured, sort_order, is_milestone, completed_on, video_url, gallery) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)',
+      [title, location||'', capacity||'', type||'Residential', description||'', image_url||'', savings||'', is_featured?1:0, sort_order||0, is_milestone?1:0, String(completed_on||'').slice(0,30)||null, String(video_url||'').slice(0,500)||null, gallery||null]);
     const [[p]] = await db.query('SELECT * FROM projects WHERE id=?', [r.insertId]);
     res.status(201).json({ success: true, data: p });
   } catch (e) { res.status(500).json({ success: false, message: 'Failed' }); }
@@ -74,7 +91,8 @@ router.put('/:id', ...canManage, async (req, res) => {
   try {
     if (!validImage(req.body.image_url)) return res.status(400).json({ success: false, message: 'image_url must be an https URL, /uploads/ path or image' });
     if (req.body.video_url !== undefined && req.body.video_url !== '' && req.body.video_url !== null && !/^https:\/\/[^\s"'<>]+$/i.test(String(req.body.video_url))) return res.status(400).json({ success: false, message: 'video_url must be an https:// link' });
-    const fields = ['title','location','capacity','type','description','image_url','savings','is_featured','sort_order','is_milestone','completed_on','video_url'];
+    try { const g = normalizeGallery(req.body.gallery); if (g !== undefined) req.body.gallery = g; } catch (ge) { return res.status(400).json({ success: false, message: ge.message }); }
+    const fields = ['title','location','capacity','type','description','image_url','savings','is_featured','sort_order','is_milestone','completed_on','video_url','gallery'];
     const updates = []; const params = [];
     fields.forEach(f => { if (req.body[f] !== undefined) { updates.push(f+'=?'); params.push(req.body[f]); }});
     if (!updates.length) return res.status(400).json({ success: false, message: 'Nothing to update' });

@@ -427,6 +427,8 @@ async function initDatabase() {
     await safeAddColumn('projects', 'is_milestone', 'TINYINT(1) DEFAULT 0');
     await safeAddColumn('projects', 'completed_on', 'VARCHAR(30) DEFAULT NULL');
     await safeAddColumn('projects', 'video_url', 'VARCHAR(500) DEFAULT NULL');
+    // Extra photos/videos for the milestone pop-up slideshow (JSON array of https URLs)
+    await safeAddColumn('projects', 'gallery', 'TEXT DEFAULT NULL');
 
     // First-party footfall analytics (cookie-consented pageviews + login events).
     // No PII: visitor is a random id from the visitor's own browser.
