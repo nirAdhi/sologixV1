@@ -440,6 +440,17 @@ const HomePage = () => {
     const m = String(u || '').match(/(?:youtube(?:-nocookie)?\.com\/(?:watch\?(?:.*&)?v=|embed\/|shorts\/)|youtu\.be\/)([\w-]{6,20})/i);
     return m ? m[1] : null;
   };
+  // Card art: the project photo, else the video's own thumbnail, else a stock shot —
+  // so a milestone looks right whether the admin added an image, a video, or both.
+  const milestoneArt = (m, i) => {
+    const img = toText(m.image_url).trim();
+    if (img) return img;
+    const v = ytId(m.video_url);
+    if (v) return `https://i.ytimg.com/vi/${v}/hqdefault.jpg`;
+    return SOLAR_IMGS[i % SOLAR_IMGS.length];
+  };
+  // Desktop hover: play a silent looping preview inside the card.
+  const [previewIdx, setPreviewIdx] = useState(null);
   // Milestone strip: arrow buttons instead of a visible scrollbar.
   const milesRef = useRef(null);
   const [milesNav, setMilesNav] = useState({ left: false, right: false });
@@ -749,13 +760,26 @@ const HomePage = () => {
                  photo/video when available), so every card looks equally premium. */
               <button key={m.id ?? i} type="button" onClick={() => setOpenMilestone(m)}
                 aria-haspopup="dialog"
+                onMouseEnter={() => ytId(m.video_url) && setPreviewIdx(i)}
+                onMouseLeave={() => setPreviewIdx(null)}
                 className="group relative flex-shrink-0 w-64 sm:w-72 snap-start rounded-2xl bg-white text-left shadow-sm hover:shadow-xl transition-all hover:-translate-y-1.5 focus-visible:ring-2 focus-visible:ring-[#006948] overflow-hidden">
-                  {/* project photo, melting into the white card below */}
+                  {/* photo (or the video's thumbnail), melting into the white card below */}
                   <span className="block relative h-40 overflow-hidden">
-                    <img src={toText(m.image_url).trim() || SOLAR_IMGS[i % SOLAR_IMGS.length]} alt={toText(m.title)}
+                    <img src={milestoneArt(m, i)} alt={toText(m.title)}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" loading="lazy"
                       onError={imgFallback(SOLAR_IMGS[i % SOLAR_IMGS.length])} />
-                    <span aria-hidden="true" className="absolute inset-0"
+                    {/* hover: the project video plays silently inside the card */}
+                    {previewIdx === i && ytId(m.video_url) && (
+                      <iframe
+                        src={'https://www.youtube-nocookie.com/embed/' + ytId(m.video_url) +
+                          '?autoplay=1&mute=1&controls=0&modestbranding=1&rel=0&playsinline=1&loop=1&playlist=' + ytId(m.video_url)}
+                        title="" aria-hidden="true" tabIndex={-1}
+                        className="absolute inset-0 w-full h-full pointer-events-none"
+                        allow="autoplay; encrypted-media"
+                        referrerPolicy="strict-origin-when-cross-origin"
+                      ></iframe>
+                    )}
+                    <span aria-hidden="true" className="absolute inset-0 pointer-events-none"
                       style={{ background: 'linear-gradient(to top, #ffffff 4%, rgba(255,255,255,0.30) 45%, rgba(255,255,255,0))' }}></span>
                     {ytId(m.video_url) && (
                       <span className="absolute top-3 right-3 bg-black/55 backdrop-blur-sm text-white text-[11px] font-bold px-2.5 py-1 rounded-full border border-white/20">
@@ -806,10 +830,11 @@ const HomePage = () => {
               {ytId(openMilestone.video_url) ? (
                 <div className="aspect-video bg-black">
                   <iframe
-                    src={'https://www.youtube-nocookie.com/embed/' + ytId(openMilestone.video_url)}
+                    src={'https://www.youtube-nocookie.com/embed/' + ytId(openMilestone.video_url) + '?autoplay=1&rel=0&playsinline=1'}
                     title={toText(openMilestone.title)}
                     className="w-full h-full"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    referrerPolicy="strict-origin-when-cross-origin"
                     allowFullScreen
                   ></iframe>
                 </div>
