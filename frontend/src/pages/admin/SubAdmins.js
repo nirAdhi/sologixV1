@@ -52,7 +52,7 @@ const SubAdmins = () => {
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
     if (!token) {
-      navigate('/admin/login');
+      navigate('/login');
       return;
     }
     fetchSubAdmins();
@@ -182,7 +182,7 @@ const SubAdmins = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
-    navigate('/admin/login');
+    navigate('/login');
   };
 
   const getRoleBadge = (role) => {

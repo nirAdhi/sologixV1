@@ -19,7 +19,7 @@ const AdminSessionManager = () => {
   const handleLogout = useCallback(() => {
     localStorage.removeItem('adminToken');
     setShowModal(false);
-    navigate('/admin/login');
+    navigate('/login');
   }, [navigate]);
 
   const resetTimer = useCallback(() => {
@@ -46,7 +46,7 @@ const AdminSessionManager = () => {
   }, [handleLogout]);
 
   useEffect(() => {
-    const isAdminRoute = location.pathname.startsWith('/admin') && location.pathname !== '/admin/login';
+    const isAdminRoute = location.pathname.startsWith('/admin') && location.pathname !== '/login';
     const hasToken = !!localStorage.getItem('adminToken');
     
     if (isAdminRoute && hasToken) {

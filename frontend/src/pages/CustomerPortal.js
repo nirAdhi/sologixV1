@@ -33,7 +33,7 @@ const CustomerPortal = () => {
     const customerData = localStorage.getItem('customerData');
     
     if (!token || !customerData) {
-      navigate('/portal/login');
+      navigate('/login');
       return;
     }
 
@@ -60,7 +60,7 @@ const CustomerPortal = () => {
   const handleLogout = () => {
     localStorage.removeItem('customerToken');
     localStorage.removeItem('customerData');
-    navigate('/portal/login');
+    navigate('/login');
   };
 
   const handleEditProfile = () => {

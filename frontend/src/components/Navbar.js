@@ -133,7 +133,7 @@ const Navbar = () => {
 
         <div className="flex items-center gap-2 flex-shrink-0">
           <LanguageToggle compact />
-          <Link to="/admin/login"
+          <Link to="/login"
             className="text-xs font-medium text-gray-500 hover:text-[#006948] border border-gray-200 px-3 py-1.5 rounded-full hover:border-[#006948] transition-all whitespace-nowrap hidden sm:block">
             {t('Login')}
           </Link>
@@ -170,7 +170,7 @@ const Navbar = () => {
               {t(label)}
             </Link>
           ))}
-          <Link to="/admin/login" onClick={() => setMobileOpen(false)} className="block text-sm font-medium text-gray-600 hover:text-[#006948] py-1.5 sm:hidden">{t('Login')}</Link>
+          <Link to="/login" onClick={() => setMobileOpen(false)} className="block text-sm font-medium text-gray-600 hover:text-[#006948] py-1.5 sm:hidden">{t('Login')}</Link>
           <Link to="/booking" onClick={() => setMobileOpen(false)}
             className="block text-center bg-[#006948] text-white px-5 py-2.5 rounded-full text-sm font-medium mt-3">
             {t('Free Consultation')}

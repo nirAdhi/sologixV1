@@ -54,7 +54,7 @@ const AdminLayout = ({ children, title, requiredPerm }) => {
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
-    if (!token) { navigate('/admin/login'); return; }
+    if (!token) { navigate('/login'); return; }
     adminAPI.getMe()
       .then(res => {
         const a = res.data.data;
@@ -63,13 +63,13 @@ const AdminLayout = ({ children, title, requiredPerm }) => {
           navigate('/admin');
         }
       })
-      .catch(() => navigate('/admin/login'))
+      .catch(() => navigate('/login'))
       .finally(() => setLoading(false));
   }, [navigate, requiredPerm]);
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
-    navigate('/admin/login');
+    navigate('/login');
   };
 
   const isActive = (path) =>

@@ -15,7 +15,7 @@ const AdminCustomers = () => {
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
     if (!token) {
-      navigate('/admin/login');
+      navigate('/login');
       return;
     }
     fetchCustomers();
@@ -45,7 +45,7 @@ const AdminCustomers = () => {
 
   const handleLogout = () => {
     localStorage.removeItem('adminToken');
-    navigate('/admin/login');
+    navigate('/login');
   };
 
   if (loading) {

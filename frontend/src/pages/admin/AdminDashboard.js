@@ -12,7 +12,7 @@ const AdminDashboard = () => {
 
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
-    if (!token) { navigate('/admin/login'); return; }
+    if (!token) { navigate('/login'); return; }
     loadAll();
   }, [navigate]);
 

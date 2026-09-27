@@ -512,14 +512,22 @@ const ALL_PERMISSIONS = {
 function envAdminProblem(email, pw) {
   if (!/^[^\s@,;<>]+@[^\s@,;<>]+\.[^\s@,;<>]+$/.test(email)) return 'ADMIN_EMAIL is missing or not a valid email';
   if (pw.length < 12) return 'ADMIN_PASSWORD must be at least 12 characters';
-  if (/^(admin|change|your|password)/i.test(pw)) return 'ADMIN_PASSWORD looks like a placeholder (starts with admin/change/your/password)';
+  // Block only obvious placeholders — a real password may well start with "Admin...".
+  if (/^(admin123|changeme|change[_-]?this|change[_-]?me|your[_-]?password|password123?|123456)/i.test(pw)) {
+    return 'ADMIN_PASSWORD looks like a placeholder';
+  }
   return null;
 }
 
 async function syncEnvAdmin(connection) {
   const bcrypt = require('bcryptjs');
   const email = String(process.env.ADMIN_EMAIL || '').trim();
-  const pw = String(process.env.ADMIN_PASSWORD || '');
+  // .env files edited on Windows carry an invisible \r at each line end, and
+  // people often wrap values in quotes — both would silently become part of
+  // the password and make every login fail. Strip them.
+  const pw = String(process.env.ADMIN_PASSWORD || '')
+    .replace(/[\r\n]+$/g, '')
+    .replace(/^(['"])(.*)\1$/, '$2');
   const name = String(process.env.ADMIN_NAME || 'Super Admin').trim().slice(0, 100) || 'Super Admin';
   const sync = String(process.env.ADMIN_SYNC_FROM_ENV || 'true').toLowerCase() !== 'false';
   const [[{ count }]] = await connection.query('SELECT COUNT(*) AS count FROM admins');

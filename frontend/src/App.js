@@ -1,5 +1,5 @@
 import React, { Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useLocation } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import Navbar from './components/Navbar';
@@ -106,7 +106,8 @@ function AppContent() {
         <Routes>
       
         {/* ── Admin routes (no navbar/footer) ── */}
-        <Route path="/admin/login"        element={<UnifiedLogin />} />
+        {/* One login for everyone at /login; old URLs forward there */}
+        <Route path="/admin/login"        element={<Navigate to="/login" replace />} />
         <Route path="/admin"              element={<AdminDashboard />} />
         <Route path="/admin/bookings"     element={<AdminBookings />} />
         <Route path="/admin/services"     element={<AdminServices />} />
@@ -124,7 +125,7 @@ function AppContent() {
         <Route path="/admin/analytics"      element={<AdminAnalytics />} />
 
         {/* ── Customer portal (no navbar/footer) ── */}
-        <Route path="/portal/login"               element={<UnifiedLogin />} />
+        <Route path="/portal/login"               element={<Navigate to="/login" replace />} />
         <Route path="/portal"                     element={<CustomerPortal />} />
         <Route path="/portal/booking/:bookingId"  element={<CustomerBookingDetail />} />
         <Route path="/forgot-password"            element={<ForgotPassword />} />

@@ -18,7 +18,7 @@ const CustomerBookingDetail = () => {
   useEffect(() => {
     const token = localStorage.getItem('customerToken');
     if (!token) {
-      navigate('/portal/login');
+      navigate('/login');
       return;
     }
 
@@ -45,7 +45,7 @@ const CustomerBookingDetail = () => {
   const handleLogout = () => {
     localStorage.removeItem('customerToken');
     localStorage.removeItem('customerData');
-    navigate('/portal/login');
+    navigate('/login');
   };
 
   const getStatusColor = (status) => {

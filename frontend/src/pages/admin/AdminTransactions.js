@@ -25,7 +25,7 @@ const AdminTransactions = () => {
   useEffect(() => {
     const token = localStorage.getItem('adminToken');
     if (!token) {
-      navigate('/admin/login');
+      navigate('/login');
       return;
     }
     fetchSummary();
